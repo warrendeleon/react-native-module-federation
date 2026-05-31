@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+apps/*/node_modules/
+
+# Re.Pack / Rspack build output
+apps/*/build/
+
+# iOS
+apps/*/ios/Pods/
+apps/*/ios/build/
+apps/*/ios/*.xcworkspace/xcuserdata/
+apps/*/ios/.xcode.env.local
+apps/*/vendor/
+
+# Android
+apps/*/android/.gradle/
+apps/*/android/app/build/
+apps/*/android/build/
+apps/*/android/.cxx/
+apps/*/android/local.properties
+
+# Metro / Re.Pack cache
+.metro-health-check*
+**/.cxx/
+
+# Misc
+.DS_Store
+*.log
