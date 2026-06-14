@@ -1,8 +1,11 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// The screen this remote hands to the host. Plain React Native on purpose: this post is about
-// loading a remote at runtime, not styling it. A later post brings in a shared design system.
+// The screen this remote hands to the host. It reads the safe-area inset from the host's
+// SafeAreaProvider to keep its title clear of the notch. This only works when the remote and the
+// host share ONE copy of react-native-safe-area-context. Skip the share and the remote bundles its
+// own copy, which tries to register the same native view the host already did: a crash on launch.
 const POKEMON = [
   { id: 1, name: 'Bulbasaur' },
   { id: 4, name: 'Charmander' },
@@ -12,8 +15,9 @@ const POKEMON = [
 ];
 
 export default function PokedexScreen() {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
       <Text style={styles.title}>Pokédex</Text>
       <Text style={styles.subtitle}>Served by the list remote</Text>
       <FlatList

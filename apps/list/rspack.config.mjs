@@ -55,6 +55,10 @@ export default Repack.defineRspackConfig(env => {
             singleton: true,
             requiredVersion: pkg.dependencies['react-native'],
           },
+          'react-native-safe-area-context': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['react-native-safe-area-context'],
+          },
         },
       }),
     ],
