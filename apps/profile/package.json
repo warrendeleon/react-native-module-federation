@@ -1,22 +1,20 @@
 {
-  "name": "Host",
+  "name": "Profile",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android --no-packager",
-    "ios": "react-native run-ios --no-packager",
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "start:remote": "react-native start --config rspack.config.mjs --port 8083"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.85.3",
-    "@react-navigation/bottom-tabs": "^7.18.0",
-    "@react-navigation/native": "^7.3.1",
     "react": "19.2.3",
     "react-native": "0.85.3",
-    "react-native-safe-area-context": "^5.5.2",
-    "react-native-screens": "^4.25.2"
+    "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

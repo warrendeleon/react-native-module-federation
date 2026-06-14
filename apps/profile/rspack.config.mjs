@@ -5,25 +5,26 @@ import pkg from './package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// host: the shell app. It consumes the listApp remote at runtime from that remote's dev server.
-// react and react-native are shared as EAGER singletons: the host is the one copy every remote
-// renders against, and `eager` makes the share scope ready before this synchronous entry runs, so
-// no async bootstrap file is needed.
+// listApp: a federated remote. It has no native project of its own; it builds a container that a
+// host loads at runtime, and exposes one screen (./PokedexScreen). react and react-native are
+// declared shared so the remote renders against the host's single copy instead of bundling its
+// own (two Reacts in one runtime would break hooks). The deep version of that contract is a later
+// post; here it is the bare minimum to make a remote render inside a host.
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
   return {
     mode,
     context: __dirname,
-    entry: './index.js',
+    entry: './src/index.js',
     resolve: {
-      // Needed so the Module Federation runtime can resolve subpath imports like
-      // '@module-federation/runtime/helpers'.
+      // enablePackageExports lets the resolver read each package's `exports` map, which the
+      // Module Federation runtime needs for subpath imports like '@module-federation/runtime/helpers'.
       ...Repack.getResolveOptions({ enablePackageExports: true }),
     },
     output: {
       path: `${__dirname}/build/[platform]`,
-      uniqueName: 'Host',
+      uniqueName: 'ProfileApp',
     },
     module: {
       rules: [
@@ -36,31 +37,26 @@ export default Repack.defineRspackConfig(env => {
       ],
     },
     plugins: [
-      new Repack.RepackPlugin(),
+      new Repack.RepackPlugin({
+        extraChunks: [
+          { include: /.*/, type: 'remote', outputPath: `build/${platform}/remote` },
+        ],
+      }),
       new Repack.plugins.ModuleFederationPluginV2({
-        name: 'host',
-        filename: 'host.container.js.bundle',
-        remotes: {
-          // name@url: the host knows each remote by the manifest URL it lives at. In dev those are
-          // the remotes' own dev servers, list on :8082 and profile on :8083.
-          listApp: `listApp@http://localhost:8082/${platform}/mf-manifest.json`,
-          profileApp: `profileApp@http://localhost:8083/${platform}/mf-manifest.json`,
+        name: 'profileApp',
+        filename: 'profileApp.container.js.bundle',
+        exposes: {
+          './ProfileScreen': './src/ProfileScreen.tsx',
         },
         dts: false,
         shared: {
-          react: {
-            singleton: true,
-            eager: true,
-            requiredVersion: pkg.dependencies.react,
-          },
+          react: { singleton: true, requiredVersion: pkg.dependencies.react },
           'react-native': {
             singleton: true,
-            eager: true,
             requiredVersion: pkg.dependencies['react-native'],
           },
           'react-native-safe-area-context': {
             singleton: true,
-            eager: true,
             requiredVersion: pkg.dependencies['react-native-safe-area-context'],
           },
         },

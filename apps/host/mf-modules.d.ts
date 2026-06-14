@@ -5,3 +5,9 @@ declare module 'listApp/PokedexScreen' {
   const PokedexScreen: React.ComponentType;
   export default PokedexScreen;
 }
+
+declare module 'profileApp/ProfileScreen' {
+  import type React from 'react';
+  const ProfileScreen: React.ComponentType;
+  export default ProfileScreen;
+}
