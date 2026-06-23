@@ -10,20 +10,31 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 const PokedexScreen = React.lazy(() => import('listApp/PokedexScreen'));
 const ProfileScreen = React.lazy(() => import('profileApp/ProfileScreen'));
 
-// A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
-// spinner. Wrapping once here keeps the lazy boundary out of the remotes.
-function withSuspense(Remote: React.ComponentType) {
-  return function Tab() {
-    return (
-      <Suspense fallback={<ActivityIndicator style={styles.loader} size="large" />}>
-        <Remote />
-      </Suspense>
-    );
-  };
+// The host owns navigation, so it owns what a selection means. The list remote reports an id through
+// the onSelectPokemon prop typed in @pokedex/contracts; for now the host just logs it, and a later
+// post wires it to a detail route. Pass a wrong-shaped handler here and TypeScript stops the build.
+function handleSelectPokemon(id: number) {
+  console.log(`Selected Pokémon #${id}`);
 }
 
-const PokedexTab = withSuspense(PokedexScreen);
-const ProfileTab = withSuspense(ProfileScreen);
+// A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
+// spinner. The Pokédex tab now passes a prop, so it gets its own wrapper rather than a prop-less
+// generic one.
+function PokedexTab() {
+  return (
+    <Suspense fallback={<ActivityIndicator style={styles.loader} size="large" />}>
+      <PokedexScreen onSelectPokemon={handleSelectPokemon} />
+    </Suspense>
+  );
+}
+
+function ProfileTab() {
+  return (
+    <Suspense fallback={<ActivityIndicator style={styles.loader} size="large" />}>
+      <ProfileScreen />
+    </Suspense>
+  );
+}
 
 const Tab = createBottomTabNavigator();
 
