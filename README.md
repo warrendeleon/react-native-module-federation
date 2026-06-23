@@ -4,17 +4,37 @@ Companion code for the blog series **[React Native Module Federation](https://wa
 
 Each post has a matching git tag holding that post's finished state, so you can clone the repo, check out the tag for the post you're reading, and run exactly what the post builds.
 
+<p align="center">
+  <img src="docs/screenshot.webp" width="280" alt="The host shell on iOS: a bottom tab bar with a Pokédex list served by the list remote and a Trainer tab served by the profile remote, each loaded at runtime" />
+</p>
+
 ## Posts and tags
 
 | Tag | Post | What it builds |
 |---|---|---|
-| `post-02-first-remote` | Your first federated remote | A host that loads one screen from a separate remote app at runtime |
-| `post-03-shared-singleton` | The shared-singleton contract | Host and remote share a single copy of `react-native-safe-area-context`, so the remote reads the host's safe-area insets instead of bundling its own native module |
-| `post-04-host-shell` | The host shell: federated remotes as tabs | The host owns a bottom-tab navigator; each tab is a federated remote loaded at runtime — a Pokédex list and a Trainer profile |
+| [`post-02-first-remote`](https://github.com/warrendeleon/react-native-module-federation/tree/post-02-first-remote) | [Your first federated remote](https://warrendeleon.com/blog/your-first-federated-remote-react-native/) | A host that loads one screen from a separate remote app at runtime |
+| [`post-03-shared-singleton`](https://github.com/warrendeleon/react-native-module-federation/tree/post-03-shared-singleton) | [The shared-singleton contract](https://warrendeleon.com/blog/shared-singleton-contract-react-native/) | Host and remote share a single copy of `react-native-safe-area-context`, so the remote reads the host's safe-area insets instead of bundling its own native module |
+| [`post-04-host-shell`](https://github.com/warrendeleon/react-native-module-federation/tree/post-04-host-shell) | [The host shell: federated remotes as tabs](https://warrendeleon.com/blog/host-shell-federated-tabs-react-native/) | The host owns a bottom-tab navigator; each tab is a federated remote loaded at runtime — a Pokédex list and a Trainer profile |
+| [`post-05-contracts`](https://github.com/warrendeleon/react-native-module-federation/tree/post-05-contracts) | [The contract package](https://warrendeleon.com/blog/typing-the-seam-between-remotes-react-native/) | A types-only contract published to a registry and installed by version, so the host and remotes agree on the seam; additive changes drift safely, breaking changes are caught by semver |
 
-The first post, *Why Module Federation in React Native*, is concept only and ships no code, so it has no tag. `main` tracks the latest post; more tags land as the series grows.
+The first post, [*Why Module Federation in React Native*](https://warrendeleon.com/blog/why-module-federation-react-native/), is concept only and ships no code, so it has no tag. `main` tracks the latest post; more tags land as the series grows.
 
 ## Layout
+
+At runtime, the host owns the tab bar and loads each remote from its own dev server:
+
+```mermaid
+flowchart TB
+    subgraph host["host — the shell"]
+        tabs["bottom tab bar"]
+    end
+    list[("list remote<br/>:8082 · Pokédex")]
+    profile[("profile remote<br/>:8083 · Trainer")]
+    tabs -.->|"loaded at runtime"| list
+    tabs -.->|"loaded at runtime"| profile
+```
+
+The folders mirror that split:
 
 ```
 apps/
