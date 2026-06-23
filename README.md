@@ -59,7 +59,3 @@ cd apps/host && npm run ios
 ```
 
 The host boots into a bottom tab bar. Opening the **Pokédex** tab fetches the `list` remote from `:8082`; opening the **Trainer** tab fetches the `profile` remote from `:8083`. Each tab shows a spinner the first time while its remote downloads.
-
-## The full reference
-
-This repo stays deliberately small so each post is easy to follow. For the production-grade version, with a signed CDN, per-launch version resolution, an offline fallback, a shared design system, and health-based rollback, see **[pokedex-federation](https://github.com/warrendeleon/pokedex-federation)**.
