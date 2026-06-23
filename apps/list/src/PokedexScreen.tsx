@@ -1,11 +1,11 @@
 import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { PokedexScreenProps } from '@pokedex/contracts';
 
-// The screen this remote hands to the host. It reads the safe-area inset from the host's
-// SafeAreaProvider to keep its title clear of the notch. This only works when the remote and the
-// host share ONE copy of react-native-safe-area-context. Skip the share and the remote bundles its
-// own copy, which tries to register the same native view the host already did: a crash on launch.
+// The screen this remote hands to the host. Its props come from @pokedex/contracts, the one place
+// the host and this remote agree on the seam: PokedexScreenProps says the host passes onSelectPokemon,
+// so this signature is checked against the same type the host renders with.
 const POKEMON = [
   { id: 1, name: 'Bulbasaur' },
   { id: 4, name: 'Charmander' },
@@ -14,7 +14,10 @@ const POKEMON = [
   { id: 133, name: 'Eevee' },
 ];
 
-export default function PokedexScreen() {
+export default function PokedexScreen({
+  onSelectPokemon,
+  onLongPressPokemon,
+}: PokedexScreenProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
@@ -24,10 +27,14 @@ export default function PokedexScreen() {
         data={POKEMON}
         keyExtractor={p => String(p.id)}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            style={styles.row}
+            onPress={() => onSelectPokemon(item.id)}
+            onLongPress={() => onLongPressPokemon?.(item.id)}
+          >
             <Text style={styles.number}>#{String(item.id).padStart(3, '0')}</Text>
             <Text style={styles.name}>{item.name}</Text>
-          </View>
+          </Pressable>
         )}
       />
     </View>

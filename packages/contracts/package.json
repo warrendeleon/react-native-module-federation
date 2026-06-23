@@ -1,0 +1,27 @@
+{
+  "name": "@pokedex/contracts",
+  "version": "1.1.0",
+  "description": "The typed seam between the host and every federated remote: the props each exposed screen takes. Imported by the host and the remotes so both sides agree without importing each other's code.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "registry": "http://localhost:4873/"
+  },
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "^5.8.3"
+  }
+}
