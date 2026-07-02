@@ -45,13 +45,20 @@ apps/
 
 ## Quick start
 
-Requirements: Node 18+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPods.
+Requirements: Node 22.11+ (see each app's `engines`), Xcode with an iOS simulator, Ruby + Bundler, CocoaPods.
 
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
 # main is the latest post. To follow an earlier post, check out its tag first, e.g.
 #   git checkout post-02-first-remote
+
+# From post-05-contracts onward the apps depend on @pokedex/contracts@^1.1.0,
+# which the root .npmrc resolves from a LOCAL Verdaccio registry. Publish it
+# before installing, or npm install fails with ECONNREFUSED:
+#   npx verdaccio &                                   # http://localhost:4873
+#   npm adduser --registry http://localhost:4873/     # any user/pass/email
+#   ( cd packages/contracts && npm install && npm run build && npm publish )
 
 # install JS deps
 ( cd apps/list && npm install )

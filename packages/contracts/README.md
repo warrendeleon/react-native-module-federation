@@ -13,5 +13,5 @@ no runtime dependency to share across the federation.
 
 ```sh
 npm install
-npm run build      # emits dist/ that the host and remotes consume via their file: dependency
+npm run build      # emits dist/; the host and remotes install this package by version from the local Verdaccio registry
 ```
