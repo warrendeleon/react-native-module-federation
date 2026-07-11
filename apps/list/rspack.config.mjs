@@ -59,6 +59,21 @@ export default Repack.defineRspackConfig(env => {
             singleton: true,
             requiredVersion: pkg.dependencies['react-native-safe-area-context'],
           },
+          // The state trio, shared as singletons but NOT eager: the remote consumes the host's copies
+          // from the share scope. It injects its endpoint into the host's baseApi, so both sides must
+          // resolve to the one @reduxjs/toolkit, react-redux and @pokedex/contracts instance.
+          '@reduxjs/toolkit': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+          },
+          'react-redux': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['react-redux'],
+          },
+          '@pokedex/contracts': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['@pokedex/contracts'],
+          },
         },
       }),
     ],

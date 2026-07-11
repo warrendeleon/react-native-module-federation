@@ -63,6 +63,26 @@ export default Repack.defineRspackConfig(env => {
             eager: true,
             requiredVersion: pkg.dependencies['react-native-safe-area-context'],
           },
+          // The state trio, shared as eager singletons from the host. @reduxjs/toolkit and
+          // react-redux must be one instance so a remote's injected endpoints and hooks talk to the
+          // same store; @pokedex/contracts must be one instance so every side imports the exact same
+          // baseApi — one cache, one tag graph. This is the first runtime-bearing shared package in
+          // the series; the contract was types-only until now.
+          '@reduxjs/toolkit': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+          },
+          'react-redux': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['react-redux'],
+          },
+          '@pokedex/contracts': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['@pokedex/contracts'],
+          },
         },
       }),
     ],

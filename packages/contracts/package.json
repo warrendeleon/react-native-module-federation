@@ -1,7 +1,7 @@
 {
   "name": "@pokedex/contracts",
-  "version": "1.1.0",
-  "description": "The typed seam between the host and every federated remote: the props each exposed screen takes. Imported by the host and the remotes so both sides agree without importing each other's code.",
+  "version": "2.0.0",
+  "description": "The shared seam between the host and every federated remote: the single RTK Query API instance both sides inject endpoints into, plus the props each exposed screen takes. Imported by the host and the remotes so they agree on types and share one cache without importing each other's code.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -17,11 +17,18 @@
   "publishConfig": {
     "registry": "http://localhost:4873/"
   },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
   "peerDependencies": {
-    "react": "*"
+    "@reduxjs/toolkit": ">=2.10.0",
+    "react": "*",
+    "react-redux": ">=9"
   },
   "devDependencies": {
+    "@reduxjs/toolkit": "^2.12.0",
     "@types/react": "^19.2.0",
+    "react-redux": "^9.3.0",
     "typescript": "^5.8.3"
   }
 }
