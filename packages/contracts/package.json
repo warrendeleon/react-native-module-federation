@@ -1,0 +1,27 @@
+{
+  "name": "@pokedex/contracts",
+  "version": "1.0.0",
+  "description": "The typed seam between federated remotes: the route params one remote pushes and another reads, plus the shape of every exposed module. Installed by version so three separately-built apps agree without importing each other's code.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "registry": "http://localhost:4873/"
+  },
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "^5.8.3"
+  }
+}

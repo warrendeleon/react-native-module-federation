@@ -2,14 +2,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
 import pkg from './package.json' with { type: 'json' };
+// The installed versions of the two React Navigation packages, read by hand. The bundler cannot
+// work them out on its own: see the `version` note in the shared block below.
+import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
+import navStackPkg from '@react-navigation/native-stack/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// partyApp: the second federated remote, built exactly like listApp in post 2. It has no native
-// project of its own; it builds a container the host loads at runtime, and exposes one screen
-// (./PartyScreen). The shared block is the same three singletons post 3 settled on, so this remote
-// renders against the host's copies of react, react-native and react-native-safe-area-context
-// rather than bundling its own.
+// partyApp: the second federated remote, and now the second consumer of the third one. This config
+// changes in the same three places listApp's did — exposes a stack, declares detailApp as a remote,
+// shares the navigation libraries — which is the point worth noticing: two apps owned by two teams
+// arrive at the same shape because the contract they installed says so, not because they agreed.
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
@@ -46,7 +49,10 @@ export default Repack.defineRspackConfig(env => {
         name: 'partyApp',
         filename: 'partyApp.container.js.bundle',
         exposes: {
-          './PartyScreen': './src/PartyScreen.tsx',
+          './PartyStack': './src/PartyStack.tsx',
+        },
+        remotes: {
+          detailApp: `detailApp@http://localhost:8084/${platform}/mf-manifest.json`,
         },
         dts: false,
         shared: {
@@ -58,6 +64,26 @@ export default Repack.defineRspackConfig(env => {
           'react-native-safe-area-context': {
             singleton: true,
             requiredVersion: pkg.dependencies['react-native-safe-area-context'],
+          },
+          // Both React Navigation entries state `version` by hand, and nothing else in this file
+          // does. Rspack reads the version out of the package it is sharing, but it cannot for a
+          // package resolved through an `exports` map, and both of these have one. Leave it out and
+          // the provide is skipped without a word: this app quietly bundles its own copy instead of
+          // taking the host's, which is the duplicate-singleton bug post 3 opened with, arriving
+          // this time with no error message at all.
+          '@react-navigation/native': {
+            singleton: true,
+            version: navPkg.version,
+            requiredVersion: pkg.dependencies['@react-navigation/native'],
+          },
+          '@react-navigation/native-stack': {
+            singleton: true,
+            version: navStackPkg.version,
+            requiredVersion: pkg.dependencies['@react-navigation/native-stack'],
+          },
+          'react-native-screens': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['react-native-screens'],
           },
         },
       }),

@@ -1,11 +1,14 @@
 import React from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { ListParamList } from './routes';
 
-// The screen this remote hands to the host. It reads the safe-area inset from the host's
-// SafeAreaProvider to keep its title clear of the notch. This only works when the remote and the
-// host share ONE copy of react-native-safe-area-context. Skip the share and the remote bundles its
-// own copy, which tries to register the same native view the host already did: a crash on launch.
+// The list this remote owns. It reads the safe-area inset from the host's SafeAreaProvider, which
+// only works while the remote and the host share ONE copy of react-native-safe-area-context. Skip
+// the share and the remote bundles its own copy, which tries to register the same native view the
+// host already did: a crash on launch.
 const POKEMON = [
   { id: 1, name: 'Bulbasaur' },
   { id: 4, name: 'Charmander' },
@@ -16,6 +19,11 @@ const POKEMON = [
 
 export default function PokedexScreen() {
   const insets = useSafeAreaInsets();
+  // useNavigation reads a React context the host's NavigationContainer provides. It resolves here
+  // only because @react-navigation/native is a shared singleton: with two copies in the runtime,
+  // this remote would look for the navigator in a context the host never filled.
+  const navigation = useNavigation<NativeStackNavigationProp<ListParamList>>();
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
       <Text style={styles.title}>Pokédex</Text>
@@ -24,10 +32,12 @@ export default function PokedexScreen() {
         data={POKEMON}
         keyExtractor={p => String(p.id)}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            style={styles.row}
+            onPress={() => navigation.navigate('PokemonDetail', { id: item.id })}>
             <Text style={styles.number}>#{String(item.id).padStart(3, '0')}</Text>
             <Text style={styles.name}>{item.name}</Text>
-          </View>
+          </Pressable>
         )}
       />
     </View>

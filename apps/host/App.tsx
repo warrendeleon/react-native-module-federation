@@ -4,11 +4,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-// The host owns the shell: the SafeAreaProvider, the navigation container, and the tab bar. Each
-// tab's content is a federated remote loaded at runtime. The remotes know nothing about navigation;
-// they are just screens the host arranges into tabs.
-const PokedexScreen = React.lazy(() => import('listApp/PokedexScreen'));
-const PartyScreen = React.lazy(() => import('partyApp/PartyScreen'));
+// The host owns the shell: the SafeAreaProvider, the navigation container, and the tab bar. What it
+// mounts in each tab is no longer a screen but a whole stack, so navigation inside a tab belongs to
+// the remote that owns the tab. The host's job stops at the tab bar, which is why the tab bar stays
+// on screen when a remote pushes something.
+const ListStack = React.lazy(() => import('listApp/ListStack'));
+const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
 
 // A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
 // spinner. Wrapping once here keeps the lazy boundary out of the remotes.
@@ -22,8 +23,8 @@ function withSuspense(Remote: React.ComponentType) {
   };
 }
 
-const PokedexTab = withSuspense(PokedexScreen);
-const PartyTab = withSuspense(PartyScreen);
+const PokedexTab = withSuspense(ListStack);
+const PartyTab = withSuspense(PartyStack);
 
 const Tab = createBottomTabNavigator();
 
