@@ -1,12 +1,12 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { PokemonDetailScreenProps } from '@pokedex/contracts';
+import type { DetailParams } from '@pokedex/contracts';
 
-// This remote's own copy of the Pokémon data. The list remote has one too, and the two have already
-// drifted: the list needs a name, this screen needs types as well. Two apps holding copies of the
-// same facts is the problem live data solves, and that is post 6. Here it keeps the post about the
-// seam rather than the network.
+// This package's own copy of the Pokémon data. The list app has one too, and the two have already
+// drifted: the list needs a name, this screen needs types as well. Two copies of the same facts is
+// the problem live data solves, and that is post 6. Here it keeps the post about the seam rather
+// than the network.
 const POKEMON: Record<number, { name: string; types: string[] }> = {
   1: { name: 'Bulbasaur', types: ['Grass', 'Poison'] },
   4: { name: 'Charmander', types: ['Fire'] },
@@ -18,9 +18,13 @@ const POKEMON: Record<number, { name: string; types: string[] }> = {
 const spriteUrl = (id: number) =>
   `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
-// The props come from @pokedex/contracts, not from React Navigation. This remote is pushed by two
-// different stacks it has never seen, so it types what it receives rather than importing the
-// navigator that sent it — and carries no navigation code in its bundle as a result.
+// The params come from @pokedex/contracts; the props are this package's own. The screen is mounted
+// by two different stacks it has never seen, so it types the route structurally rather than
+// importing the navigator that renders it — and stays free of a navigation dependency as a result.
+export interface PokemonDetailScreenProps {
+  route: { params: DetailParams };
+}
+
 export default function PokemonDetailScreen({ route }: PokemonDetailScreenProps) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
@@ -38,7 +42,7 @@ export default function PokemonDetailScreen({ route }: PokemonDetailScreenProps)
           </View>
         ))}
       </View>
-      <Text style={styles.footer}>Served by the detail remote</Text>
+      <Text style={styles.footer}>Served by @pokedex/detail</Text>
     </View>
   );
 }

@@ -1,0 +1,34 @@
+{
+  "name": "@pokedex/detail",
+  "version": "1.0.0",
+  "description": "The Pokémon detail screen as a versioned component. Both tab remotes install it and mount it in their own stacks; sharing a screen is a library concern, not a deployment boundary.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "registry": "http://localhost:4873/"
+  },
+  "peerDependencies": {
+    "@pokedex/contracts": ">=1",
+    "react": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": ">=5"
+  },
+  "devDependencies": {
+    "@pokedex/contracts": "^1.0.0",
+    "@types/react": "^19.2.0",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "^5.5.2",
+    "typescript": "^5.8.3"
+  }
+}

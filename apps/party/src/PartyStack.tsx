@@ -1,23 +1,12 @@
-import React, { Suspense } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import type { PokemonDetailScreenProps } from '@pokedex/contracts';
+import PokemonDetailScreen from '@pokedex/detail';
 import type { PartyParamList } from './routes';
 import PartyScreen from './PartyScreen';
 
-// The same third remote the list stack loads, resolved through this app's own remotes map. Two
-// consumers, one provider, and neither consumer knows about the other.
-const PokemonDetailScreen = React.lazy(() => import('detailApp/PokemonDetailScreen'));
-
+// The same installed screen the list stack mounts. Two consumers, one package, and neither
+// consumer knows about the other; the registry is the only thing they share.
 const Stack = createNativeStackNavigator<PartyParamList>();
-
-function DetailRoute(props: PokemonDetailScreenProps) {
-  return (
-    <Suspense fallback={<ActivityIndicator style={styles.loader} size="large" />}>
-      <PokemonDetailScreen {...props} />
-    </Suspense>
-  );
-}
 
 // The party tab's stack. The detail route is declared and typed but nothing pushes it yet: the
 // party has no members to tap until it has state, which is post 7. It is here now because the
@@ -32,13 +21,9 @@ export default function PartyStack() {
       />
       <Stack.Screen
         name="PokemonDetail"
-        component={DetailRoute}
+        component={PokemonDetailScreen}
         options={{ headerShown: true, title: '' }}
       />
     </Stack.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  loader: { flex: 1 },
-});

@@ -9,11 +9,10 @@ import navStackPkg from '@react-navigation/native-stack/package.json' with { typ
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// listApp: a federated remote, and now a consumer as well. It still builds a container the host
-// loads at runtime, but what it exposes has changed: a whole stack (./ListStack) rather than one
-// screen, and inside that stack it loads a third remote of its own. Two consequences show up in
-// this file: a `remotes` map alongside the `exposes` map, and three more shared singletons, because
-// the share map tracks who imports what and this app now imports React Navigation.
+// listApp: a federated remote. What it exposes has changed: a whole stack (./ListStack) rather
+// than one screen. Three more shared singletons appear below, because the share map tracks who
+// imports what and this app now imports React Navigation. The detail screen it pushes is an
+// installed package, so it needs nothing federated here.
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
@@ -51,11 +50,6 @@ export default Repack.defineRspackConfig(env => {
         filename: 'listApp.container.js.bundle',
         exposes: {
           './ListStack': './src/ListStack.tsx',
-        },
-        remotes: {
-          // The detail remote, declared here rather than in the host. The host never loads it, so
-          // the host has no reason to know its URL; the apps that push it do.
-          detailApp: `detailApp@http://localhost:8084/${platform}/mf-manifest.json`,
         },
         dts: false,
         shared: {

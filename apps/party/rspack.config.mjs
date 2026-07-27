@@ -9,10 +9,10 @@ import navStackPkg from '@react-navigation/native-stack/package.json' with { typ
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// partyApp: the second federated remote, and now the second consumer of the third one. This config
-// changes in the same three places listApp's did — exposes a stack, declares detailApp as a remote,
-// shares the navigation libraries — which is the point worth noticing: two apps owned by two teams
-// arrive at the same shape because the contract they installed says so, not because they agreed.
+// partyApp: the second federated remote. This config changes in the same two places listApp's did
+// — exposes a stack, shares the navigation libraries — which is the point worth noticing: two apps
+// owned by two teams arrive at the same shape because the contract they installed says so, not
+// because they agreed.
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
@@ -50,9 +50,6 @@ export default Repack.defineRspackConfig(env => {
         filename: 'partyApp.container.js.bundle',
         exposes: {
           './PartyStack': './src/PartyStack.tsx',
-        },
-        remotes: {
-          detailApp: `detailApp@http://localhost:8084/${platform}/mf-manifest.json`,
         },
         dts: false,
         shared: {

@@ -11,7 +11,7 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-02-first-remote` | Your first federated remote | A host app that loads a screen from a separate remote app at runtime |
 | `post-03-shared-singleton` | The shared-singleton contract | react, react-native and the safe-area library shared as singletons, so one copy serves every app |
 | `post-04-host-shell` | The host shell: federated remotes as tabs | The host owns a bottom tab bar; a second remote fills the second tab, fetched the first time you open it |
-| `post-05-contracts` | The contract package | Each tab grows its own stack, a third remote is loaded by the other two, and a published package types what they pass each other |
+| `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -20,11 +20,11 @@ Each post has a matching git tag holding that post's finished state, so you can 
 ```
 apps/
 ├── host/     the shell app; owns the tab bar and loads the two stack remotes
-├── list/     a federated remote; exposes the Pokédex stack, loads the detail remote
-├── party/    a federated remote; exposes the Party stack, loads the detail remote
-└── detail/   a federated remote; exposes the Pokémon detail screen
+├── list/     a federated remote; exposes the Pokédex stack
+└── party/    a federated remote; exposes the Party stack
 packages/
-└── contracts/  @pokedex/contracts — the route params and module types, published to a registry
+├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
+└── detail/     @pokedex/detail — the Pokémon detail screen as a versioned component, installed by both stacks
 ```
 
 ## Quick start
@@ -43,6 +43,7 @@ The apps install `@pokedex/contracts` from a local registry, so publish it befor
 npx verdaccio                                    # :4873, stays up
 npm adduser --registry http://localhost:4873     # any username, password and email
 ( cd packages/contracts && npm install && npm run build && npm publish )
+( cd packages/detail && npm install && npm run build && npm publish )
 ```
 
 Then the apps:
@@ -50,14 +51,13 @@ Then the apps:
 ```sh
 ( cd apps/list && npm install )
 ( cd apps/party && npm install )
-( cd apps/detail && npm install )
 ( cd apps/host && npm install )
 
 # install iOS pods for the host
 ( cd apps/host/ios && bundle install && bundle exec pod install )
 ```
 
-Then, in five terminals:
+Then, in four terminals:
 
 ```sh
 # 1. the list remote's dev server
@@ -66,23 +66,20 @@ cd apps/list && npm run start:remote      # :8082
 # 2. the party remote's dev server
 cd apps/party && npm run start:remote     # :8083
 
-# 3. the detail remote's dev server
-cd apps/detail && npm run start:remote    # :8084
-
-# 4. the host's dev server
+# 3. the host's dev server
 cd apps/host && npm start                 # :8081
 
-# 5. build and launch the host on a simulator
+# 4. build and launch the host on a simulator
 cd apps/host && npm run ios
 ```
 
-The host boots on the Pokédex tab and fetches the `list` remote from `:8082`. Tap a row and the `detail` remote arrives from `:8084` — requested by the list remote, not by the host, and pushed inside the Pokédex tab so the tab bar stays on screen.
+The host boots on the Pokédex tab and fetches the `list` remote from `:8082`. Tap a row and the detail screen — a component installed from `@pokedex/detail` — is pushed inside the Pokédex tab, so the tab bar stays on screen.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    registry[("local registry :4873<br/>@pokedex/contracts")]
+    registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail")]
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]
         t1["Pokédex tab"]
@@ -92,13 +89,9 @@ flowchart TD
     end
     list[("list remote<br/>:8082 · ListStack")]
     party[("party remote<br/>:8083 · PartyStack")]
-    detail[("detail remote<br/>:8084 · PokemonDetailScreen")]
     t1 -.->|"React.lazy · loaded at launch"| list
     t2 -.->|"React.lazy · loaded on first open"| party
-    list -.->|"React.lazy · loaded on first row tap"| detail
-    party -.->|"React.lazy"| detail
-    registry -->|"installed by version"| host
-    registry -->|"installed by version"| list
-    registry -->|"installed by version"| party
-    registry -->|"installed by version"| detail
+    registry -->|"contracts, installed by version"| host
+    registry -->|"contracts + the detail screen"| list
+    registry -->|"contracts + the detail screen"| party
 ```
