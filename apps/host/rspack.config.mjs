@@ -2,9 +2,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
 import pkg from './package.json' with { type: 'json' };
-// Read the installed version of React Navigation rather than letting the bundler work it out. It
-// cannot: see the `version` note in the shared block below.
+// Read the installed versions rather than letting the bundler work them out. It cannot for a
+// package resolved through an `exports` map: see the `version` note in the shared block below.
 import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
+import rtkPkg from '@reduxjs/toolkit/package.json' with { type: 'json' };
+import reactReduxPkg from 'react-redux/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -87,6 +89,28 @@ export default Repack.defineRspackConfig(env => {
             singleton: true,
             eager: true,
             requiredVersion: pkg.dependencies['react-native-screens'],
+          },
+          // The state trio. @reduxjs/toolkit and react-redux must be one instance so injected
+          // endpoints and hooks talk to the same store; @pokedex/contracts must be one instance so
+          // every side imports the exact same baseApi — one cache, one tag graph. Both Redux
+          // packages resolve through an `exports` map, so they state `version` by hand for the
+          // same reason @react-navigation/native does above.
+          '@reduxjs/toolkit': {
+            singleton: true,
+            eager: true,
+            version: rtkPkg.version,
+            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+          },
+          'react-redux': {
+            singleton: true,
+            eager: true,
+            version: reactReduxPkg.version,
+            requiredVersion: pkg.dependencies['react-redux'],
+          },
+          '@pokedex/contracts': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['@pokedex/contracts'],
           },
         },
       }),

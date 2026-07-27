@@ -1,2 +1,2 @@
-export { default, default as PokemonDetailScreen } from './PokemonDetailScreen';
-export type { PokemonDetailScreenProps } from './PokemonDetailScreen';
+export { default as PokemonDetailView } from './PokemonDetailView';
+export type { PokemonDetailViewProps } from './PokemonDetailView';

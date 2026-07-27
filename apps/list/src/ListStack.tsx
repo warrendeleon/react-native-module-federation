@@ -1,12 +1,19 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import PokemonDetailScreen from '@pokedex/detail';
+import { PokemonDetailView } from '@pokedex/detail';
+import { useGetPokemonDetailQuery } from './detailApi';
+import type { DetailParams } from '@pokedex/contracts';
 import type { ListParamList } from './routes';
 import PokedexScreen from './PokedexScreen';
 
-// The detail screen is an installed dependency, not another deployable. It is a component two tab
-// apps share, so it ships the way shared components ship: versioned, published, installed. A
-// federation boundary is a team's domain; a single screen never earns one.
+// The detail view is an installed dependency, not another deployable — and it is only a view. A
+// library component renders what it is given; the data belongs to this domain, so the endpoint and
+// the hook live in this app, and this container composes the two.
+function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
+  const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
+  return <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />;
+}
+
 const Stack = createNativeStackNavigator<ListParamList>();
 
 // What the host mounts in the Pokédex tab. Until now this remote handed over a bare screen and the
@@ -22,7 +29,7 @@ export default function ListStack() {
       />
       <Stack.Screen
         name="PokemonDetail"
-        component={PokemonDetailScreen}
+        component={PokemonDetailRoute}
         options={{ headerShown: true, title: '' }}
       />
     </Stack.Navigator>

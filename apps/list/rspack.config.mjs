@@ -6,6 +6,8 @@ import pkg from './package.json' with { type: 'json' };
 // work them out on its own: see the `version` note in the shared block below.
 import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
 import navStackPkg from '@react-navigation/native-stack/package.json' with { type: 'json' };
+import rtkPkg from '@reduxjs/toolkit/package.json' with { type: 'json' };
+import reactReduxPkg from 'react-redux/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -86,6 +88,23 @@ export default Repack.defineRspackConfig(env => {
           'react-native-screens': {
             singleton: true,
             requiredVersion: pkg.dependencies['react-native-screens'],
+          },
+          // The state trio, mirroring the host's map without `eager`: the host provides the copies,
+          // this remote consumes them. The Redux packages resolve through an `exports` map, so they
+          // state `version` by hand like the navigation entries above.
+          '@reduxjs/toolkit': {
+            singleton: true,
+            version: rtkPkg.version,
+            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+          },
+          'react-redux': {
+            singleton: true,
+            version: reactReduxPkg.version,
+            requiredVersion: pkg.dependencies['react-redux'],
+          },
+          '@pokedex/contracts': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['@pokedex/contracts'],
           },
         },
       }),

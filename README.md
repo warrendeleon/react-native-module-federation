@@ -12,6 +12,7 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-03-shared-singleton` | The shared-singleton contract | react, react-native and the safe-area library shared as singletons, so one copy serves every app |
 | `post-04-host-shell` | The host shell: federated remotes as tabs | The host owns a bottom tab bar; a second remote fills the second tab, fetched the first time you open it |
 | `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
+| `post-06-shared-store` | One shared store | The contract package exports one RTK Query instance; the host builds a store around it and the Pokédex domain injects its live PokéAPI endpoints into the one shared cache |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -24,7 +25,7 @@ apps/
 └── party/    a federated remote; exposes the Party stack
 packages/
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
-└── detail/     @pokedex/detail — the Pokémon detail screen as a versioned component, installed by both stacks
+└── detail/     @pokedex/detail — the Pokémon detail view as a versioned component; presentational, fed by each consumer's own container
 ```
 
 ## Quick start
@@ -34,7 +35,7 @@ Requirements: Node 22.11+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPod
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
-git checkout post-05-contracts
+git checkout post-06-shared-store
 ```
 
 The apps install `@pokedex/contracts` from a local registry, so publish it before installing them. Leave the registry running in its own terminal:
@@ -73,15 +74,17 @@ cd apps/host && npm start                 # :8081
 cd apps/host && npm run ios
 ```
 
-The host boots on the Pokédex tab and fetches the `list` remote from `:8082`. Tap a row and the detail screen — a component installed from `@pokedex/detail` — is pushed inside the Pokédex tab, so the tab bar stays on screen.
+The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail")]
+    pokeapi(["PokéAPI"])
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]
+        store["Redux store<br/>built around the shared baseApi"]
         t1["Pokédex tab"]
         t2["Party tab"]
         tabs --> t1
@@ -91,7 +94,9 @@ flowchart TD
     party[("party remote<br/>:8083 · PartyStack")]
     t1 -.->|"React.lazy · loaded at launch"| list
     t2 -.->|"React.lazy · loaded on first open"| party
+    list ==>|"injects getPokemonList + getPokemonDetail"| store
+    store <-->|"fetches through baseQuery"| pokeapi
     registry -->|"contracts, installed by version"| host
     registry -->|"contracts + the detail screen"| list
-    registry -->|"contracts + the detail screen"| party
+    registry -->|"contracts 1.0.0 + detail 1.0.0 — lagging on purpose"| party
 ```
