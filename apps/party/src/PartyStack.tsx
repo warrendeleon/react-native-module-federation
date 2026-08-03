@@ -1,16 +1,23 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import PokemonDetailScreen from '@pokedex/detail';
+import { PokemonDetailView } from '@pokedex/detail';
+import { useGetPokemonDetailQuery } from './detailApi';
+import type { DetailParams } from '@pokedex/contracts';
 import type { PartyParamList } from './routes';
 import PartyScreen from './PartyScreen';
 
-// The same installed screen the list stack mounts. Two consumers, one package, and neither
-// consumer knows about the other; the registry is the only thing they share.
+// The same container shape the list app wrote, feeding the same installed view from this app's own
+// endpoint. What it does NOT pass is the point: no onAddToParty, so a detail opened from the party
+// shows no Add button. The view renders what its consumer wires, and this consumer wires no write.
+function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
+  const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
+  return <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />;
+}
+
 const Stack = createNativeStackNavigator<PartyParamList>();
 
-// The party tab's stack. The detail route is declared and typed but nothing pushes it yet: the
-// party has no members to tap until it has state, which is post 7. It is here now because the
-// contract is what this post is about, and both consumers of that contract should be visible.
+// The party tab's stack. The detail route was declared and typed two posts before anything pushed
+// it; now tapping a party member does.
 export default function PartyStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -21,7 +28,7 @@ export default function PartyStack() {
       />
       <Stack.Screen
         name="PokemonDetail"
-        component={PokemonDetailScreen}
+        component={PokemonDetailRoute}
         options={{ headerShown: true, title: '' }}
       />
     </Stack.Navigator>

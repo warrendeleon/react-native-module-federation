@@ -16,3 +16,8 @@ declare module 'partyApp/PartyStack' {
   const PartyStack: PartyStackModule;
   export default PartyStack;
 }
+
+// The host imports this module for its side effect only — running it is what injects the party's
+// reducer — so the declaration body is empty: the host holds no reference to anything inside, and
+// the compiler rejects any attempt to name an export.
+declare module 'partyApp/partySlice' {}

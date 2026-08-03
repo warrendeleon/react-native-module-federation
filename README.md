@@ -13,6 +13,7 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-04-host-shell` | The host shell: federated remotes as tabs | The host owns a bottom tab bar; a second remote fills the second tab, fetched the first time you open it |
 | `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
 | `post-06-shared-store` | One shared store | The contract package exports one RTK Query instance; the host builds a store around it and the Pokédex domain injects its live PokéAPI endpoints into the one shared cache |
+| `post-08-client-state` | Client state across the seam | The party app injects its own slice into the shared store at runtime; the contract carries the one action that crosses; the detail view gains an optional Add button its consumers wire |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -74,7 +75,7 @@ cd apps/host && npm start                 # :8081
 cd apps/host && npm run ios
 ```
 
-The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen.
+The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen. Tap **Add to party** on a detail and the dispatch crosses the seam: the party app's slice — injected into the shared store at boot — catches it, the Pokédex header counter ticks, and the Party tab shows the member.
 
 ## Architecture
 
@@ -84,19 +85,21 @@ flowchart TD
     pokeapi(["PokéAPI"])
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]
-        store["Redux store<br/>built around the shared baseApi"]
+        store["Redux store<br/>reducer + baseApi from the contract"]
         t1["Pokédex tab"]
         t2["Party tab"]
         tabs --> t1
         tabs --> t2
     end
     list[("list remote<br/>:8082 · ListStack")]
-    party[("party remote<br/>:8083 · PartyStack")]
+    party[("party remote<br/>:8083 · PartyStack + partySlice")]
     t1 -.->|"React.lazy · loaded at launch"| list
     t2 -.->|"React.lazy · loaded on first open"| party
-    list ==>|"injects getPokemonList + getPokemonDetail"| store
+    host -.->|"boot import: partyApp/partySlice"| party
+    list ==>|"injects getPokemonList + getPokemonDetail<br/>dispatches addToParty · reads the count"| store
+    party ==>|"injects the party slice + its own getPokemonDetail"| store
     store <-->|"fetches through baseQuery"| pokeapi
     registry -->|"contracts, installed by version"| host
-    registry -->|"contracts + the detail screen"| list
-    registry -->|"contracts 1.0.0 + detail 1.0.0 — lagging on purpose"| party
+    registry -->|"contracts + the detail view"| list
+    registry -->|"contracts + the detail view"| party
 ```

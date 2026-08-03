@@ -5,16 +5,31 @@ import type { PokemonDetail } from '@pokedex/contracts';
 
 // The static copy of the Pokémon data that lived here in 1.0.0 is gone, and so is the data access
 // that briefly replaced it. This is a view: it renders what it is handed and reports what is
-// pressed. Where the data comes from is the consumer's business; each app composes this view
-// with its own data in its own container route.
+// pressed. Where the data comes from is the consumer's business; each app composes this view with
+// its own data in its own container route.
+//
+// The three add-to-party props are optional for the same reason. A write that crosses a domain
+// boundary is wired by the consumer, so this view holds no action creator and no store import: it
+// renders an Add button when a consumer hands it a handler, and nothing when it does not.
 export interface PokemonDetailViewProps {
   pokemon?: PokemonDetail;
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  onAddToParty?: () => void;
+  addDisabled?: boolean;
+  addLabel?: string;
 }
 
-export default function PokemonDetailView({ pokemon, loading, error, onRetry }: PokemonDetailViewProps) {
+export default function PokemonDetailView({
+  pokemon,
+  loading,
+  error,
+  onRetry,
+  onAddToParty,
+  addDisabled,
+  addLabel,
+}: PokemonDetailViewProps) {
   const insets = useSafeAreaInsets();
 
   if (loading) {
@@ -48,6 +63,15 @@ export default function PokemonDetailView({ pokemon, loading, error, onRetry }: 
           </View>
         ))}
       </View>
+      {onAddToParty && (
+        <Pressable
+          style={[styles.add, addDisabled && styles.addDisabled]}
+          onPress={onAddToParty}
+          disabled={addDisabled}
+          accessibilityRole="button">
+          <Text style={styles.addText}>{addLabel ?? 'Add to party'}</Text>
+        </Pressable>
+      )}
       <Text style={styles.footer}>Served by @pokedex/detail</Text>
     </View>
   );
@@ -75,5 +99,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
   },
   typeLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  add: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#2a75bb',
+    borderRadius: 8,
+  },
+  addDisabled: { backgroundColor: '#9ca3af' },
+  addText: { color: '#fff', fontWeight: '600' },
   footer: { marginTop: 24, fontSize: 14, color: '#6b7280' },
 });

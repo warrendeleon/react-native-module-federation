@@ -11,6 +11,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSelector } from 'react-redux';
+import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
 import type { ListParamList } from './routes';
 
 import { useGetPokemonListQuery } from './listApi';
@@ -25,6 +27,10 @@ export default function PokedexScreen() {
   // this remote would look for the navigator in a context the host never filled.
   const navigation = useNavigation<NativeStackNavigationProp<ListParamList>>();
   const { data, isLoading, isError, refetch } = useGetPokemonListQuery();
+  // A foreign module reading another app's state, through the contract's tolerant shape. Until the
+  // party's module loads, s.party is undefined; ?? 0 renders an honest zero rather than crashing
+  // on a slice that is not there yet.
+  const partyCount = useSelector((s: PartySliceShape) => s.party?.members.length ?? 0);
 
   if (isLoading) {
     return (
@@ -50,6 +56,11 @@ export default function PokedexScreen() {
       data={data}
       keyExtractor={p => String(p.id)}
       contentContainerStyle={{ paddingBottom: insets.bottom + 8 }}
+      ListHeaderComponent={
+        <Text style={styles.partyCount}>
+          My Party {partyCount}/{MAX_PARTY}
+        </Text>
+      }
       renderItem={({ item }) => (
         <Pressable
           style={styles.row}
@@ -85,4 +96,12 @@ const styles = StyleSheet.create({
   sprite: { width: 48, height: 48 },
   number: { width: 52, color: '#9ca3af', fontVariant: ['tabular-nums'] },
   name: { fontSize: 16, fontWeight: '500' },
+  partyCount: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2a75bb',
+    fontVariant: ['tabular-nums'],
+  },
 });
