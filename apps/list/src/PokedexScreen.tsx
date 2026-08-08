@@ -11,26 +11,25 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSelector } from 'react-redux';
-import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
+import { useStore } from 'zustand';
+import { MAX_PARTY, partyStore } from '@pokedex/contracts';
 import type { ListParamList } from './routes';
 
-import { useGetPokemonListQuery } from './listApi';
+import { usePokemonList } from './listApi';
 
-// The data no longer lives here. useGetPokemonListQuery reads the shared cache in the host's store,
-// filled by the endpoint this remote injected into the one baseApi. The host now owns the title and
-// the refresh control in its header; this screen owns the list and the stack it navigates in.
+// The data does not live here. usePokemonList reads the shared cache the host provides, under a key
+// the contract's factory built. The host owns the title and the refresh control in its header; this
+// screen owns the list and the stack it navigates in.
 export default function PokedexScreen() {
   const insets = useSafeAreaInsets();
   // useNavigation reads a React context the host's NavigationContainer provides. It resolves here
   // only because @react-navigation/native is a shared singleton: with two copies in the runtime,
   // this remote would look for the navigator in a context the host never filled.
   const navigation = useNavigation<NativeStackNavigationProp<ListParamList>>();
-  const { data, isLoading, isError, refetch } = useGetPokemonListQuery();
-  // A foreign module reading another app's state, through the contract's tolerant shape. Until the
-  // party's module loads, s.party is undefined; ?? 0 renders an honest zero rather than crashing
-  // on a slice that is not there yet.
-  const partyCount = useSelector((s: PartySliceShape) => s.party?.members.length ?? 0);
+  const { data, isLoading, isError, refetch } = usePokemonList();
+  // A foreign module reading another app's state. The selector runs on every store change and this
+  // component re-renders only when the number it returns changes.
+  const partyCount = useStore(partyStore, s => s.members.length);
 
   if (isLoading) {
     return (

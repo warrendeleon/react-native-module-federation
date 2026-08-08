@@ -1,19 +1,11 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { z } from 'zod';
 
-// --- The single RTK Query API instance for the whole federation, and the reason it lives here in
-// the shared @pokedex/contracts package rather than in the host: a federated remote can only add its
-// endpoints to the SAME instance the host store wired in. Because contracts is a Module Federation
-// singleton, the host and every remote import this exact object, so a remote's
-// baseApi.injectEndpoints({...}) registers against the one cache + middleware the store already runs.
-// One instance means one HTTP cache, one dedup pipeline, one tag graph across every remote, including
-// remotes shipped long after the shell. baseApi declares no endpoints; the consumers inject their own.
-export const baseApi = createApi({
-  reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: 'https://pokeapi.co/api/v2/' }),
-  tagTypes: ['PokemonList'],
-  endpoints: () => ({}),
-});
+// --- The Pokémon data model and the parsers that produce it. On the Redux branch this file opened
+// with the shared RTK Query instance, because a remote's endpoints could only join a cache that
+// already existed. TanStack has no such object: the cache is the QueryClient in query.ts, and a
+// query is created by the component that asks for it. Everything below survives the swap untouched,
+// which is the honest version of "stack-neutral" — the model, the shapes and the validation belong
+// to the domain, not to whichever library is holding the cache this week. ---
 
 // --- The row the list screen reads. id and name come from PokéAPI; the sprite URL is derived from
 // the id, so no extra request is needed. Declared once here so every consumer that reads the shared

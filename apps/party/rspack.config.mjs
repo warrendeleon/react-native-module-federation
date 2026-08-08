@@ -6,8 +6,8 @@ import pkg from './package.json' with { type: 'json' };
 // out on its own: see the `version` note in the shared block below.
 import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
 import navStackPkg from '@react-navigation/native-stack/package.json' with { type: 'json' };
-import rtkPkg from '@reduxjs/toolkit/package.json' with { type: 'json' };
-import reactReduxPkg from 'react-redux/package.json' with { type: 'json' };
+import queryPkg from '@tanstack/react-query/package.json' with { type: 'json' };
+import zustandPkg from 'zustand/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,10 +51,10 @@ export default Repack.defineRspackConfig(env => {
         name: 'partyApp',
         filename: 'partyApp.container.js.bundle',
         exposes: {
+          // One expose again. The state module this app used to publish is gone: there is no slice
+          // to inject, because the store it would have injected into ships in the contract package
+          // every side already installs.
           './PartyStack': './src/PartyStack.tsx',
-          // A state module, not a screen. The host imports it at boot for its side effect: running
-          // it injects the party's reducer into the shared store.
-          './partySlice': './src/partySlice.ts',
         },
         dts: false,
         shared: {
@@ -88,20 +88,21 @@ export default Repack.defineRspackConfig(env => {
             requiredVersion: pkg.dependencies['react-native-screens'],
           },
           // The state trio, mirroring the host's map without `eager`: the host provides the
-          // copies, this remote consumes them. One RTK/react-redux instance so this app's slice
-          // and hooks talk to the store the host wired; one @pokedex/contracts instance so
-          // rootReducer, addToParty and baseApi are the exact objects every other side holds. The
-          // Redux packages resolve through an `exports` map, so they state `version` by hand like
-          // the navigation entries above.
-          '@reduxjs/toolkit': {
+          // copies, this remote consumes them. One @tanstack/react-query instance so this app's
+          // hooks find the client the host put in context; one zustand instance so every
+          // subscriber is talking to the same store internals; one @pokedex/contracts instance so
+          // queryClient and partyStore are the exact objects every other side holds. Both new
+          // packages resolve through an `exports` map, so they state `version` by hand like the
+          // navigation entries above.
+          '@tanstack/react-query': {
             singleton: true,
-            version: rtkPkg.version,
-            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+            version: queryPkg.version,
+            requiredVersion: pkg.dependencies['@tanstack/react-query'],
           },
-          'react-redux': {
+          zustand: {
             singleton: true,
-            version: reactReduxPkg.version,
-            requiredVersion: pkg.dependencies['react-redux'],
+            version: zustandPkg.version,
+            requiredVersion: pkg.dependencies.zustand,
           },
           '@pokedex/contracts': {
             singleton: true,

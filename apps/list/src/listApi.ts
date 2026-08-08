@@ -1,35 +1,27 @@
-import { baseApi, parsePokemonList, type PokemonSummary } from '@pokedex/contracts';
+import { useQuery } from '@tanstack/react-query';
+import { parsePokemonList, pokemonKeys, type PokemonSummary } from '@pokedex/contracts';
 
-// --- listApp injects its endpoint into the shared baseApi at load. This is the RTK Query
-// federation proof: the endpoint and its generated hook register against the one shared cache the
-// host store already runs, so the data is fetched once, deduped, and reusable by any other consumer
-// of the same cache. The shell knew nothing about this endpoint when it shipped; the remote adds it
-// to the shared API at runtime. ---
-const listApi = baseApi.injectEndpoints({
-  endpoints: build => ({
-    getPokemonList: build.query<PokemonSummary[], void>({
-      // One request for the whole Kanto dex. parsePokemonList validates the payload with Zod at the
-      // seam and shapes it into rows; a malformed 200 from PokéAPI becomes a query error the screen
-      // can show, not a crash three layers away.
-      async queryFn(_arg, _api, _extra, baseQuery) {
-        const res = await baseQuery('pokemon?limit=151');
-        if (res.error) {
-          return { error: res.error };
-        }
-        try {
-          return { data: parsePokemonList(res.data) };
-        } catch (err) {
-          return {
-            error: {
-              status: 'CUSTOM_ERROR',
-              error: err instanceof Error ? err.message : 'Invalid PokéAPI response',
-            },
-          };
-        }
-      },
-      providesTags: ['PokemonList'],
-    }),
-  }),
-});
+// --- The Pokédex list, read through the shared cache. There is no injection step on this branch
+// and nothing to register: useQuery creates the query the first time a component mounts it, in
+// whichever bundle that component happens to live. A remote shipped a year after the shell can add
+// server state to the running app by calling a hook, which is as federation-friendly as this gets.
+//
+// What the shell no longer provides is the base URL. On the Redux branch it was configured once on
+// the shared api instance; here every queryFn is an ordinary function that fetches whatever it
+// likes, so the host has no say in where a remote's data comes from. Convenient for the remote,
+// invisible to everyone else. ---
+async function fetchPokemonList(): Promise<PokemonSummary[]> {
+  const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
+  if (!res.ok) {
+    throw new Error(`PokéAPI responded ${res.status}`);
+  }
+  // parsePokemonList validates the payload with Zod at the seam and shapes it into rows. It throws
+  // on a bad shape, and TanStack turns a thrown queryFn into the error state the screen renders.
+  // The parser is imported from the contract, unchanged from the Redux branch: the data model is
+  // the domain's, not the cache library's.
+  return parsePokemonList(await res.json());
+}
 
-export const { useGetPokemonListQuery } = listApi;
+export function usePokemonList() {
+  return useQuery({ queryKey: pokemonKeys.list(), queryFn: fetchPokemonList });
+}

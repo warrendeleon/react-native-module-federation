@@ -1,30 +1,30 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Provider, useDispatch } from 'react-redux';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { baseApi, partyStateReady } from '@pokedex/contracts';
+import { pokemonKeys, queryClient } from '@pokedex/contracts';
 
-import { store } from './src/store';
-
-// The host owns the shell: the Redux store, the SafeAreaProvider, the navigation container, and the
-// tab bar. What it mounts in each tab is no longer a screen but a whole stack, so navigation inside
-// a tab belongs to the remote that owns the tab. The host's job stops at the tab bar — and at the
-// store: consumers read the one shared cache the host provides, but the host never sees their
-// endpoints at build time.
+// The host owns the shell: the query cache, the SafeAreaProvider, the navigation container, and the
+// tab bar. What it mounts in each tab is a whole stack, so navigation inside a tab belongs to the
+// remote that owns the tab. The host's job stops at the tab bar — and at the provider: consumers
+// read the one shared cache the host provides, but the host never sees their queries at build time.
+//
+// The shell got shorter here. There is no store file any more, and no boot import: the party's
+// state ships inside @pokedex/contracts, so it exists as soon as anything imports the package.
+// Nothing has to be loaded early to make a write land somewhere.
 const ListStack = React.lazy(() => import('listApp/ListStack'));
 const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
 
-// A host-owned control in host-owned chrome. It never imported getPokemonList and holds no
-// reference to it, yet dispatching invalidateTags(['PokemonList']) reaches across the seam: the tag
-// is the only thing that crosses, and the list remote's endpoint — which provides that tag —
-// refetches. That is the shared tag graph made visible.
+// A host-owned control in host-owned chrome. It never called useQuery and holds no reference to any
+// remote's query, yet invalidating the ['pokemon'] prefix reaches across the seam: filters match by
+// prefix, so every key the factory builds underneath it is marked stale and any mounted query
+// refetches. The prefix is the only thing that crosses.
 function RefreshButton() {
-  const dispatch = useDispatch();
   return (
     <Pressable
-      onPress={() => dispatch(baseApi.util.invalidateTags(['PokemonList']))}
+      onPress={() => queryClient.invalidateQueries({ queryKey: pokemonKeys.all })}
       hitSlop={12}
       style={styles.refresh}
       accessibilityRole="button"
@@ -56,37 +56,8 @@ const renderRefreshButton = () => <RefreshButton />;
 const Tab = createBottomTabNavigator();
 
 export default function App() {
-  // Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
-  // module that injects the party's reducer into the shared store — even if the user never opens
-  // the Party tab. The host triggers the load and knows nothing about what is inside.
-  //
-  // Loading at boot is a head start, not a guarantee: the chunk arrives over the network, and
-  // nothing here stops a user reaching an Add button before it lands. So the resolve is made
-  // visible. rootReducer.inject() swaps an entry in a reducer map and rebuilds the combined
-  // reducer; it never dispatches, so the store's state gains no `party` key until the next
-  // action runs. partyStateReady is that action: dispatching it surfaces the injected slice,
-  // and write-side consumers gate the add on `state.party` existing. Until then the button is
-  // disabled; a tap can never dispatch into a store with no reducer for it.
-  //
-  // It sits in an effect rather than at module scope for an observed reason, not a traced one:
-  // at module scope this import produced React's update-on-an-unmounted-component warning on
-  // some cold starts, and in an effect it does not. What creates that update is not established
-  // (inject() notifies nobody on its own), so this placement is the arrangement that made the
-  // warning stop, and an effect is where a side effect belongs anyway.
-  //
-  // Fire-and-forget: nothing awaits this, so an unreachable party server cannot block boot — the
-  // federation runtime reports the failure on its own and the app runs without the slice, which
-  // is the state the tolerant read shape exists for: reads render honestly, and the add stays
-  // disabled rather than pretending. The catch guards the rejection path so a failed load can
-  // never surface as an unhandled rejection.
-  useEffect(() => {
-    import('partyApp/partySlice')
-      .then(() => store.dispatch(partyStateReady()))
-      .catch(err => console.warn('party state module failed to load', err));
-  }, []);
-
   return (
-    <Provider store={store}>
+    <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NavigationContainer>
           <Tab.Navigator screenOptions={{ headerShown: false }}>
@@ -107,7 +78,7 @@ export default function App() {
           </Tab.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
-    </Provider>
+    </QueryClientProvider>
   );
 }
 

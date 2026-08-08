@@ -6,8 +6,8 @@ import pkg from './package.json' with { type: 'json' };
 // work them out on its own: see the `version` note in the shared block below.
 import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
 import navStackPkg from '@react-navigation/native-stack/package.json' with { type: 'json' };
-import rtkPkg from '@reduxjs/toolkit/package.json' with { type: 'json' };
-import reactReduxPkg from 'react-redux/package.json' with { type: 'json' };
+import queryPkg from '@tanstack/react-query/package.json' with { type: 'json' };
+import zustandPkg from 'zustand/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,17 +90,17 @@ export default Repack.defineRspackConfig(env => {
             requiredVersion: pkg.dependencies['react-native-screens'],
           },
           // The state trio, mirroring the host's map without `eager`: the host provides the copies,
-          // this remote consumes them. The Redux packages resolve through an `exports` map, so they
+          // this remote consumes them. Both new packages resolve through an `exports` map, so they
           // state `version` by hand like the navigation entries above.
-          '@reduxjs/toolkit': {
+          '@tanstack/react-query': {
             singleton: true,
-            version: rtkPkg.version,
-            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+            version: queryPkg.version,
+            requiredVersion: pkg.dependencies['@tanstack/react-query'],
           },
-          'react-redux': {
+          zustand: {
             singleton: true,
-            version: reactReduxPkg.version,
-            requiredVersion: pkg.dependencies['react-redux'],
+            version: zustandPkg.version,
+            requiredVersion: pkg.dependencies.zustand,
           },
           '@pokedex/contracts': {
             singleton: true,

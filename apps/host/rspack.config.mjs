@@ -5,8 +5,8 @@ import pkg from './package.json' with { type: 'json' };
 // Read the installed versions rather than letting the bundler work them out. It cannot for a
 // package resolved through an `exports` map: see the `version` note in the shared block below.
 import navPkg from '@react-navigation/native/package.json' with { type: 'json' };
-import rtkPkg from '@reduxjs/toolkit/package.json' with { type: 'json' };
-import reactReduxPkg from 'react-redux/package.json' with { type: 'json' };
+import queryPkg from '@tanstack/react-query/package.json' with { type: 'json' };
+import zustandPkg from 'zustand/package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,22 +90,23 @@ export default Repack.defineRspackConfig(env => {
             eager: true,
             requiredVersion: pkg.dependencies['react-native-screens'],
           },
-          // The state trio. @reduxjs/toolkit and react-redux must be one instance so injected
-          // endpoints and hooks talk to the same store; @pokedex/contracts must be one instance so
-          // every side imports the exact same baseApi — one cache, one tag graph. Both Redux
-          // packages resolve through an `exports` map, so they state `version` by hand for the
-          // same reason @react-navigation/native does above.
-          '@reduxjs/toolkit': {
+          // The state trio, swapped. @tanstack/react-query must be one instance so every side's
+          // hooks read the client this app put in context; zustand must be one instance so every
+          // side subscribes to the same store internals; @pokedex/contracts must be one instance so
+          // every side imports the exact same queryClient and partyStore. Both new packages resolve
+          // through an `exports` map, so they state `version` by hand for the same reason
+          // @react-navigation/native does above.
+          '@tanstack/react-query': {
             singleton: true,
             eager: true,
-            version: rtkPkg.version,
-            requiredVersion: pkg.dependencies['@reduxjs/toolkit'],
+            version: queryPkg.version,
+            requiredVersion: pkg.dependencies['@tanstack/react-query'],
           },
-          'react-redux': {
+          zustand: {
             singleton: true,
             eager: true,
-            version: reactReduxPkg.version,
-            requiredVersion: pkg.dependencies['react-redux'],
+            version: zustandPkg.version,
+            requiredVersion: pkg.dependencies.zustand,
           },
           '@pokedex/contracts': {
             singleton: true,

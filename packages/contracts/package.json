@@ -1,7 +1,7 @@
 {
   "name": "@pokedex/contracts",
-  "version": "3.1.3",
-  "description": "The shared seam between federated remotes: the route params one side pushes and another reads, the shape of every exposed module, the single RTK Query API instance every side injects endpoints into, the root reducer remotes inject slices into, and the party interactions that cross an app boundary. Installed by version so separately-built apps agree without importing each other's code.",
+  "version": "4.0.0",
+  "description": "The shared seam between federated remotes: the route params one side pushes and another reads, the shape of every exposed module, the single QueryClient every side reads and writes, the key factory that makes a prefix a promise, and the party store with the cap its owner declared. Installed by version so separately-built apps agree without importing each other's code.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -18,15 +18,15 @@
     "registry": "http://localhost:4873/"
   },
   "peerDependencies": {
-    "@reduxjs/toolkit": ">=2.10.0",
+    "@tanstack/react-query": ">=5",
     "react": "*",
-    "react-redux": ">=9"
+    "zustand": ">=5"
   },
   "devDependencies": {
-    "@reduxjs/toolkit": "^2.12.0",
+    "@tanstack/react-query": "^5.101.4",
     "@types/react": "^19.2.0",
-    "react-redux": "^9.3.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zustand": "^5.0.14"
   },
   "dependencies": {
     "zod": "^3.25.76"

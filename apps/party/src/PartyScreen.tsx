@@ -3,20 +3,19 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useDispatch, useSelector } from 'react-redux';
-import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
-import { remove } from './partySlice';
+import { useStore } from 'zustand';
+import { MAX_PARTY, partyStore } from '@pokedex/contracts';
 import type { PartyParamList } from './routes';
 
-// The owner reads its own state through the same tolerant shape foreign modules use — even the
-// owner's first render can beat the first action into the store, so the slice key may still be
-// undefined here. (Importing `remove` above also runs partySlice.ts, so opening this tab injects
-// the slice as a side effect; the host's boot import exists so nobody has to rely on that.)
+// The owner reads its own state the same way every other app does, from the store in the package it
+// installed. This app wrote none of it: the state, the cap and both writes ship in
+// @pokedex/contracts, and what is left here is the screen. That is the ownership inversion this
+// stack asks for, and it is worth noticing that the code reads perfectly well either way.
 export default function PartyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
-  const dispatch = useDispatch();
-  const members = useSelector((s: PartySliceShape) => s.party?.members ?? []);
+  const members = useStore(partyStore, s => s.members);
+  const remove = useStore(partyStore, s => s.remove);
 
   // Six slots: the first `members.length` filled, the rest the dashed placeholders from post 4.
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => members[i]);
@@ -41,7 +40,7 @@ export default function PartyScreen() {
               <Pressable
                 style={styles.remove}
                 hitSlop={8}
-                onPress={() => dispatch(remove(member.uid))}
+                onPress={() => remove(member.uid)}
                 accessibilityRole="button"
                 accessibilityLabel={`Remove ${member.name} from party`}>
                 <Text style={styles.removeText}>×</Text>

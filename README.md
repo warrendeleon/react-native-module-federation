@@ -14,8 +14,11 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
 | `post-06-shared-store` | One shared store | The contract package exports one RTK Query instance; the host builds a store around it and the Pokédex domain injects its live PokéAPI endpoints into the one shared cache |
 | `post-08-client-state` | Client state across the seam | The party app injects its own slice into the shared store at runtime; the contract carries the one action that crosses; the detail view gains an optional Add button its consumers wire |
+| `post-09-tanstack-zustand` | State stacks compared under federation | The same app, rebuilt on TanStack Query and Zustand: the contract ships a QueryClient, a key factory and the party store, and nothing is injected at runtime |
 
 `main` tracks the latest post. More tags land as the series grows.
+
+`post-09-tanstack-zustand` is the exception: it is a fork of `post-08-client-state`, not a step forward from it, so it sits on a branch of its own and `main` carries on from post 8. Check the tag out to run the twin; the series continues on `main`.
 
 ## Layout
 
@@ -25,7 +28,7 @@ apps/
 ├── list/     a federated remote; exposes the Pokédex stack
 └── party/    a federated remote; exposes the Party stack
 packages/
-├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
+├── contracts/  @pokedex/contracts — route params, module types, the shared QueryClient and key factory, and the party store, published to a registry
 └── detail/     @pokedex/detail — the Pokémon detail view as a versioned component; presentational, fed by each consumer's own container
 ```
 
@@ -36,7 +39,7 @@ Requirements: Node 22.11+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPod
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
-git checkout post-06-shared-store
+git checkout post-09-tanstack-zustand
 ```
 
 The apps install `@pokedex/contracts` from a local registry, so publish it before installing them. Leave the registry running in its own terminal:
@@ -75,7 +78,7 @@ cd apps/host && npm start                 # :8081
 cd apps/host && npm run ios
 ```
 
-The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen. Tap **Add to party** on a detail and the dispatch crosses the seam: the party app's slice — injected into the shared store at boot — catches it, the Pokédex header counter ticks, and the Party tab shows the member.
+The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared cache with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon under a key the contract's factory built, then feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen. Tap **Add to party** on a detail and the list app calls a function the party's store declared: the Pokédex header counter ticks and the Party tab shows the member. Long-press anywhere on a detail screen to run the cap bypass the post is about — `partyStore.setState` from a module that owns none of that state, putting a seventh Pokémon in a six-slot party.
 
 ## Architecture
 
@@ -85,20 +88,22 @@ flowchart TD
     pokeapi(["PokéAPI"])
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]
-        store["Redux store<br/>reducer + baseApi from the contract"]
+        provider["QueryClientProvider<br/>client from the contract"]
         t1["Pokédex tab"]
         t2["Party tab"]
         tabs --> t1
         tabs --> t2
     end
+    seam["@pokedex/contracts 4.0.0<br/>queryClient · pokemonKeys · partyStore"]
     list[("list remote<br/>:8082 · ListStack")]
-    party[("party remote<br/>:8083 · PartyStack + partySlice")]
+    party[("party remote<br/>:8083 · PartyStack")]
     t1 -.->|"React.lazy · loaded at launch"| list
     t2 -.->|"React.lazy · loaded on first open"| party
-    host -.->|"boot import: partyApp/partySlice"| party
-    list ==>|"injects getPokemonList + getPokemonDetail<br/>dispatches addToParty · reads the count"| store
-    party ==>|"injects the party slice + its own getPokemonDetail"| store
-    store <-->|"fetches through baseQuery"| pokeapi
+    provider --> seam
+    list ==>|"useQuery under pokemonKeys<br/>calls partyStore.add · reads the count"| seam
+    party ==>|"its own useQuery under the same keys<br/>reads members · calls remove"| seam
+    list -.->|"fetches directly"| pokeapi
+    party -.->|"fetches directly"| pokeapi
     registry -->|"contracts, installed by version"| host
     registry -->|"contracts + the detail view"| list
     registry -->|"contracts + the detail view"| party

@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PokemonDetailView } from '@pokedex/detail';
-import { useGetPokemonDetailQuery } from './detailApi';
+import { usePokemonDetail } from './detailApi';
 import type { DetailParams } from '@pokedex/contracts';
 import type { PartyParamList } from './routes';
 import PartyScreen from './PartyScreen';
@@ -10,7 +10,7 @@ import PartyScreen from './PartyScreen';
 // endpoint. What it does NOT pass is the point: no onAddToParty, so a detail opened from the party
 // shows no Add button. The view renders what its consumer wires, and this consumer wires no write.
 function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
-  const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
+  const { data, isLoading, isError, refetch } = usePokemonDetail(route.params.id);
   return <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />;
 }
 
