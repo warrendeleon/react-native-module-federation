@@ -16,6 +16,7 @@ import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
 import type { ListParamList } from './routes';
 
 import { useGetPokemonListQuery } from './listApi';
+import { useGetPokemonTypesQuery } from './typesApi';
 
 // The data no longer lives here. useGetPokemonListQuery reads the shared cache in the host's store,
 // filled by the endpoint this remote injected into the one baseApi. The host now owns the title and
@@ -27,6 +28,10 @@ export default function PokedexScreen() {
   // this remote would look for the navigator in a context the host never filled.
   const navigation = useNavigation<NativeStackNavigationProp<ListParamList>>();
   const { data, isLoading, isError, refetch } = useGetPokemonListQuery();
+  // The rows come over REST, the badges over GraphQL, and the screen treats them as one source
+  // because they land in the same cache. No loading branch and no error branch for this one: if the
+  // types have not arrived, or never arrive, each row simply renders without badges.
+  const { data: types } = useGetPokemonTypesQuery();
   // A foreign module reading another app's state, through the contract's tolerant shape. Until the
   // party's module loads, s.party is undefined; ?? 0 renders an honest zero rather than crashing
   // on a slice that is not there yet.
@@ -68,6 +73,13 @@ export default function PokedexScreen() {
           <Image source={{ uri: item.spriteUri }} style={styles.sprite} />
           <Text style={styles.number}>#{String(item.id).padStart(3, '0')}</Text>
           <Text style={styles.name}>{item.name}</Text>
+          <View style={styles.badges}>
+            {types?.[item.id]?.map(type => (
+              <View key={type} style={styles.badge}>
+                <Text style={styles.badgeText}>{type}</Text>
+              </View>
+            ))}
+          </View>
         </Pressable>
       )}
     />
@@ -95,7 +107,17 @@ const styles = StyleSheet.create({
   },
   sprite: { width: 48, height: 48 },
   number: { width: 52, color: '#9ca3af', fontVariant: ['tabular-nums'] },
-  name: { fontSize: 16, fontWeight: '500' },
+  name: { fontSize: 16, fontWeight: '500', flex: 1 },
+  // The badges sit inside the row's existing height, so a row with no types yet is the same size as
+  // one with two. Nothing moves when the GraphQL query lands.
+  badges: { flexDirection: 'row', gap: 6 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: '#eef2ff',
+  },
+  badgeText: { fontSize: 11, fontWeight: '600', color: '#4338ca' },
   partyCount: {
     paddingHorizontal: 16,
     paddingVertical: 10,
