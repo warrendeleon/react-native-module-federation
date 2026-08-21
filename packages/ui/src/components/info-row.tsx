@@ -10,11 +10,14 @@ import { Text } from './ui/text';
 export interface InfoRowProps {
   label: string;
   value: string;
+  /** Set on the last row of a section card so it does not draw a rule against the card edge. */
+  last?: boolean;
 }
 
-export function InfoRow({ label, value }: InfoRowProps) {
+export function InfoRow({ label, value, last = false }: InfoRowProps) {
+  const rule = last ? '' : 'border-b border-lightGrey dark:border-darkGrey';
   return (
-    <Box className="flex-row justify-between border-b border-lightGrey py-3.5 dark:border-darkGrey">
+    <Box className={`flex-row justify-between py-3.5 ${rule}`}>
       <Text size="sm" className="text-darkGrey dark:text-lightGrey">
         {label}
       </Text>

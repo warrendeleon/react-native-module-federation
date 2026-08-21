@@ -10,10 +10,12 @@ import { Text } from "./ui/text/index.js";
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 export function InfoRow({
   label,
-  value
+  value,
+  last = false
 }) {
+  const rule = last ? '' : 'border-b border-lightGrey dark:border-darkGrey';
   return /*#__PURE__*/_jsxs(Box, {
-    className: "flex-row justify-between border-b border-lightGrey py-3.5 dark:border-darkGrey",
+    className: `flex-row justify-between py-3.5 ${rule}`,
     children: [/*#__PURE__*/_jsx(Text, {
       size: "sm",
       className: "text-darkGrey dark:text-lightGrey",

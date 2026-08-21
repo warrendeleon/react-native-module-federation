@@ -69,7 +69,7 @@ export function PokemonCard({
       }
       className="active:opacity-80"
     >
-      <Card className="items-center rounded-2xl bg-white p-3 dark:bg-black">
+      <Card className="items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
         {onRemove ? (
           <Pressable
             onPress={onRemove}
@@ -84,9 +84,11 @@ export function PokemonCard({
             </Text>
           </Pressable>
         ) : null}
-        <Text size="xs" className="mb-1 self-start text-midGrey">
-          {idLabel}
-        </Text>
+        <Box className="mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10">
+          <Text size="xs" className="text-midGrey">
+            {idLabel}
+          </Text>
+        </Box>
         <Box className={`mb-2 h-16 w-16 items-center justify-center rounded-full ${tintBg}`}>
           {source ? (
             <Image source={source} resizeMode="contain" className="h-12 w-12" alt={name} />
@@ -97,7 +99,7 @@ export function PokemonCard({
         </Text>
         <Box className="flex-row flex-wrap justify-center gap-1">
           {types.map(t => (
-            <TypeBadge key={t} type={t} />
+            <TypeBadge key={t} type={t} size="xs" />
           ))}
         </Box>
       </Card>

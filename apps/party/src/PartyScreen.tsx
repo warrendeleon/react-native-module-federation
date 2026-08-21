@@ -57,10 +57,12 @@ export default function PartyScreen() {
               </Box>
             ) : (
               <Box key={`empty-${index}`} className="w-1/2 p-1.5">
-                <Box className="aspect-square items-center justify-center rounded-2xl border border-dashed border-midGrey">
-                  <Text size="lg" bold className="text-midGrey">
-                    {index + 1}
-                  </Text>
+                <Box className="aspect-square items-center justify-center rounded-2xl border border-dashed border-midGrey/50">
+                  <Box className="h-9 w-9 items-center justify-center rounded-full border border-midGrey/40">
+                    <Text size="sm" bold className="text-midGrey/80">
+                      {index + 1}
+                    </Text>
+                  </Box>
                 </Box>
               </Box>
             ),

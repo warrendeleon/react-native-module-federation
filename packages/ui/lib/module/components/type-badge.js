@@ -12,12 +12,13 @@ import { Text } from "./ui/text/index.js";
 import { jsx as _jsx } from "react/jsx-runtime";
 export function TypeBadge({
   type,
-  size = 'sm'
+  size = 'sm',
+  surface = 'card'
 }) {
-  const bg = bgClassForType(type);
-  const fg = textOnTypeClass(type);
-  const padding = size === 'md' ? 'px-3 py-1.5' : 'px-2 py-1';
-  const textSize = size === 'md' ? 'sm' : 'xs';
+  const bg = surface === 'hero' ? 'bg-white/30' : bgClassForType(type);
+  const fg = surface === 'hero' ? 'text-black' : textOnTypeClass(type);
+  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-1.5 py-0.5';
+  const textSize = size === 'md' ? 'sm' : size === 'sm' ? 'xs' : '2xs';
   return /*#__PURE__*/_jsx(Box, {
     className: `self-start rounded-full ${padding} ${bg}`,
     children: /*#__PURE__*/_jsx(Text, {

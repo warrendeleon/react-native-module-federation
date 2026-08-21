@@ -84,45 +84,47 @@ export default function PokemonDetailView({
         <VStack space="2xl">
           <Center className={`py-8 ${bgClassForType(primary)}`}>
             <VStack space="lg" className="items-center">
-              <Image
-                source={{ uri: pokemon.spriteUri }}
-                alt={pokemon.name}
-                size="xl"
-                resizeMode="contain"
-              />
+              <Box className="rounded-full bg-white/25 p-5">
+                <Image
+                  source={{ uri: pokemon.spriteUri }}
+                  alt={pokemon.name}
+                  size="xl"
+                  resizeMode="contain"
+                />
+              </Box>
               <VStack space="xs" className="items-center">
                 <Heading size="2xl" className="text-black">
                   {pokemon.name}
                 </Heading>
-                <Text size="sm" bold className="text-black">
+                <Text size="sm" bold className="text-black/60">
                   #{String(pokemon.id).padStart(3, '0')}
                 </Text>
               </VStack>
               <HStack space="sm">
                 {pokemon.types.map(type => (
-                  <TypeBadge key={type} type={type} size="md" />
+                  <TypeBadge key={type} type={type} size="md" surface="hero" />
                 ))}
               </HStack>
             </VStack>
           </Center>
 
-          <VStack space="4xl" className="px-5 pb-10">
-            <VStack space="md">
-              <Heading size="lg" className="text-black dark:text-white">
+          <VStack space="2xl" className="px-4 pb-10">
+            <VStack space="sm">
+              <Text size="xs" bold className="uppercase tracking-widest text-midGrey">
                 Info
-              </Heading>
-              <VStack>
+              </Text>
+              <Box className="rounded-2xl bg-white px-4 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
                 <InfoRow label="Height" value={`${pokemon.heightM.toFixed(1)} m`} />
                 <InfoRow label="Weight" value={`${pokemon.weightKg.toFixed(1)} kg`} />
-                <InfoRow label="Abilities" value={pokemon.abilities.join(', ')} />
-              </VStack>
+                <InfoRow label="Abilities" value={pokemon.abilities.join(', ')} last />
+              </Box>
             </VStack>
 
-            <VStack space="md">
-              <Heading size="lg" className="text-black dark:text-white">
+            <VStack space="sm">
+              <Text size="xs" bold className="uppercase tracking-widest text-midGrey">
                 Base Stats
-              </Heading>
-              <VStack>
+              </Text>
+              <Box className="rounded-2xl bg-white px-4 py-1.5 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
                 {pokemon.stats.map(stat => (
                   <StatBar
                     key={stat.name}
@@ -131,7 +133,7 @@ export default function PokemonDetailView({
                     colourType={primary}
                   />
                 ))}
-              </VStack>
+              </Box>
             </VStack>
 
             {onAddToParty ? (
@@ -150,7 +152,7 @@ export default function PokemonDetailView({
             ) : null}
 
             <Box className="items-center">
-              <Text size="sm" className="text-midGrey">
+              <Text size="xs" className="text-midGrey/70">
                 Served by @pokedex/detail
               </Text>
             </Box>

@@ -55,7 +55,7 @@ export function PokemonCard({
     } : undefined,
     className: "active:opacity-80",
     children: /*#__PURE__*/_jsxs(Card, {
-      className: "items-center rounded-2xl bg-white p-3 dark:bg-black",
+      className: "items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
       children: [onRemove ? /*#__PURE__*/_jsx(Pressable, {
         onPress: onRemove,
         accessible: false,
@@ -69,10 +69,13 @@ export function PokemonCard({
           className: "text-white",
           children: "\u2715"
         })
-      }) : null, /*#__PURE__*/_jsx(Text, {
-        size: "xs",
-        className: "mb-1 self-start text-midGrey",
-        children: idLabel
+      }) : null, /*#__PURE__*/_jsx(Box, {
+        className: "mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10",
+        children: /*#__PURE__*/_jsx(Text, {
+          size: "xs",
+          className: "text-midGrey",
+          children: idLabel
+        })
       }), /*#__PURE__*/_jsx(Box, {
         className: `mb-2 h-16 w-16 items-center justify-center rounded-full ${tintBg}`,
         children: source ? /*#__PURE__*/_jsx(Image, {
@@ -89,7 +92,8 @@ export function PokemonCard({
       }), /*#__PURE__*/_jsx(Box, {
         className: "flex-row flex-wrap justify-center gap-1",
         children: types.map(t => /*#__PURE__*/_jsx(TypeBadge, {
-          type: t
+          type: t,
+          size: "xs"
         }, t))
       })]
     })

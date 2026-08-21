@@ -12,14 +12,20 @@ import { Text } from './ui/text';
 
 export interface TypeBadgeProps {
   type: string;
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
+  /**
+   * Where the badge sits. On a card it fills with the type colour. On a hero whose background
+   * IS the type colour, a solid pill of the same colour would vanish; the hero variant uses a
+   * translucent scrim instead, so the pill reads on any type.
+   */
+  surface?: 'card' | 'hero';
 }
 
-export function TypeBadge({ type, size = 'sm' }: TypeBadgeProps) {
-  const bg = bgClassForType(type);
-  const fg = textOnTypeClass(type);
-  const padding = size === 'md' ? 'px-3 py-1.5' : 'px-2 py-1';
-  const textSize = size === 'md' ? 'sm' : 'xs';
+export function TypeBadge({ type, size = 'sm', surface = 'card' }: TypeBadgeProps) {
+  const bg = surface === 'hero' ? 'bg-white/30' : bgClassForType(type);
+  const fg = surface === 'hero' ? 'text-black' : textOnTypeClass(type);
+  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-1.5 py-0.5';
+  const textSize = size === 'md' ? 'sm' : size === 'sm' ? 'xs' : '2xs';
   return (
     <Box className={`self-start rounded-full ${padding} ${bg}`}>
       <Text size={textSize} bold className={`capitalize ${fg}`}>
