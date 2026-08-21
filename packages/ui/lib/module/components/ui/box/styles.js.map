@@ -1,0 +1,1 @@
+{"version":3,"names":["tva","isWeb","baseStyle","boxStyle","base"],"sourceRoot":"../../../../../src","sources":["components/ui/box/styles.tsx"],"mappings":";;AAAA,SAASA,GAAG,QAAQ,sCAAsC;AAC1D,SAASC,KAAK,QAAQ,sCAAsC;AAE5D,MAAMC,SAAS,GAAGD,KAAK,GACnB,oIAAoI,GACpI,EAAE;AAEN,OAAO,MAAME,QAAQ,GAAGH,GAAG,CAAC;EAC1BI,IAAI,EAAEF;AACR,CAAC,CAAC","ignoreList":[]}

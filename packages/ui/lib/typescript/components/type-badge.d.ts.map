@@ -1,0 +1,1 @@
+{"version":3,"file":"type-badge.d.ts","sourceRoot":"","sources":["../../../src/components/type-badge.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAY1B,MAAM,WAAW,cAAc;IAC7B,IAAI,EAAE,MAAM,CAAC;IACb,IAAI,CAAC,EAAE,IAAI,GAAG,IAAI,CAAC;CACpB;AAED,wBAAgB,SAAS,CAAC,EAAE,IAAI,EAAE,IAAW,EAAE,EAAE,cAAc,qBAY9D"}

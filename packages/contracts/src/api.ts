@@ -26,11 +26,22 @@ export interface PokemonSummary {
 
 // The subset of a full PokéAPI pokemon payload the detail screen renders. The real payload is
 // enormous; parsing only what the UI shows keeps the schema honest about what the app depends on.
+// 3.2.0 grows the model with the fields the finished detail design renders: post 6 left them out
+// deliberately because no section existed to show them, and the endpoint already fetched them.
+export interface PokemonStat {
+  name: string;
+  value: number;
+}
+
 export interface PokemonDetail {
   id: number;
   name: string;
   spriteUri: string;
   types: string[];
+  heightM: number;
+  weightKg: number;
+  abilities: string[];
+  stats: PokemonStat[];
 }
 
 // --- The runtime boundary the build-time contract cannot police. TypeScript checks that our code
@@ -63,6 +74,12 @@ const PokemonDetailResponseSchema = z.object({
     .array(z.object({ type: z.object({ name: NonBlankSchema }) }))
     .min(1)
     .refine(t => new Set(t.map(x => x.type.name.trim().toLowerCase())).size === t.length, { message: 'duplicate type name' }),
+  // PokéAPI measures height in decimetres and weight in hectograms; the parse converts both to
+  // the metric units the screen prints, so no consumer repeats the arithmetic.
+  height: z.number(),
+  weight: z.number(),
+  abilities: z.array(z.object({ ability: z.object({ name: z.string() }) })),
+  stats: z.array(z.object({ base_stat: z.number(), stat: z.object({ name: z.string() }) })),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
@@ -129,5 +146,9 @@ export function parsePokemonDetail(raw: unknown): PokemonDetail {
     name: formatName(parsed.name),
     spriteUri: artworkUri(parsed.id),
     types: parsed.types.map(entry => formatName(entry.type.name)),
+    heightM: parsed.height / 10,
+    weightKg: parsed.weight / 10,
+    abilities: parsed.abilities.map(entry => formatName(entry.ability.name)),
+    stats: parsed.stats.map(entry => ({ name: entry.stat.name, value: entry.base_stat })),
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@pokedex/detail",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "description": "The Pokémon detail view as a versioned component: presentational, data in as props, writes out as optional callbacks. Both tab remotes install it and feed it from their own containers.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,17 +18,25 @@
     "registry": "http://localhost:4873/"
   },
   "peerDependencies": {
-    "@pokedex/contracts": ">=3",
+    "@pokedex/contracts": ">=3.2",
+    "@pokedex/ui": "^1",
+    "nativewind": ">=4.1.23",
     "react": "*",
-    "react-native": "*",
-    "react-native-safe-area-context": ">=5"
+    "react-native": "*"
   },
   "devDependencies": {
-    "@pokedex/contracts": "^3.0.0",
+    "@pokedex/contracts": "^3.2.0",
+    "@pokedex/ui": "^1.0.0",
     "@types/react": "^19.2.0",
+    "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-safe-area-context": "^5.5.2",
     "typescript": "^5.8.3"
+  },
+  "react-native": "src/index.ts",
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   }
 }

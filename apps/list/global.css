@@ -1,0 +1,6 @@
+/* Tailwind directives. Imported at the top of the app entry (and of every exposed module —
+ * federation loads the exposed module, not this app's entry) so NativeWind compiles the
+ * className utilities into the styling runtime. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

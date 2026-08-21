@@ -1,3 +1,9 @@
+// Federation loads this exposed module, never this app's own entry, so the global.css import
+// in index.js is not in the graph the host pulls. Importing it here too is what keeps the
+// styles working federated: without it the build works standalone and silently no-ops in
+// the host, because this remote's classes never reach the shared styling runtime.
+import '../global.css';
+
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
@@ -33,7 +39,10 @@ function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
       error={isError}
       onRetry={refetch}
       onAddToParty={() =>
-        data && dispatch(addToParty({ id: data.id, name: data.name, spriteUri: data.spriteUri }))
+        data &&
+        dispatch(
+          addToParty({ id: data.id, name: data.name, spriteUri: data.spriteUri, types: data.types }),
+        )
       }
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}

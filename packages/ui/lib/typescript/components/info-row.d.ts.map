@@ -1,0 +1,1 @@
+{"version":3,"file":"info-row.d.ts","sourceRoot":"","sources":["../../../src/components/info-row.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAS1B,MAAM,WAAW,YAAY;IAC3B,KAAK,EAAE,MAAM,CAAC;IACd,KAAK,EAAE,MAAM,CAAC;CACf;AAED,wBAAgB,OAAO,CAAC,EAAE,KAAK,EAAE,KAAK,EAAE,EAAE,YAAY,qBAWrD"}

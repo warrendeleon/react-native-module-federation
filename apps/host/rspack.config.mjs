@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
+import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
 import pkg from './package.json' with { type: 'json' };
 // Read the installed versions rather than letting the bundler work them out. It cannot for a
 // package resolved through an `exports` map: see the `version` note in the shared block below.
@@ -48,6 +49,10 @@ export default Repack.defineRspackConfig(env => {
     },
     plugins: [
       new Repack.RepackPlugin(),
+      // Wires PostCSS + Tailwind processing of global.css and the SWC side of the className
+      // transform into the Re.Pack build. Official Callstack integration, version-locked to
+      // the installed @callstack/repack.
+      new NativeWindPlugin(),
       new Repack.plugins.ModuleFederationPluginV2({
         name: 'host',
         filename: 'host.container.js.bundle',
@@ -111,6 +116,24 @@ export default Repack.defineRspackConfig(env => {
             singleton: true,
             eager: true,
             requiredVersion: pkg.dependencies['@pokedex/contracts'],
+          },
+          // The design system and its styling runtime, new in this post. Both pass the same
+          // identity test the entries above passed: @pokedex/ui because every remote must render
+          // against the one provider the host mounted, and nativewind because the compiled-style
+          // registry and the colour scheme are module-level state inside the library — two copies
+          // means remotes styling against a registry the host never reads. tailwindcss and
+          // postcss stay out: build-time tooling never ships. @pokedex/detail stays out on
+          // purpose — per-consumer versioning is its feature, and the skew ladder from post 5
+          // still works after this post.
+          '@pokedex/ui': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['@pokedex/ui'],
+          },
+          nativewind: {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies.nativewind,
           },
         },
       }),

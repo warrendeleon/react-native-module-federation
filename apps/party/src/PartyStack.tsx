@@ -1,3 +1,9 @@
+// Federation loads this exposed module, never this app's own entry, so the global.css import
+// in index.js is not in the graph the host pulls. Importing it here too is what keeps the
+// styles working federated: without it the build works standalone and silently no-ops in
+// the host, because this remote's classes never reach the shared styling runtime.
+import '../global.css';
+
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PokemonDetailView } from '@pokedex/detail';

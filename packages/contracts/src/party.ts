@@ -15,6 +15,9 @@ export interface PartyMember {
   id: number;
   name: string;
   spriteUri: string;
+  // 3.2.0: the types travel with the member so the party can render the tinted card and the
+  // badges without a fetch of its own. The dispatcher already holds them at add time.
+  types: string[];
 }
 
 // The one interaction that crosses an app boundary. The contract owns the action's shape; the

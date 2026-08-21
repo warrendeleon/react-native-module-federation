@@ -1,16 +1,35 @@
 import React from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView } from 'react-native';
 import type { PokemonDetail } from '@pokedex/contracts';
+import {
+  bgClassForType,
+  Box,
+  Button,
+  ButtonText,
+  Center,
+  ErrorState,
+  Heading,
+  HStack,
+  Image,
+  InfoRow,
+  LoadingState,
+  ScreenContainer,
+  StatBar,
+  Text,
+  TypeBadge,
+  VStack,
+} from '@pokedex/ui';
 
-// The static copy of the Pokémon data that lived here in 1.0.0 is gone, and so is the data access
-// that briefly replaced it. This is a view: it renders what it is handed and reports what is
-// pressed. Where the data comes from is the consumer's business; each app composes this view with
-// its own data in its own container route.
+// This is a view: it renders what it is handed and reports what is pressed. Where the data comes
+// from is the consumer's business; each app composes this view with its own data in its own
+// container route. The add-to-party props stay optional for the same reason: a write that crosses
+// a domain boundary is wired by the consumer, so this view holds no action creator and no store
+// import.
 //
-// The three add-to-party props are optional for the same reason. A write that crosses a domain
-// boundary is wired by the consumer, so this view holds no action creator and no store import: it
-// renders an Add button when a consumer hands it a handler, and nothing when it does not.
+// 4.0.0 dresses the view in the design system: every colour is a token class resolved from the
+// shared @pokedex/ui singleton, and the layout is the full detail design (type-tinted hero, Info
+// rows, Base Stats bars). The props seam is unchanged from 3.x, which is why both containers
+// survive this major with nothing but a version bump.
 export interface PokemonDetailViewProps {
   pokemon?: PokemonDetail;
   loading: boolean;
@@ -21,6 +40,17 @@ export interface PokemonDetailViewProps {
   addLabel?: string;
 }
 
+// PokéAPI stat identifiers to display labels. A literal map, like the type-class maps in
+// @pokedex/ui: the screen prints what it knows and falls back to the raw name for anything new.
+const STAT_LABELS: Record<string, string> = {
+  hp: 'HP',
+  attack: 'Attack',
+  defense: 'Defence',
+  'special-attack': 'Sp. Atk',
+  'special-defense': 'Sp. Def',
+  speed: 'Speed',
+};
+
 export default function PokemonDetailView({
   pokemon,
   loading,
@@ -30,83 +60,103 @@ export default function PokemonDetailView({
   addDisabled,
   addLabel,
 }: PokemonDetailViewProps) {
-  const insets = useSafeAreaInsets();
-
   if (loading) {
     return (
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" />
-      </View>
+      <ScreenContainer edges={[]}>
+        <LoadingState caption="Loading Pokémon…" />
+      </ScreenContainer>
     );
   }
 
   if (error || !pokemon) {
     return (
-      <View style={styles.centre}>
-        <Text style={styles.error}>Couldn't reach PokéAPI.</Text>
-        <Pressable style={styles.retry} onPress={onRetry}>
-          <Text style={styles.retryText}>Try again</Text>
-        </Pressable>
-      </View>
+      <ScreenContainer edges={[]}>
+        <ErrorState message="Couldn't reach PokéAPI." onRetry={onRetry} retryLabel="Try again" />
+      </ScreenContainer>
     );
   }
 
+  const primary = pokemon.types[0] ?? 'normal';
+
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 24 }]}>
-      <Text style={styles.number}>#{String(pokemon.id).padStart(3, '0')}</Text>
-      <Text style={styles.name}>{pokemon.name}</Text>
-      <Image style={styles.sprite} source={{ uri: pokemon.spriteUri }} />
-      <View style={styles.types}>
-        {pokemon.types.map(type => (
-          <View key={type} style={styles.type}>
-            <Text style={styles.typeLabel}>{type}</Text>
-          </View>
-        ))}
-      </View>
-      {onAddToParty && (
-        <Pressable
-          style={[styles.add, addDisabled && styles.addDisabled]}
-          onPress={onAddToParty}
-          disabled={addDisabled}
-          accessibilityRole="button">
-          <Text style={styles.addText}>{addLabel ?? 'Add to party'}</Text>
-        </Pressable>
-      )}
-      <Text style={styles.footer}>Served by @pokedex/detail</Text>
-    </View>
+    <ScreenContainer edges={[]}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <VStack space="2xl">
+          <Center className={`py-8 ${bgClassForType(primary)}`}>
+            <VStack space="lg" className="items-center">
+              <Image
+                source={{ uri: pokemon.spriteUri }}
+                alt={pokemon.name}
+                size="xl"
+                resizeMode="contain"
+              />
+              <VStack space="xs" className="items-center">
+                <Heading size="2xl" className="text-black">
+                  {pokemon.name}
+                </Heading>
+                <Text size="sm" bold className="text-black">
+                  #{String(pokemon.id).padStart(3, '0')}
+                </Text>
+              </VStack>
+              <HStack space="sm">
+                {pokemon.types.map(type => (
+                  <TypeBadge key={type} type={type} size="md" />
+                ))}
+              </HStack>
+            </VStack>
+          </Center>
+
+          <VStack space="4xl" className="px-5 pb-10">
+            <VStack space="md">
+              <Heading size="lg" className="text-black dark:text-white">
+                Info
+              </Heading>
+              <VStack>
+                <InfoRow label="Height" value={`${pokemon.heightM.toFixed(1)} m`} />
+                <InfoRow label="Weight" value={`${pokemon.weightKg.toFixed(1)} kg`} />
+                <InfoRow label="Abilities" value={pokemon.abilities.join(', ')} />
+              </VStack>
+            </VStack>
+
+            <VStack space="md">
+              <Heading size="lg" className="text-black dark:text-white">
+                Base Stats
+              </Heading>
+              <VStack>
+                {pokemon.stats.map(stat => (
+                  <StatBar
+                    key={stat.name}
+                    label={STAT_LABELS[stat.name] ?? stat.name}
+                    value={stat.value}
+                    colourType={primary}
+                  />
+                ))}
+              </VStack>
+            </VStack>
+
+            {onAddToParty ? (
+              <Button
+                onPress={onAddToParty}
+                disabled={addDisabled}
+                size="lg"
+                className={`rounded-xl ${addDisabled ? 'bg-lightGrey' : 'bg-pokemonGreen'}`}
+                style={{ alignSelf: 'stretch' }}
+                accessibilityRole="button"
+              >
+                <ButtonText className={addDisabled ? 'text-midGrey' : 'text-black'}>
+                  {addLabel ?? 'Add to party'}
+                </ButtonText>
+              </Button>
+            ) : null}
+
+            <Box className="items-center">
+              <Text size="sm" className="text-midGrey">
+                Served by @pokedex/detail
+              </Text>
+            </Box>
+          </VStack>
+        </VStack>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, alignItems: 'center', backgroundColor: '#fff' },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  error: { fontSize: 16, color: '#6b7280' },
-  retry: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#2a75bb',
-    borderRadius: 8,
-  },
-  retryText: { color: '#fff', fontWeight: '600' },
-  number: { fontSize: 14, color: '#9ca3af', fontVariant: ['tabular-nums'] },
-  name: { fontSize: 32, fontWeight: '700' },
-  sprite: { width: 220, height: 220, marginVertical: 8 },
-  types: { flexDirection: 'row', gap: 8 },
-  type: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
-  },
-  typeLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  add: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#2a75bb',
-    borderRadius: 8,
-  },
-  addDisabled: { backgroundColor: '#9ca3af' },
-  addText: { color: '#fff', fontWeight: '600' },
-  footer: { marginTop: 24, fontSize: 14, color: '#6b7280' },
-});

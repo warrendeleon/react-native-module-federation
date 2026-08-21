@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
+import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
 import pkg from './package.json' with { type: 'json' };
 // The installed versions of the two React Navigation packages, read by hand. The bundler cannot
 // work them out on its own: see the `version` note in the shared block below.
@@ -47,6 +48,10 @@ export default Repack.defineRspackConfig(env => {
           { include: /.*/, type: 'remote', outputPath: `build/${platform}/remote` },
         ],
       }),
+      // PostCSS + Tailwind processing of global.css and the className transform, same as
+      // the host: a remote compiles its own classes, then registers them into the shared
+      // styling runtime at load.
+      new NativeWindPlugin(),
       new Repack.plugins.ModuleFederationPluginV2({
         name: 'listApp',
         filename: 'listApp.container.js.bundle',
@@ -105,6 +110,18 @@ export default Repack.defineRspackConfig(env => {
           '@pokedex/contracts': {
             singleton: true,
             requiredVersion: pkg.dependencies['@pokedex/contracts'],
+          },
+          // The design system and its styling runtime, mirroring the host's map without eager:
+          // the host provides the copies, this remote consumes them. nativewind is in because
+          // its style registry and colour scheme are module-level singleton state; the detail
+          // package stays out because per-consumer versioning is its feature.
+          '@pokedex/ui': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['@pokedex/ui'],
+          },
+          nativewind: {
+            singleton: true,
+            requiredVersion: pkg.dependencies.nativewind,
           },
         },
       }),
