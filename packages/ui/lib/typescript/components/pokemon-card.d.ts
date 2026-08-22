@@ -10,5 +10,7 @@ export interface PokemonCardProps {
     /** When set, a remove (✕) badge is shown in the corner; tapping it runs this, not onPress. */
     onRemove?: () => void;
 }
-export declare function PokemonCard({ id, name, types, spriteUri, spriteSource, onPress, onRemove, }: PokemonCardProps): React.JSX.Element;
+declare function PokemonCardInner({ id, name, types, spriteUri, spriteSource, onPress, onRemove, }: PokemonCardProps): React.JSX.Element;
+export declare const PokemonCard: React.MemoExoticComponent<typeof PokemonCardInner>;
+export {};
 //# sourceMappingURL=pokemon-card.d.ts.map

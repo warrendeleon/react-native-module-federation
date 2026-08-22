@@ -19,7 +19,7 @@ import { TypeBadge } from "./type-badge.js";
 // Box with a tint-class from the token preset; the sprite itself is Gluestack Image; name +
 // ID are Text; type pills are TypeBadge (which composes Box + Text). No inline styles. ---
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export function PokemonCard({
+function PokemonCardInner({
   id,
   name,
   types,
@@ -119,4 +119,9 @@ export function PokemonCard({
     })
   });
 }
+
+// Memoised: in a long grid the card's props are stable row to row, and its theme-dependent
+// classes update through the styling runtime rather than a React re-render, so the parent
+// can re-render (a theme flip, a count change) without paying for every visible card.
+export const PokemonCard = /*#__PURE__*/React.memo(PokemonCardInner);
 //# sourceMappingURL=pokemon-card.js.map

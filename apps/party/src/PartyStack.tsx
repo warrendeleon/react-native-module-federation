@@ -10,15 +10,35 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PokemonDetailView } from '@pokedex/detail';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { DetailParams } from '@pokedex/contracts';
+import { Box } from '@pokedex/ui';
 import type { PartyParamList } from './routes';
 import PartyScreen from './PartyScreen';
 
 // The same container shape the list app wrote, feeding the same installed view from this app's own
 // endpoint. What it does NOT pass is the point: no onAddToParty, so a detail opened from the party
 // shows no Add button. The view renders what its consumer wires, and this consumer wires no write.
-function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
+function PokemonDetailRoute({
+  route,
+  navigation,
+}: {
+  route: { params: DetailParams };
+  navigation: { goBack: () => void };
+}) {
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
-  return <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />;
+  return (
+    <Box className="flex-1">
+      <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Close details"
+        className="absolute left-4 top-4 h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
+        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
+      </Pressable>
+    </Box>
+  );
 }
 
 const Stack = createNativeStackNavigator<PartyParamList>();
@@ -36,25 +56,10 @@ export default function PartyStack() {
       <Stack.Screen
         name="PokemonDetail"
         component={PokemonDetailRoute}
-        options={({ navigation }) => ({
-          headerShown: true,
-          title: '',
-          presentation: 'modal',
-          headerTransparent: true,
-          // A modal gets no back chevron, so it carries its own close control: a floating
-          // scrim pill, in-stack chrome owned by this remote. Swipe-down still works.
-          headerLeft: () => (
-            <Pressable
-              onPress={() => navigation.goBack()}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Close details"
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
-              style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
-            </Pressable>
-          ),
-        })}
+        // Same modal shape as the list's detail: separate view controller over the shell, no
+        // nav header (iOS paints a scroll-edge fade under a transparent one), the container
+        // overlays the close control.
+        options={{ headerShown: false, presentation: 'modal' }}
       />
     </Stack.Navigator>
   );

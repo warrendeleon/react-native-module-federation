@@ -31,7 +31,7 @@ export interface PokemonCardProps {
   onRemove?: () => void;
 }
 
-export function PokemonCard({
+function PokemonCardInner({
   id,
   name,
   types,
@@ -121,3 +121,8 @@ export function PokemonCard({
     </Pressable>
   );
 }
+
+// Memoised: in a long grid the card's props are stable row to row, and its theme-dependent
+// classes update through the styling runtime rather than a React re-render, so the parent
+// can re-render (a theme flip, a count change) without paying for every visible card.
+export const PokemonCard = React.memo(PokemonCardInner);

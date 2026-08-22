@@ -1,11 +1,12 @@
-import React, { Suspense, useEffect, useState } from 'react';
-import { Image, LayoutAnimation, Pressable, Text, View } from 'react-native';
+import React, { Suspense, useEffect } from 'react';
+import { Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { baseApi, partyStateReady } from '@pokedex/contracts';
 import { colours, GluestackUIProvider, LoadingState } from '@pokedex/ui';
+import { colorScheme as schemeStore, useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
 
@@ -84,14 +85,14 @@ const PartyTab = withSuspense(PartyStack);
 const Tab = createBottomTabNavigator();
 
 export default function App() {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
-  // The flip itself is instant (the shared styling runtime swaps schemes in one render);
-  // wrapping the next layout pass in an ease gives every bundle a soft cross-fade instead
-  // of a snap — one line of host chrome polish, no remote knows it happened.
-  const toggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setMode(m => (m === 'light' ? 'dark' : 'light'));
-  };
+  // One source of truth: the shared styling runtime's colour scheme. Earlier versions kept
+  // host state beside it, and the navigation chrome (native, repainted on its own commit)
+  // flipped almost half a second before the content's styling pass, which read as parts of
+  // the app missing the theme change. Deriving the chrome from the same observable every
+  // dark: class subscribes to puts every surface on the same update wave.
+  const { colorScheme } = useColorScheme();
+  const mode: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
+  const toggle = () => schemeStore.set(mode === 'light' ? 'dark' : 'light');
 
   // The navigation chrome rides the same host state as the styling runtime: headers and the
   // tab bar are host-owned, so the host themes them, mapped to the design system's tokens.

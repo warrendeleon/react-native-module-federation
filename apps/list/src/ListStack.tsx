@@ -9,6 +9,7 @@ import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { PokemonDetailView } from '@pokedex/detail';
+import { Box } from '@pokedex/ui';
 import { addToParty, MAX_PARTY, type DetailParams, type PartySliceShape } from '@pokedex/contracts';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { ListParamList } from './routes';
@@ -26,7 +27,13 @@ import PokedexScreen from './PokedexScreen';
 // dispatch before the reducer exists would vanish without a trace. The host surfaces the slice
 // with the contract's partyStateReady marker the moment the module lands, so the gate lifts on
 // its own — usually before anyone has navigated this deep.
-function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
+function PokemonDetailRoute({
+  route,
+  navigation,
+}: {
+  route: { params: DetailParams };
+  navigation: { goBack: () => void };
+}) {
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
   const dispatch = useDispatch();
   const members = useSelector((s: PartySliceShape) => s.party?.members);
@@ -34,6 +41,7 @@ function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
   const count = members?.length ?? 0;
   const full = count >= MAX_PARTY;
   return (
+    <Box className="flex-1">
     <PokemonDetailView
       pokemon={data}
       loading={isLoading}
@@ -48,6 +56,16 @@ function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}
     />
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Close details"
+        className="absolute left-4 top-4 h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
+        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
+      </Pressable>
+    </Box>
   );
 }
 
@@ -67,28 +85,11 @@ export default function ListStack() {
       <Stack.Screen
         name="PokemonDetail"
         component={PokemonDetailRoute}
-        // A modal, not a push: it slides over the shell (tab bar included), brings its own
-        // floating back pill, and the host's bar never has to toggle for a route this stack
-        // owns. The transition is a separate view controller, so shell chrome stays put.
-        options={({ navigation }) => ({
-          headerShown: true,
-          title: '',
-          presentation: 'modal',
-          headerTransparent: true,
-          // A modal gets no back chevron, so it carries its own close control: a floating
-          // scrim pill, in-stack chrome owned by this remote. Swipe-down still works.
-          headerLeft: () => (
-            <Pressable
-              onPress={() => navigation.goBack()}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Close details"
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
-              style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
-            </Pressable>
-          ),
-        })}
+        // A modal, not a push: it slides over the shell (tab bar included) as a separate view
+        // controller, so the host's bar never toggles for a route this stack owns. And no nav
+        // header at all: iOS paints a scroll-edge fade under a transparent header, which read
+        // as a gradient on the hero. The route's container overlays its own close control.
+        options={{ headerShown: false, presentation: 'modal' }}
       />
     </Stack.Navigator>
   );
