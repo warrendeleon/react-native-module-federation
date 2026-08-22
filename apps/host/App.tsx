@@ -1,12 +1,12 @@
 import React, { Suspense, useEffect } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Provider, useDispatch } from 'react-redux';
+import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { baseApi, partyStateReady } from '@pokedex/contracts';
+import { partyStateReady } from '@pokedex/contracts';
 import { colours, GluestackUIProvider, LoadingState } from '@pokedex/ui';
-import { colorScheme as schemeStore, useColorScheme } from 'nativewind';
+import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
 
@@ -23,49 +23,6 @@ import { store } from './src/store';
 const ListStack = React.lazy(() => import('listApp/ListStack'));
 const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
 
-// A host-owned control in host-owned chrome. It never imported getPokemonList and holds no
-// reference to it, yet dispatching invalidateTags(['PokemonList']) reaches across the seam: the tag
-// is the only thing that crosses, and the list remote's endpoint — which provides that tag —
-// refetches. That is the shared tag graph made visible. The pill is the design system's action
-// styling; the token classes resolve because the host scans @pokedex/ui source in its Tailwind
-// config.
-function RefreshButton() {
-  const dispatch = useDispatch();
-  return (
-    <Pressable
-      onPress={() => dispatch(baseApi.util.invalidateTags(['PokemonList']))}
-      hitSlop={12}
-      className="rounded-full bg-pokemonGreen px-3 py-1 active:opacity-80"
-      accessibilityRole="button"
-      accessibilityLabel="Refresh Pokédex">
-      <Text className="text-[13px] font-semibold text-black">Refresh</Text>
-    </Pressable>
-  );
-}
-
-// The theme toggle: flips the provider's mode between light and dark. The interesting part is
-// what it does NOT do — it never talks to a remote. The colour scheme is module-level state
-// inside the shared nativewind singleton, so one flip here repaints every bundle in the runtime.
-// The glyphs are the host's own flat assets, tinted with a token, like the tab icons below.
-function ThemeToggle({ mode, onToggle }: { mode: 'light' | 'dark'; onToggle: () => void }) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      hitSlop={12}
-      className="flex-row items-center gap-1.5 rounded-full bg-offGrey px-3 py-1 active:opacity-80 dark:bg-navy"
-      accessibilityRole="button"
-      accessibilityLabel={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
-      <Image
-        source={mode === 'light' ? require('./src/assets/moon.png') : require('./src/assets/sun.png')}
-        style={{ width: 14, height: 14, tintColor: mode === 'light' ? colours.darkGrey : colours.lightGrey }}
-        resizeMode="contain"
-      />
-      <Text className="text-[13px] font-semibold text-darkGrey dark:text-lightGrey">
-        {mode === 'light' ? 'Dark' : 'Light'}
-      </Text>
-    </Pressable>
-  );
-}
 
 // A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
 // spinner. Wrapping once here keeps the lazy boundary out of the remotes.
@@ -92,7 +49,6 @@ export default function App() {
   // dark: class subscribes to puts every surface on the same update wave.
   const { colorScheme } = useColorScheme();
   const mode: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
-  const toggle = () => schemeStore.set(mode === 'light' ? 'dark' : 'light');
 
   // The navigation chrome rides the same host state as the styling runtime: headers and the
   // tab bar are host-owned, so the host themes them, mapped to the design system's tokens.
@@ -151,24 +107,12 @@ export default function App() {
               screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: colours.blue,
-                headerTitleStyle: { fontFamily: 'Nunito-ExtraBold', fontSize: 20 },
                 tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
               }}>
               <Tab.Screen
                 name="Pokédex"
                 component={PokedexTab}
-                // The tab header is host chrome, and the detail route brings its own stack header
-                // with a back button. Showing both stacks two bars, so the host hides its own when
-                // the stack is on the detail. 'PokemonDetail' is not a reach into the remote's
-                // internals: the route name is part of DetailParamList in @pokedex/contracts, the
-                // same agreement the params come from.
                 options={{
-                  // The shell bar is host chrome and it stays put. It used to hide while the
-                  // remote's stack sat on the detail route, but toggling shell chrome on a
-                  // remote's internal navigation unmounts the header mid-transition: the list
-                  // reflows to full bleed, slides headerless, and the bar pops back after the
-                  // settle. The detail now presents as a modal instead, so nothing toggles.
-                  headerShown: true,
                   // Outline glyph tinted by the navigator when idle; the full-colour filled
                   // pokéball when the tab is selected, untinted so it keeps its own colours.
                   tabBarIcon: ({ focused, color, size }) => (
@@ -181,12 +125,6 @@ export default function App() {
                       style={{ width: size, height: size, ...(focused ? {} : { tintColor: color }) }}
                       resizeMode="contain"
                     />
-                  ),
-                  headerRight: () => (
-                    <View className="mr-1 flex-row items-center gap-2">
-                      <ThemeToggle mode={mode} onToggle={toggle} />
-                      <RefreshButton />
-                    </View>
                   ),
                 }}
               />

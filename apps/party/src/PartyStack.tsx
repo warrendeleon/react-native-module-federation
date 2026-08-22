@@ -10,7 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PokemonDetailView } from '@pokedex/detail';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { DetailParams } from '@pokedex/contracts';
-import { Box } from '@pokedex/ui';
+import { Box, ThemeToggle } from '@pokedex/ui';
 import type { PartyParamList } from './routes';
 import PartyScreen from './PartyScreen';
 
@@ -51,7 +51,16 @@ export default function PartyStack() {
       <Stack.Screen
         name="PartyMain"
         component={PartyScreen}
-        options={{ title: 'Party' }}
+        // Same chrome pattern as the Pokédex tab: this stack's own native large title, with
+        // the design system's theme control in the right slot.
+        options={{
+          headerShown: true,
+          title: 'Party',
+          headerLargeTitle: true,
+          headerLargeTitleStyle: { fontFamily: 'Nunito-ExtraBold' },
+          headerTitleStyle: { fontFamily: 'Nunito-Bold' },
+          headerRight: () => <ThemeToggle />,
+        }}
       />
       <Stack.Screen
         name="PokemonDetail"

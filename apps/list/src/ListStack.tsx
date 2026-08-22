@@ -9,7 +9,7 @@ import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { PokemonDetailView } from '@pokedex/detail';
-import { Box } from '@pokedex/ui';
+import { Box, ThemeToggle } from '@pokedex/ui';
 import { addToParty, MAX_PARTY, type DetailParams, type PartySliceShape } from '@pokedex/contracts';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { ListParamList } from './routes';
@@ -80,7 +80,18 @@ export default function ListStack() {
       <Stack.Screen
         name="PokedexList"
         component={PokedexScreen}
-        options={{ title: 'Pokédex' }}
+        // The tab's chrome is this stack's own native header: an iOS large title that
+        // collapses as the grid scrolls, in the display face the host binary carries. The
+        // theme control rides in the right slot; it is a design-system component with no
+        // props, because the colour scheme it flips lives in the shared styling runtime.
+        options={{
+          headerShown: true,
+          title: 'Pokédex',
+          headerLargeTitle: true,
+          headerLargeTitleStyle: { fontFamily: 'Nunito-ExtraBold' },
+          headerTitleStyle: { fontFamily: 'Nunito-Bold' },
+          headerRight: () => <ThemeToggle />,
+        }}
       />
       <Stack.Screen
         name="PokemonDetail"

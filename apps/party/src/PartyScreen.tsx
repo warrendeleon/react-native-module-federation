@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
-import { Box, Heading, PokemonCard, ScreenContainer, Text } from '@pokedex/ui';
+import { Box, PokemonCard, ScreenContainer, Text } from '@pokedex/ui';
 import { remove } from './partySlice';
 import type { PartyParamList } from './routes';
 
@@ -36,14 +36,19 @@ export default function PartyScreen() {
   return (
     <ScreenContainer>
       <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}>
-        <Heading size="xl" className="text-black dark:text-white">
-          Party{' '}
-          <Heading size="xl" className="text-darkGreen dark:text-pokemonGreen">
-            {members.length}/{MAX_PARTY}
-          </Heading>
-        </Heading>
+        <Box className="flex-row items-center justify-between">
+          <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
+            Your team
+          </Text>
+          <Box className="rounded-full bg-lightGreen px-2.5 py-0.5 dark:bg-white/10">
+            <Text size="xs" className="font-head text-darkGreen dark:text-pokemonGreen">
+              {members.length}/{MAX_PARTY}
+            </Text>
+          </Box>
+        </Box>
         <Text size="sm" className="mb-5 mt-1 text-darkGrey dark:text-lightGrey">
           {members.length === 0
             ? 'Your party is empty. Add up to 6 Pokémon from the Pokédex.'

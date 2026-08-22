@@ -1,10 +1,10 @@
 import React from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSelector } from 'react-redux';
-import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
+import { useDispatch, useSelector } from 'react-redux';
+import { baseApi, MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
 import {
   Box,
   ErrorState,
@@ -32,11 +32,12 @@ export default function PokedexScreen() {
   // only because @react-navigation/native is a shared singleton: with two copies in the runtime,
   // this remote would look for the navigator in a context the host never filled.
   const navigation = useNavigation<NativeStackNavigationProp<ListParamList>>();
-  const { data, isLoading, isError, refetch } = useGetPokemonListQuery();
+  const dispatch = useDispatch();
+  const { data, isLoading, isError, refetch, isFetching } = useGetPokemonListQuery();
   // The rows come over REST, the badges over GraphQL, and the screen treats them as one source
   // because they land in the same cache. No loading branch and no error branch for this one: if the
   // types have not arrived, or never arrive, each card simply renders without badges.
-  const { data: types } = useGetPokemonTypesQuery();
+  const { data: types, isFetching: isFetchingTypes } = useGetPokemonTypesQuery();
   // A foreign module reading another app's state, through the contract's tolerant shape. Until the
   // party's module loads, s.party is undefined; ?? 0 renders an honest zero rather than crashing
   // on a slice that is not there yet.
@@ -64,6 +65,16 @@ export default function PokedexScreen() {
         data={data}
         keyExtractor={p => String(p.id)}
         numColumns={3}
+        contentInsetAdjustmentBehavior="automatic"
+        // Pull to refresh replaces post 6's header button, and dispatches the same thing the
+        // button did: one invalidated tag, which both endpoints provide, so the REST rows and
+        // the GraphQL badges refetch together from a gesture this remote owns.
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching || isFetchingTypes}
+            onRefresh={() => dispatch(baseApi.util.invalidateTags(['PokemonList']))}
+          />
+        }
         contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: insets.bottom + 8 }}
         ListHeaderComponent={
           <Box className="flex-row items-center justify-between px-1.5 py-2.5">
