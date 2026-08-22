@@ -5,6 +5,7 @@
 import '../global.css';
 
 import React from 'react';
+import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PokemonDetailView } from '@pokedex/detail';
 import { useGetPokemonDetailQuery } from './detailApi';
@@ -35,7 +36,25 @@ export default function PartyStack() {
       <Stack.Screen
         name="PokemonDetail"
         component={PokemonDetailRoute}
-        options={{ headerShown: true, title: '' }}
+        options={({ navigation }) => ({
+          headerShown: true,
+          title: '',
+          presentation: 'modal',
+          headerTransparent: true,
+          // A modal gets no back chevron, so it carries its own close control: a floating
+          // scrim pill, in-stack chrome owned by this remote. Swipe-down still works.
+          headerLeft: () => (
+            <Pressable
+              onPress={() => navigation.goBack()}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Close details"
+              className="h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
+              style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
+            </Pressable>
+          ),
+        })}
       />
     </Stack.Navigator>
   );

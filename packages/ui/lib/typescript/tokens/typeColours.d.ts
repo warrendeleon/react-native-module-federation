@@ -9,4 +9,6 @@ export declare function bgClassForType(type: string): string;
 export declare function tintBgClassForType(type: string): string;
 /** Foreground text class chosen for contrast against bgClassForType: 'text-white' or 'text-black'. */
 export declare function textOnTypeClass(type: string): 'text-white' | 'text-black';
+/** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
+export declare function borderClassForType(type: string): string;
 //# sourceMappingURL=typeColours.d.ts.map

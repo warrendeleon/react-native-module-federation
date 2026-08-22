@@ -16,12 +16,18 @@ const detailApi = baseApi.injectEndpoints({
       // One Pokémon by id. parsePokemonDetail validates the payload with Zod at the seam and keeps
       // only what the screen renders; the full PokéAPI payload is enormous.
       async queryFn(id, _api, _extra, baseQuery) {
-        const res = await baseQuery(`pokemon/${id}`);
+        // Two resources describe one Pokémon: the pokemon payload and its species entry, which
+        // carries the Pokédex flavour text. Fetched together; the species is decoration, so its
+        // failure degrades to a detail without a quote rather than an error screen.
+        const [res, speciesRes] = await Promise.all([
+          baseQuery(`pokemon/${id}`),
+          baseQuery(`pokemon-species/${id}`),
+        ]);
         if (res.error) {
           return { error: res.error };
         }
         try {
-          return { data: parsePokemonDetail(res.data) };
+          return { data: parsePokemonDetail(res.data, speciesRes.error ? undefined : speciesRes.data) };
         } catch (err) {
           return {
             error: {

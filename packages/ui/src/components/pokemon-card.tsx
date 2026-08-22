@@ -1,5 +1,6 @@
 import React from 'react';
 import { type ImageSourcePropType } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { tintBgClassForType } from '../tokens/typeColours';
 
@@ -39,6 +40,12 @@ export function PokemonCard({
   onPress,
   onRemove,
 }: PokemonCardProps) {
+  // Press feedback as a real spring rather than a static transform: the scale eases down on
+  // touch and springs back on release, on the UI thread.
+  const pressed = useSharedValue(0);
+  const springStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(pressed.value ? 0.96 : 1, { damping: 18, stiffness: 320 }) }],
+  }));
   const primaryType = types[0] ?? 'normal';
   const tintBg = tintBgClassForType(primaryType);
   const paddedId = String(id).padStart(3, '0');
@@ -68,8 +75,14 @@ export function PokemonCard({
           : undefined
       }
       className="active:opacity-90"
-      style={({ pressed }) => (pressed ? { transform: [{ scale: 0.97 }] } : undefined)}
+      onPressIn={() => {
+        pressed.value = 1;
+      }}
+      onPressOut={() => {
+        pressed.value = 0;
+      }}
     >
+      <Animated.View style={springStyle}>
       <Card className="items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
         {onRemove ? (
           <Pressable
@@ -95,7 +108,7 @@ export function PokemonCard({
             <Image source={source} resizeMode="contain" className="h-12 w-12" alt={name} />
           ) : null}
         </Box>
-        <Text bold size="md" className="mb-1.5 text-center text-black dark:text-white">
+        <Text size="md" className="mb-1.5 text-center font-head text-black dark:text-white">
           {name}
         </Text>
         <Box className="flex-row flex-wrap justify-center gap-1">
@@ -104,6 +117,7 @@ export function PokemonCard({
           ))}
         </Box>
       </Card>
+      </Animated.View>
     </Pressable>
   );
 }

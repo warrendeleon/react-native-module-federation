@@ -42,6 +42,10 @@ export interface PokemonDetail {
   weightKg: number;
   abilities: string[];
   stats: PokemonStat[];
+  // From the species endpoint, when the consumer fetches it: one Pokédex flavour entry,
+  // cleaned of the format's line-break control characters. Optional so a consumer that only
+  // has the pokemon payload still parses.
+  flavourText?: string;
 }
 
 // --- The runtime boundary the build-time contract cannot police. TypeScript checks that our code
@@ -135,12 +139,29 @@ export function parsePokemonList(raw: unknown): PokemonSummary[] {
   });
 }
 
+const PokemonSpeciesResponseSchema = z.object({
+  flavor_text_entries: z.array(
+    z.object({
+      flavor_text: z.string(),
+      language: z.object({ name: z.string() }),
+    }),
+  ),
+});
+
 /**
  * Validate a raw PokéAPI pokemon payload and shape it into the detail model. Same deal as the list:
- * throw on a bad shape, and let the endpoint surface it as a query error.
+ * throw on a bad shape, and let the endpoint surface it as a query error. The species payload is
+ * optional: pass it and the model gains the Pokédex flavour text.
  */
-export function parsePokemonDetail(raw: unknown): PokemonDetail {
+export function parsePokemonDetail(raw: unknown, speciesRaw?: unknown): PokemonDetail {
   const parsed = PokemonDetailResponseSchema.parse(raw);
+  let flavourText: string | undefined;
+  if (speciesRaw !== undefined) {
+    const species = PokemonSpeciesResponseSchema.parse(speciesRaw);
+    const entry = species.flavor_text_entries.find(e => e.language.name === 'en');
+    // The API preserves the games' own line breaks and page-feed characters; print prose.
+    flavourText = entry?.flavor_text.replace(/[\n\f\r]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
   return {
     id: parsed.id,
     name: formatName(parsed.name),
@@ -150,5 +171,6 @@ export function parsePokemonDetail(raw: unknown): PokemonDetail {
     weightKg: parsed.weight / 10,
     abilities: parsed.abilities.map(entry => formatName(entry.ability.name)),
     stats: parsed.stats.map(entry => ({ name: entry.stat.name, value: entry.base_stat })),
+    flavourText,
   };
 }

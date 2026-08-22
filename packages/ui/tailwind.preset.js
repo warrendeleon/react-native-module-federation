@@ -60,6 +60,15 @@ module.exports = {
         ...colours,
         type: typeColours,
       },
+      // The display typeface. gluestack's own text styles reference font-heading, so defining
+      // it here dresses every Heading in the system; body text deliberately stays the platform
+      // font. Nunito ships in each app binary (fonts are native assets and cannot arrive over
+      // the wire); these classes only name it.
+      fontFamily: {
+        heading: ['Nunito-ExtraBold'],
+        head: ['Nunito-Bold'],
+        semi: ['Nunito-SemiBold'],
+      },
     },
   },
 };

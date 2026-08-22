@@ -114,6 +114,26 @@ const TYPE_TINT_CLASS = {
   steel: 'bg-type-steel/30',
   fairy: 'bg-type-fairy/30'
 };
+const TYPE_BORDER_CLASS = {
+  normal: 'border-type-normal',
+  fire: 'border-type-fire',
+  water: 'border-type-water',
+  electric: 'border-type-electric',
+  grass: 'border-type-grass',
+  ice: 'border-type-ice',
+  fighting: 'border-type-fighting',
+  poison: 'border-type-poison',
+  ground: 'border-type-ground',
+  flying: 'border-type-flying',
+  psychic: 'border-type-psychic',
+  bug: 'border-type-bug',
+  rock: 'border-type-rock',
+  ghost: 'border-type-ghost',
+  dragon: 'border-type-dragon',
+  dark: 'border-type-dark',
+  steel: 'border-type-steel',
+  fairy: 'border-type-fairy'
+};
 
 /** Background class at full saturation: 'bg-type-fire'. */
 export function bgClassForType(type) {
@@ -128,5 +148,10 @@ export function tintBgClassForType(type) {
 /** Foreground text class chosen for contrast against bgClassForType: 'text-white' or 'text-black'. */
 export function textOnTypeClass(type) {
   return TYPE_TEXT_ON_BG[normaliseType(type)];
+}
+
+/** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
+export function borderClassForType(type) {
+  return TYPE_BORDER_CLASS[normaliseType(type)];
 }
 //# sourceMappingURL=typeColours.js.map

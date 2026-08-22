@@ -5,6 +5,8 @@ module.exports = {
   // against nativewind's jsx-runtime.
   plugins: [
     ['@babel/plugin-transform-react-jsx', { runtime: 'automatic', importSource: 'nativewind' }],
+    // Reanimated's worklet transform; must be the last plugin in the list.
+    'react-native-worklets/plugin',
   ],
   env: {
     test: {

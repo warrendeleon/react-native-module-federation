@@ -12,6 +12,8 @@ export interface StatBarProps {
      * a readable 20-75%.
      */
     max?: number;
+    /** Row position, used to stagger the fill animation down the list. */
+    index?: number;
 }
-export declare function StatBar({ label, value, colourType, max }: StatBarProps): React.JSX.Element;
+export declare function StatBar({ label, value, colourType, max, index }: StatBarProps): React.JSX.Element;
 //# sourceMappingURL=stat-bar.d.ts.map

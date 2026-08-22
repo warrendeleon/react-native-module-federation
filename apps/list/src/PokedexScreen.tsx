@@ -67,11 +67,11 @@ export default function PokedexScreen() {
         contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: insets.bottom + 8 }}
         ListHeaderComponent={
           <Box className="flex-row items-center justify-between px-1.5 py-2.5">
-            <Text size="sm" bold className="text-darkGrey dark:text-lightGrey">
+            <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
               My Party
             </Text>
             <Box className="rounded-full bg-lightGreen px-2.5 py-0.5 dark:bg-white/10">
-              <Text size="xs" bold className="text-darkGreen dark:text-pokemonGreen">
+              <Text size="xs" className="font-head text-darkGreen dark:text-pokemonGreen">
                 {partyCount}/{MAX_PARTY}
               </Text>
             </Box>

@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native';
 import type { PokemonDetail } from '@pokedex/contracts';
 import {
   bgClassForType,
+  borderClassForType,
   Box,
   Button,
   ButtonText,
@@ -96,7 +97,7 @@ export default function PokemonDetailView({
                 <Heading size="2xl" className="text-black">
                   {pokemon.name}
                 </Heading>
-                <Text size="sm" bold className="text-black/60">
+                <Text size="sm" className="font-head text-black/60">
                   #{String(pokemon.id).padStart(3, '0')}
                 </Text>
               </VStack>
@@ -109,6 +110,15 @@ export default function PokemonDetailView({
           </Center>
 
           <VStack space="2xl" className="px-4 pb-10">
+            {pokemon.flavourText ? (
+              <Box
+                className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm shadow-black/10 dark:border dark:border-l-4 dark:border-white/10 dark:bg-black ${borderClassForType(primary)}`}>
+                <Text size="sm" className="italic leading-6 text-darkGrey dark:text-lightGrey">
+                  {pokemon.flavourText}
+                </Text>
+              </Box>
+            ) : null}
+
             <VStack space="sm">
               <Text size="xs" bold className="uppercase tracking-widest text-midGrey">
                 Info
@@ -125,12 +135,13 @@ export default function PokemonDetailView({
                 Base Stats
               </Text>
               <Box className="rounded-2xl bg-white px-4 py-1.5 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
-                {pokemon.stats.map(stat => (
+                {pokemon.stats.map((stat, index) => (
                   <StatBar
                     key={stat.name}
                     label={STAT_LABELS[stat.name] ?? stat.name}
                     value={stat.value}
                     colourType={primary}
+                    index={index}
                   />
                 ))}
               </Box>

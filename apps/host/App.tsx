@@ -2,12 +2,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { Image, LayoutAnimation, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
-import {
-  DarkTheme,
-  DefaultTheme,
-  NavigationContainer,
-  getFocusedRouteNameFromRoute,
-} from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { baseApi, partyStateReady } from '@pokedex/contracts';
 import { colours, GluestackUIProvider, LoadingState } from '@pokedex/ui';
@@ -152,7 +147,12 @@ export default function App() {
         <GluestackUIProvider mode={mode}>
           <NavigationContainer theme={navTheme}>
             <Tab.Navigator
-              screenOptions={{ headerShown: false, tabBarActiveTintColor: colours.blue }}>
+              screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: colours.blue,
+                headerTitleStyle: { fontFamily: 'Nunito-ExtraBold', fontSize: 20 },
+                tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
+              }}>
               <Tab.Screen
                 name="Pokédex"
                 component={PokedexTab}
@@ -161,8 +161,13 @@ export default function App() {
                 // the stack is on the detail. 'PokemonDetail' is not a reach into the remote's
                 // internals: the route name is part of DetailParamList in @pokedex/contracts, the
                 // same agreement the params come from.
-                options={({ route }) => ({
-                  headerShown: getFocusedRouteNameFromRoute(route) !== 'PokemonDetail',
+                options={{
+                  // The shell bar is host chrome and it stays put. It used to hide while the
+                  // remote's stack sat on the detail route, but toggling shell chrome on a
+                  // remote's internal navigation unmounts the header mid-transition: the list
+                  // reflows to full bleed, slides headerless, and the bar pops back after the
+                  // settle. The detail now presents as a modal instead, so nothing toggles.
+                  headerShown: true,
                   // Outline glyph tinted by the navigator when idle; the full-colour filled
                   // pokéball when the tab is selected, untinted so it keeps its own colours.
                   tabBarIcon: ({ focused, color, size }) => (
@@ -182,7 +187,7 @@ export default function App() {
                       <RefreshButton />
                     </View>
                   ),
-                })}
+                }}
               />
               <Tab.Screen
                 name="Party"

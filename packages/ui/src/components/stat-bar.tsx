@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { bgClassForType } from '../tokens/typeColours';
 
@@ -24,10 +25,18 @@ export interface StatBarProps {
    * a readable 20-75%.
    */
   max?: number;
+  /** Row position, used to stagger the fill animation down the list. */
+  index?: number;
 }
 
-export function StatBar({ label, value, colourType, max = 200 }: StatBarProps) {
+export function StatBar({ label, value, colourType, max = 200, index = 0 }: StatBarProps) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
+  // The fill grows from zero on mount, each row a beat after the one above it.
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withDelay(index * 70, withTiming(1, { duration: 600 }));
+  }, [index, progress]);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${progress.value * pct}%` }));
   return (
     // One accessible element so a screen reader announces "Attack, 49" as a value, not three
     // separate text reads. progressbar is the role for a bar showing a magnitude; accessibilityValue
@@ -44,12 +53,13 @@ export function StatBar({ label, value, colourType, max = 200 }: StatBarProps) {
         {label}
       </Text>
       <Box className="mx-3 h-2 flex-1 overflow-hidden rounded-full bg-lightGrey dark:bg-darkGrey">
-        <Box
-          className={`h-full rounded-full ${bgClassForType(colourType)}`}
-          style={{ width: `${pct}%` }}
-        />
+        {/* Animated.View is not NativeWind-wrapped, so it only sizes; the colour class lives on
+            the Box inside it. */}
+        <Animated.View style={[{ height: '100%' }, fillStyle]}>
+          <Box className={`h-full w-full rounded-full ${bgClassForType(colourType)}`} />
+        </Animated.View>
       </Box>
-      <Text size="sm" bold className="w-8 text-right text-black dark:text-white">
+      <Text size="sm" className="w-8 text-right font-head text-black dark:text-white">
         {value}
       </Text>
     </Box>

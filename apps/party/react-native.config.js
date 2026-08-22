@@ -2,4 +2,7 @@
 // use Rspack (via rspack.config.mjs) instead of Metro.
 module.exports = {
   commands: require('@callstack/repack/commands/rspack'),
+  // The display typeface ships in each app binary; fonts are native assets, so a remote can
+  // use the family only because the host binary embeds it.
+  assets: ['../../assets/fonts'],
 };

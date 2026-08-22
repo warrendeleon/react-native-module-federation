@@ -1,6 +1,7 @@
 "use strict";
 
 import React from 'react';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { tintBgClassForType } from "../tokens/typeColours.js";
 import { Box } from "./ui/box/index.js";
 import { Card } from "./ui/card/index.js";
@@ -27,6 +28,17 @@ export function PokemonCard({
   onPress,
   onRemove
 }) {
+  // Press feedback as a real spring rather than a static transform: the scale eases down on
+  // touch and springs back on release, on the UI thread.
+  const pressed = useSharedValue(0);
+  const springStyle = useAnimatedStyle(() => ({
+    transform: [{
+      scale: withSpring(pressed.value ? 0.96 : 1, {
+        damping: 18,
+        stiffness: 320
+      })
+    }]
+  }));
   const primaryType = types[0] ?? 'normal';
   const tintBg = tintBgClassForType(primaryType);
   const paddedId = String(id).padStart(3, '0');
@@ -54,55 +66,56 @@ export function PokemonCard({
       if (event.nativeEvent.actionName === 'remove') onRemove();
     } : undefined,
     className: "active:opacity-90",
-    style: ({
-      pressed
-    }) => pressed ? {
-      transform: [{
-        scale: 0.97
-      }]
-    } : undefined,
-    children: /*#__PURE__*/_jsxs(Card, {
-      className: "items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
-      children: [onRemove ? /*#__PURE__*/_jsx(Pressable, {
-        onPress: onRemove,
-        accessible: false,
-        importantForAccessibility: "no-hide-descendants",
-        accessibilityElementsHidden: true,
-        hitSlop: 10,
-        className: "absolute right-1.5 top-1.5 z-10 h-6 w-6 items-center justify-center rounded-full bg-red active:opacity-70",
-        children: /*#__PURE__*/_jsx(Text, {
-          size: "xs",
-          bold: true,
-          className: "text-white",
-          children: "\u2715"
-        })
-      }) : null, /*#__PURE__*/_jsx(Box, {
-        className: "mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10",
-        children: /*#__PURE__*/_jsx(Text, {
-          size: "xs",
-          className: "text-midGrey",
-          children: idLabel
-        })
-      }), /*#__PURE__*/_jsx(Box, {
-        className: `mb-2 h-16 w-16 items-center justify-center rounded-full ${tintBg}`,
-        children: source ? /*#__PURE__*/_jsx(Image, {
-          source: source,
-          resizeMode: "contain",
-          className: "h-12 w-12",
-          alt: name
-        }) : null
-      }), /*#__PURE__*/_jsx(Text, {
-        bold: true,
-        size: "md",
-        className: "mb-1.5 text-center text-black dark:text-white",
-        children: name
-      }), /*#__PURE__*/_jsx(Box, {
-        className: "flex-row flex-wrap justify-center gap-1",
-        children: types.map(t => /*#__PURE__*/_jsx(TypeBadge, {
-          type: t,
-          size: "xs"
-        }, t))
-      })]
+    onPressIn: () => {
+      pressed.value = 1;
+    },
+    onPressOut: () => {
+      pressed.value = 0;
+    },
+    children: /*#__PURE__*/_jsx(Animated.View, {
+      style: springStyle,
+      children: /*#__PURE__*/_jsxs(Card, {
+        className: "items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
+        children: [onRemove ? /*#__PURE__*/_jsx(Pressable, {
+          onPress: onRemove,
+          accessible: false,
+          importantForAccessibility: "no-hide-descendants",
+          accessibilityElementsHidden: true,
+          hitSlop: 10,
+          className: "absolute right-1.5 top-1.5 z-10 h-6 w-6 items-center justify-center rounded-full bg-red active:opacity-70",
+          children: /*#__PURE__*/_jsx(Text, {
+            size: "xs",
+            bold: true,
+            className: "text-white",
+            children: "\u2715"
+          })
+        }) : null, /*#__PURE__*/_jsx(Box, {
+          className: "mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10",
+          children: /*#__PURE__*/_jsx(Text, {
+            size: "xs",
+            className: "text-midGrey",
+            children: idLabel
+          })
+        }), /*#__PURE__*/_jsx(Box, {
+          className: `mb-2 h-16 w-16 items-center justify-center rounded-full ${tintBg}`,
+          children: source ? /*#__PURE__*/_jsx(Image, {
+            source: source,
+            resizeMode: "contain",
+            className: "h-12 w-12",
+            alt: name
+          }) : null
+        }), /*#__PURE__*/_jsx(Text, {
+          size: "md",
+          className: "mb-1.5 text-center font-head text-black dark:text-white",
+          children: name
+        }), /*#__PURE__*/_jsx(Box, {
+          className: "flex-row flex-wrap justify-center gap-1",
+          children: types.map(t => /*#__PURE__*/_jsx(TypeBadge, {
+            type: t,
+            size: "xs"
+          }, t))
+        })]
+      })
     })
   });
 }

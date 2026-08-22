@@ -1,6 +1,7 @@
 "use strict";
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { bgClassForType } from "../tokens/typeColours.js";
 import { Box } from "./ui/box/index.js";
 import { Text } from "./ui/text/index.js";
@@ -15,9 +16,20 @@ export function StatBar({
   label,
   value,
   colourType,
-  max = 200
+  max = 200,
+  index = 0
 }) {
   const pct = Math.max(0, Math.min(100, value / max * 100));
+  // The fill grows from zero on mount, each row a beat after the one above it.
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withDelay(index * 70, withTiming(1, {
+      duration: 600
+    }));
+  }, [index, progress]);
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * pct}%`
+  }));
   return (
     /*#__PURE__*/
     // One accessible element so a screen reader announces "Attack, 49" as a value, not three
@@ -38,16 +50,17 @@ export function StatBar({
         children: label
       }), /*#__PURE__*/_jsx(Box, {
         className: "mx-3 h-2 flex-1 overflow-hidden rounded-full bg-lightGrey dark:bg-darkGrey",
-        children: /*#__PURE__*/_jsx(Box, {
-          className: `h-full rounded-full ${bgClassForType(colourType)}`,
-          style: {
-            width: `${pct}%`
-          }
+        children: /*#__PURE__*/_jsx(Animated.View, {
+          style: [{
+            height: '100%'
+          }, fillStyle],
+          children: /*#__PURE__*/_jsx(Box, {
+            className: `h-full w-full rounded-full ${bgClassForType(colourType)}`
+          })
         })
       }), /*#__PURE__*/_jsx(Text, {
         size: "sm",
-        bold: true,
-        className: "w-8 text-right text-black dark:text-white",
+        className: "w-8 text-right font-head text-black dark:text-white",
         children: value
       })]
     })
