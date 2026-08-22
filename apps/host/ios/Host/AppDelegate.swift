@@ -22,12 +22,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeFactory = factory
 
     window = UIWindow(frame: UIScreen.main.bounds)
+    // The launch screen's navy carries through the JS boot: without this the window flashes
+    // white between the splash and React's first frame.
+    let navy = UIColor(red: 0x0F / 255.0, green: 0x17 / 255.0, blue: 0x2A / 255.0, alpha: 1)
+    window?.backgroundColor = navy
 
     factory.startReactNative(
       withModuleName: "Host",
       in: window,
       launchOptions: launchOptions
     )
+    window?.rootViewController?.view.backgroundColor = navy
 
     return true
   }

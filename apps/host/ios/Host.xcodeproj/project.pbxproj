@@ -10,6 +10,9 @@
 		0C80B921A6F3F58F76C31292 /* libPods-Host.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2D62905F9E884905ABD10F13 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87A9602612134B4B894CF528 /* Nunito-Bold.ttf */; };
+		SB200000000000000000B001 /* splashball.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A001 /* splashball.png */; };
+		SB200000000000000000B002 /* splashball@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A002 /* splashball@2x.png */; };
+		SB200000000000000000B003 /* splashball@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A003 /* splashball@3x.png */; };
 		5655C07F8EDC4751BAB253BB /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63246A10DDF249FE813A00BB /* Nunito-ExtraBold.ttf */; };
 		5E234D2C80EC4C229FBBCDE0 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 072201B4BA164A5B859ED286 /* Nunito-SemiBold.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -30,6 +33,9 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Host/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Host/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		87A9602612134B4B894CF528 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nunito-Bold.ttf"; path = "../../../assets/fonts/Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		SB100000000000000000A001 /* splashball.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball.png"; path = "Host/splashball.png"; sourceTree = "<group>"; };
+		SB100000000000000000A002 /* splashball@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball@2x.png"; path = "Host/splashball@2x.png"; sourceTree = "<group>"; };
+		SB100000000000000000A003 /* splashball@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball@3x.png"; path = "Host/splashball@3x.png"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -72,6 +78,9 @@
 				63246A10DDF249FE813A00BB /* Nunito-ExtraBold.ttf */,
 				072201B4BA164A5B859ED286 /* Nunito-SemiBold.ttf */,
 				87A9602612134B4B894CF528 /* Nunito-Bold.ttf */,
+				SB100000000000000000A001 /* splashball.png */,
+				SB100000000000000000A002 /* splashball@2x.png */,
+				SB100000000000000000A003 /* splashball@3x.png */,
 			);
 			name = Resources;
 			path = "";
@@ -182,6 +191,9 @@
 				5655C07F8EDC4751BAB253BB /* Nunito-ExtraBold.ttf in Resources */,
 				5E234D2C80EC4C229FBBCDE0 /* Nunito-SemiBold.ttf in Resources */,
 				2D62905F9E884905ABD10F13 /* Nunito-Bold.ttf in Resources */,
+				SB200000000000000000B001 /* splashball.png in Resources */,
+				SB200000000000000000B002 /* splashball@2x.png in Resources */,
+				SB200000000000000000B003 /* splashball@3x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

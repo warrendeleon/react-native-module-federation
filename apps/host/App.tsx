@@ -1,5 +1,6 @@
-import React, { Suspense, useEffect } from 'react';
-import { Image } from 'react-native';
+import React, { Suspense, useEffect, useState } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
+import Animated, { FadeOut } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
@@ -38,6 +39,31 @@ function withSuspense(Remote: React.ComponentType) {
 
 const PokedexTab = withSuspense(ListStack);
 const PartyTab = withSuspense(PartyStack);
+
+// The branded splash as the app's own first frame: the launch storyboard carries the same
+// navy and ball, but this overlay guarantees the mark shows on every runtime, then fades
+// once the shell has had a beat to settle. Native code cannot arrive over the wire, and
+// neither can this: the ball ships as a host asset.
+function Splash({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 900);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <Animated.View exiting={FadeOut.duration(350)} style={[StyleSheet.absoluteFill, splashStyles.field]}>
+      <Image
+        source={require('./src/assets/splash-ball.png')}
+        style={splashStyles.ball}
+        resizeMode="contain"
+      />
+    </Animated.View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  field: { backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  ball: { width: 128, height: 128 },
+});
 
 const Tab = createBottomTabNavigator();
 
@@ -98,6 +124,8 @@ export default function App() {
       .catch(err => console.warn('party state module failed to load', err));
   }, []);
 
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
     <Provider store={store}>
       <SafeAreaProvider>
@@ -146,6 +174,7 @@ export default function App() {
                 }}
               />
             </Tab.Navigator>
+            {splashDone ? null : <Splash onDone={() => setSplashDone(true)} />}
           </NavigationContainer>
         </GluestackUIProvider>
       </SafeAreaProvider>
