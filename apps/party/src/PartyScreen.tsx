@@ -14,8 +14,8 @@ import type { PartyParamList } from './routes';
 // undefined here. (Importing `remove` above also runs partySlice.ts, so opening this tab injects
 // the slice as a side effect; the host's boot import exists so nobody has to rely on that.)
 //
-// The Party tab is the design system's dark surface: ScreenContainer's dark variant paints the
-// navy, members render as the same PokemonCard the Pokédex uses — same component, same singleton
+// The Party tab rides the colour scheme like every other surface: offWhite in light, navy in
+// dark, members as the same PokemonCard the Pokédex uses — same component, same singleton
 // instance at runtime — and the empty slots keep their dashed outline as token classes.
 export default function PartyScreen() {
   const insets = useSafeAreaInsets();
@@ -34,17 +34,17 @@ export default function PartyScreen() {
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => members[i]);
 
   return (
-    <ScreenContainer variant="dark">
+    <ScreenContainer>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}>
-        <Heading size="xl" className="text-white">
+        <Heading size="xl" className="text-black dark:text-white">
           Party{' '}
-          <Heading size="xl" className="text-pokemonGreen">
+          <Heading size="xl" className="text-darkGreen dark:text-pokemonGreen">
             {members.length}/{MAX_PARTY}
           </Heading>
         </Heading>
-        <Text size="sm" className="mb-5 mt-1 text-lightGrey">
+        <Text size="sm" className="mb-5 mt-1 text-darkGrey dark:text-lightGrey">
           {members.length === 0
             ? 'Your party is empty. Add up to 6 Pokémon from the Pokédex.'
             : 'Tap a Pokémon for its detail, or remove it to free the slot.'}
