@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, LayoutAnimation, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
 import {
@@ -90,7 +90,13 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   const [mode, setMode] = useState<'light' | 'dark'>('light');
-  const toggle = () => setMode(m => (m === 'light' ? 'dark' : 'light'));
+  // The flip itself is instant (the shared styling runtime swaps schemes in one render);
+  // wrapping the next layout pass in an ease gives every bundle a soft cross-fade instead
+  // of a snap — one line of host chrome polish, no remote knows it happened.
+  const toggle = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMode(m => (m === 'light' ? 'dark' : 'light'));
+  };
 
   // The navigation chrome rides the same host state as the styling runtime: headers and the
   // tab bar are host-owned, so the host themes them, mapped to the design system's tokens.

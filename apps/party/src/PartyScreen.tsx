@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import { LayoutAnimation, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +22,13 @@ export default function PartyScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
   const dispatch = useDispatch();
   const members = useSelector((s: PartySliceShape) => s.party?.members ?? []);
+
+  // A member arriving or leaving animates the grid into its new shape: the next render after
+  // the store changes is wrapped in a spring. The write itself still crosses the seam as a
+  // plain action; the motion is presentation, owned by this screen.
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+  }, [members.length]);
 
   // Six slots: the first `members.length` filled, the rest dashed placeholders.
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => members[i]);

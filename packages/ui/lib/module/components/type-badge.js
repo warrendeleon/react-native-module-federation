@@ -17,14 +17,16 @@ export function TypeBadge({
 }) {
   const bg = surface === 'hero' ? 'bg-white/30' : bgClassForType(type);
   const fg = surface === 'hero' ? 'text-black' : textOnTypeClass(type);
-  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-1.5 py-0.5';
-  const textSize = size === 'md' ? 'sm' : size === 'sm' ? 'xs' : '2xs';
+  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
+  const textSize = size === 'md' ? 'sm' : 'xs';
+  // The card-sized badge drops bold for a medium weight: at this scale bold fills the pill
+  // and reads cramped. sm and md keep the reference's bold.
+  const weight = size === 'xs' ? 'font-medium' : 'font-bold';
   return /*#__PURE__*/_jsx(Box, {
     className: `self-start rounded-full ${padding} ${bg}`,
     children: /*#__PURE__*/_jsx(Text, {
       size: textSize,
-      bold: true,
-      className: `capitalize ${fg}`,
+      className: `capitalize ${weight} ${fg}`,
       children: type
     })
   });

@@ -24,11 +24,14 @@ export interface TypeBadgeProps {
 export function TypeBadge({ type, size = 'sm', surface = 'card' }: TypeBadgeProps) {
   const bg = surface === 'hero' ? 'bg-white/30' : bgClassForType(type);
   const fg = surface === 'hero' ? 'text-black' : textOnTypeClass(type);
-  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-1.5 py-0.5';
-  const textSize = size === 'md' ? 'sm' : size === 'sm' ? 'xs' : '2xs';
+  const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
+  const textSize = size === 'md' ? 'sm' : 'xs';
+  // The card-sized badge drops bold for a medium weight: at this scale bold fills the pill
+  // and reads cramped. sm and md keep the reference's bold.
+  const weight = size === 'xs' ? 'font-medium' : 'font-bold';
   return (
     <Box className={`self-start rounded-full ${padding} ${bg}`}>
-      <Text size={textSize} bold className={`capitalize ${fg}`}>
+      <Text size={textSize} className={`capitalize ${weight} ${fg}`}>
         {type}
       </Text>
     </Box>

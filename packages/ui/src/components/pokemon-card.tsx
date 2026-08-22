@@ -67,7 +67,8 @@ export function PokemonCard({
             }
           : undefined
       }
-      className="active:opacity-80"
+      className="active:opacity-90"
+      style={({ pressed }) => (pressed ? { transform: [{ scale: 0.97 }] } : undefined)}
     >
       <Card className="items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
         {onRemove ? (

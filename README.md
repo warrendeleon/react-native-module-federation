@@ -14,6 +14,8 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
 | `post-06-shared-store` | One shared store | The contract package exports one RTK Query instance; the host builds a store around it and the Pokédex domain injects its live PokéAPI endpoints into the one shared cache |
 | `post-08-client-state` | Client state across the seam | The party app injects its own slice into the shared store at runtime; the contract carries the one action that crosses; the detail view gains an optional Add button its consumers wire |
+| `post-10-two-backends` | Two backends, one client? | A GraphQL endpoint joins the REST one in the same api slice via queryFn; both provide the same tag, so the host's one Refresh press refetches both protocols |
+| `post-11-design-system` | The design system as a federated singleton | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.0; one host toggle re-themes every bundle |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -26,7 +28,8 @@ apps/
 └── party/    a federated remote; exposes the Party stack
 packages/
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
-└── detail/     @pokedex/detail — the Pokémon detail view as a versioned component; presentational, fed by each consumer's own container
+├── detail/     @pokedex/detail — the Pokémon detail view as a versioned component; presentational, fed by each consumer's own container
+└── ui/         @pokedex/ui — the design system: gluestack-ui copy-in primitives, colour tokens and composed components, shared at runtime as a host-provided singleton
 ```
 
 ## Quick start
@@ -81,7 +84,7 @@ The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, w
 
 ```mermaid
 flowchart TD
-    registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail")]
+    registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail · @pokedex/ui")]
     pokeapi(["PokéAPI"])
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]
@@ -99,7 +102,7 @@ flowchart TD
     list ==>|"injects getPokemonList + getPokemonDetail<br/>dispatches addToParty · reads the count"| store
     party ==>|"injects the party slice + its own getPokemonDetail"| store
     store <-->|"fetches through baseQuery"| pokeapi
-    registry -->|"contracts, installed by version"| host
-    registry -->|"contracts + the detail view"| list
-    registry -->|"contracts + the detail view"| party
+    registry -->|"contracts + ui, installed by version"| host
+    registry -->|"contracts + ui + the detail view"| list
+    registry -->|"contracts + ui + the detail view"| party
 ```

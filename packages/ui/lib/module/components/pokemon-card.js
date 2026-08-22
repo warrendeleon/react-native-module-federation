@@ -53,7 +53,14 @@ export function PokemonCard({
     onAccessibilityAction: onRemove ? event => {
       if (event.nativeEvent.actionName === 'remove') onRemove();
     } : undefined,
-    className: "active:opacity-80",
+    className: "active:opacity-90",
+    style: ({
+      pressed
+    }) => pressed ? {
+      transform: [{
+        scale: 0.97
+      }]
+    } : undefined,
     children: /*#__PURE__*/_jsxs(Card, {
       className: "items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
       children: [onRemove ? /*#__PURE__*/_jsx(Pressable, {
