@@ -9,7 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
-import { BackPill, Box, ThemeToggle } from '@pokedex/ui';
+import { BackPill, Box, ThemeToggle, toast } from '@pokedex/ui';
 import { addToParty, MAX_PARTY, type DetailParams, type PartySliceShape } from '@pokedex/contracts';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { ListParamList } from './routes';
@@ -48,12 +48,20 @@ function PokemonDetailRoute({
       loading={isLoading}
       error={isError}
       onRetry={refetch}
-      onAddToParty={() =>
-        data &&
+      onAddToParty={() => {
+        if (!data) {
+          return;
+        }
         dispatch(
           addToParty({ id: data.id, name: data.name, spriteUri: data.spriteUri, types: data.types }),
-        )
-      }
+        );
+        // Confirmation is this consumer's job — it owns the write, so it owns the feedback.
+        // toast() reaches the host's Toaster through the shared singleton, sprite and all.
+        toast(`${data.name} joined your party`, {
+          spriteUri: data.spriteUri,
+          accentType: data.types[0],
+        });
+      }}
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}
     />

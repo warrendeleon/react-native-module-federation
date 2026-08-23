@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
-import { Box, EmptySlot, PokemonCard, ScreenContainer, Text } from '@pokedex/ui';
+import { Box, EmptySlot, PokemonCard, ScreenContainer, Text, toast } from '@pokedex/ui';
 import { remove } from './partySlice';
 import type { PartyParamList } from './routes';
 
@@ -64,7 +64,15 @@ export default function PartyScreen() {
                   types={member.types}
                   spriteUri={member.spriteUri}
                   onPress={() => navigation.navigate('PokemonDetail', { id: member.id })}
-                  onRemove={() => dispatch(remove(member.uid))}
+                  onRemove={() => {
+                    dispatch(remove(member.uid));
+                    // The owner confirms its own write the same way the list confirms its
+                    // add: one toast() into the shared singleton, shown by the host.
+                    toast(`${member.name} left your party`, {
+                      spriteUri: member.spriteUri,
+                      accentType: member.types[0],
+                    });
+                  }}
                 />
               </Box>
             ) : (

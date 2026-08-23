@@ -1,12 +1,12 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Animated, { FadeOut } from 'react-native-reanimated';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { partyStateReady } from '@pokedex/contracts';
-import { colours, GluestackUIProvider, LoadingState } from '@pokedex/ui';
+import { colours, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
 import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
@@ -83,6 +83,14 @@ const splashStyles = StyleSheet.create({
   field: { alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   ball: { width: 128, height: 128 },
 });
+
+// The one Toaster in the runtime, floated clear of the tab bar. Remotes never mount this;
+// they call toast() on the shared singleton and this instance shows it — the host owns the
+// chrome, including the transient kind.
+function ShellToaster() {
+  const insets = useSafeAreaInsets();
+  return <Toaster bottomOffset={insets.bottom + 49 + 12} />;
+}
 
 const Tab = createBottomTabNavigator();
 
@@ -195,6 +203,7 @@ export default function App() {
               />
             </Tab.Navigator>
           </NavigationContainer>
+          <ShellToaster />
           {/* The splash sits OUTSIDE the NavigationContainer: the remotes' native headers are
               UIKit views that draw above any zIndex inside the container, so an overlay inside
               it leaves the header's controls poking through the brand moment. As a later

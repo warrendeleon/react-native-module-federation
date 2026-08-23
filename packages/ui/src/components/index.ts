@@ -8,3 +8,4 @@ export { StatBar, type StatBarProps } from './stat-bar';
 export { ThemeToggle, type ThemeToggleProps } from './theme-toggle';
 export { EmptySlot, type EmptySlotProps } from './empty-slot';
 export { BackPill, type BackPillProps } from './back-pill';
+export { toast, Toaster, type ToastOptions, type ToasterProps } from './toast';
