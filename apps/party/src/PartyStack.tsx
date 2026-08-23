@@ -33,8 +33,18 @@ function PokemonDetailRoute({
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel="Close details"
-        className="absolute left-4 top-4 h-9 w-9 items-center justify-center rounded-full bg-white/75 active:opacity-70"
-        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}>
+        style={{
+          position: 'absolute',
+          top: 14,
+          left: 16,
+          height: 36,
+          width: 36,
+          borderRadius: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255,255,255,0.8)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+        }}>
         <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
       </Pressable>
     </Box>
