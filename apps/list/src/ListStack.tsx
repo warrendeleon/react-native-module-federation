@@ -8,6 +8,7 @@ import React from 'react';
 import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
 import { Box, ThemeToggle } from '@pokedex/ui';
 import { addToParty, MAX_PARTY, type DetailParams, type PartySliceShape } from '@pokedex/contracts';
@@ -35,6 +36,7 @@ function PokemonDetailRoute({
   navigation: { goBack: () => void };
 }) {
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const members = useSelector((s: PartySliceShape) => s.party?.members);
   const partyReady = members !== undefined;
@@ -63,7 +65,7 @@ function PokemonDetailRoute({
         accessibilityLabel="Close details"
         style={{
           position: 'absolute',
-          top: 14,
+          top: insets.top + 6,
           left: 16,
           height: 36,
           width: 36,
@@ -106,11 +108,7 @@ export default function ListStack() {
       <Stack.Screen
         name="PokemonDetail"
         component={PokemonDetailRoute}
-        // A modal, not a push: it slides over the shell (tab bar included) as a separate view
-        // controller, so the host's bar never toggles for a route this stack owns. And no nav
-        // header at all: iOS paints a scroll-edge fade under a transparent header, which read
-        // as a gradient on the hero. The route's container overlays its own close control.
-        options={{ headerShown: false, presentation: 'modal' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

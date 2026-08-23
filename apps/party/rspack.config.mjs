@@ -124,6 +124,16 @@ export default Repack.defineRspackConfig(env => {
             singleton: true,
             requiredVersion: pkg.dependencies.nativewind,
           },
+          // The animation runtime, consumed from the host: native view registrations are global,
+          // so a second copy here would register the same names twice.
+          'react-native-reanimated': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['react-native-reanimated'],
+          },
+          'react-native-worklets': {
+            singleton: true,
+            requiredVersion: pkg.dependencies['react-native-worklets'],
+          },
         },
       }),
     ],

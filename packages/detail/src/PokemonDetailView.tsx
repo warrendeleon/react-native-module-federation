@@ -1,5 +1,14 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import type { PokemonDetail } from '@pokedex/contracts';
 import {
   bgClassForType,
@@ -7,7 +16,6 @@ import {
   Box,
   Button,
   ButtonText,
-  Center,
   ErrorState,
   Heading,
   HStack,
@@ -16,6 +24,7 @@ import {
   LoadingState,
   ScreenContainer,
   StatBar,
+  colours,
   Text,
   TypeBadge,
   VStack,
@@ -28,9 +37,11 @@ import {
 // import.
 //
 // 4.0.0 dresses the view in the design system: every colour is a token class resolved from the
-// shared @pokedex/ui singleton, and the layout is the full detail design (type-tinted hero, Info
-// rows, Base Stats bars). The props seam is unchanged from 3.x, which is why both containers
-// survive this major with nothing but a version bump.
+// shared @pokedex/ui singleton, and the layout is the full detail design: a full-bleed hero that
+// runs under the status bar and parallaxes as the sheet of cards scrolls over it, a compact title
+// that fades in once the name has scrolled away, the Pokédex entry, Info rows, Base Stats bars.
+// The props seam is unchanged from 3.x, which is why both containers survive this major with
+// nothing but a version bump.
 export interface PokemonDetailViewProps {
   pokemon?: PokemonDetail;
   loading: boolean;
@@ -52,6 +63,9 @@ const STAT_LABELS: Record<string, string> = {
   speed: 'Speed',
 };
 
+const HERO_HEIGHT = 380;
+const COMPACT_BAR = 52;
+
 export default function PokemonDetailView({
   pokemon,
   loading,
@@ -61,6 +75,37 @@ export default function PokemonDetailView({
   addDisabled,
   addLabel,
 }: PokemonDetailViewProps) {
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const { colorScheme } = useColorScheme();
+  const surface = colorScheme === 'dark' ? colours.navy : colours.offWhite;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler(event => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  // The hero lags the sheet (parallax) and stretches on overscroll; the compact title bar fades
+  // in as the name scrolls out from under it. All on the UI thread.
+  const heroStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(scrollY.value, [-240, 0, HERO_HEIGHT], [-120, 0, HERO_HEIGHT * 0.3], Extrapolation.CLAMP),
+      },
+      { scale: interpolate(scrollY.value, [-240, 0], [1.3, 1], Extrapolation.CLAMP) },
+    ],
+  }));
+  const compactStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [HERO_HEIGHT - 24 - COMPACT_BAR - 60, HERO_HEIGHT - 24 - COMPACT_BAR],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+  }));
+  const ghostStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
+  }));
+
   if (loading) {
     return (
       <ScreenContainer edges={[]}>
@@ -78,38 +123,52 @@ export default function PokemonDetailView({
   }
 
   const primary = pokemon.types[0] ?? 'normal';
+  const dexNumber = `#${String(pokemon.id).padStart(3, '0')}`;
+  const topInset = insets.top;
 
   return (
     <ScreenContainer edges={[]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <VStack space="2xl">
-          <Center className={`py-8 ${bgClassForType(primary)}`}>
-            <VStack space="lg" className="items-center">
-              <Box className="rounded-full bg-white/25 p-5">
-                <Image
-                  source={{ uri: pokemon.spriteUri }}
-                  alt={pokemon.name}
-                  size="xl"
-                  resizeMode="contain"
-                />
-              </Box>
-              <VStack space="xs" className="items-center">
-                <Heading size="2xl" className="text-black">
-                  {pokemon.name}
-                </Heading>
-                <Text size="sm" className="font-head text-black/60">
-                  #{String(pokemon.id).padStart(3, '0')}
-                </Text>
-              </VStack>
-              <HStack space="sm">
-                {pokemon.types.map(type => (
-                  <TypeBadge key={type} type={type} size="md" surface="hero" />
-                ))}
-              </HStack>
+      {/* The hero sits behind the scroll view and runs under the status bar. */}
+      <Animated.View style={[styles.hero, { height: HERO_HEIGHT + topInset }, heroStyle]}>
+        <Box className={`flex-1 ${bgClassForType(primary)}`}>
+          {/* Depth without a gradient: the dex number as a large ghost numeral behind the
+              sprite, fading as the sheet arrives. */}
+          <Animated.View style={[styles.ghostWrap, { top: topInset + 28 }, ghostStyle]}>
+            <Text style={styles.ghostNumeral}>{dexNumber}</Text>
+          </Animated.View>
+          <VStack space="lg" className="flex-1 items-center justify-end pb-9" style={{ paddingTop: topInset }}>
+            <Box className="rounded-full border-2 border-white/50 bg-white/35 p-5">
+              <Image source={{ uri: pokemon.spriteUri }} alt={pokemon.name} size="xl" resizeMode="contain" />
+            </Box>
+            <VStack space="xs" className="items-center">
+              <Heading size="2xl" className="text-black">
+                {pokemon.name}
+              </Heading>
+              <Text size="sm" className="font-head text-black/60">
+                {dexNumber}
+              </Text>
             </VStack>
-          </Center>
+            <HStack space="sm">
+              {pokemon.types.map(type => (
+                <TypeBadge key={type} type={type} size="md" surface="hero" />
+              ))}
+            </HStack>
+          </VStack>
+        </Box>
+      </Animated.View>
 
-          <VStack space="2xl" className="px-4 pb-10">
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: HERO_HEIGHT + topInset - 24 }}>
+        {/* The sheet: rounded top edge over the hero, the surface colour of the scheme. Its
+            minimum height is the viewport below the compact bar, so the sheet can always travel
+            up to the bar and the hero collapses fully, with no dead space past the content. */}
+        <Box
+          className="rounded-t-3xl bg-offWhite dark:bg-navy"
+          style={{ minHeight: windowHeight - topInset - COMPACT_BAR + 24 }}>
+          <VStack space="2xl" className="px-4 pb-12 pt-6">
             {pokemon.flavourText ? (
               <Box
                 className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm shadow-black/10 dark:border dark:border-l-4 dark:border-white/10 dark:bg-black ${borderClassForType(primary)}`}>
@@ -154,22 +213,42 @@ export default function PokemonDetailView({
                 size="lg"
                 className={`rounded-xl ${addDisabled ? 'bg-lightGrey' : 'bg-pokemonGreen'}`}
                 style={{ alignSelf: 'stretch' }}
-                accessibilityRole="button"
-              >
+                accessibilityRole="button">
                 <ButtonText className={addDisabled ? 'text-midGrey' : 'text-black'}>
                   {addLabel ?? 'Add to party'}
                 </ButtonText>
               </Button>
             ) : null}
-
-            <Box className="items-center">
-              <Text size="xs" className="text-midGrey/70">
-                Served by @pokedex/detail
-              </Text>
-            </Box>
           </VStack>
-        </VStack>
-      </ScrollView>
+        </Box>
+      </Animated.ScrollView>
+
+      {/* Compact title: appears once the hero's name has scrolled away. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.compact,
+          { height: topInset + COMPACT_BAR, paddingTop: topInset, backgroundColor: surface },
+          compactStyle,
+        ]}>
+        <Box className="h-full items-center justify-center border-b border-lightGrey/60 dark:border-white/10">
+          <Text size="md" className="font-head text-black dark:text-white">
+            {pokemon.name}
+          </Text>
+        </Box>
+      </Animated.View>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: { position: 'absolute', top: 0, left: 0, right: 0 },
+  ghostWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  ghostNumeral: {
+    fontFamily: 'Nunito-ExtraBold',
+    fontSize: 132,
+    lineHeight: 140,
+    color: 'rgba(0,0,0,0.08)',
+  },
+  compact: { position: 'absolute', top: 0, left: 0, right: 0 },
+});

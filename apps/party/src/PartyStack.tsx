@@ -7,6 +7,7 @@ import '../global.css';
 import React from 'react';
 import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { DetailParams } from '@pokedex/contracts';
@@ -25,6 +26,7 @@ function PokemonDetailRoute({
   navigation: { goBack: () => void };
 }) {
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
+  const insets = useSafeAreaInsets();
   return (
     <Box className="flex-1">
       <PokemonDetailView pokemon={data} loading={isLoading} error={isError} onRetry={refetch} />
@@ -35,7 +37,7 @@ function PokemonDetailRoute({
         accessibilityLabel="Close details"
         style={{
           position: 'absolute',
-          top: 14,
+          top: insets.top + 6,
           left: 16,
           height: 36,
           width: 36,
@@ -75,10 +77,7 @@ export default function PartyStack() {
       <Stack.Screen
         name="PokemonDetail"
         component={PokemonDetailRoute}
-        // Same modal shape as the list's detail: separate view controller over the shell, no
-        // nav header (iOS paints a scroll-edge fade under a transparent one), the container
-        // overlays the close control.
-        options={{ headerShown: false, presentation: 'modal' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

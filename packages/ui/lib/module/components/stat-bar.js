@@ -16,7 +16,7 @@ export function StatBar({
   label,
   value,
   colourType,
-  max = 200,
+  max = 160,
   index = 0
 }) {
   const pct = Math.max(0, Math.min(100, value / max * 100));
@@ -48,16 +48,21 @@ export function StatBar({
         size: "sm",
         className: "w-[72px] text-darkGrey dark:text-lightGrey",
         children: label
-      }), /*#__PURE__*/_jsx(Box, {
+      }), /*#__PURE__*/_jsxs(Box, {
         className: "mx-3 h-2 flex-1 overflow-hidden rounded-full bg-lightGrey dark:bg-darkGrey",
-        children: /*#__PURE__*/_jsx(Animated.View, {
+        children: [/*#__PURE__*/_jsx(Animated.View, {
           style: [{
             height: '100%'
           }, fillStyle],
           children: /*#__PURE__*/_jsx(Box, {
             className: `h-full w-full rounded-full ${bgClassForType(colourType)}`
           })
-        })
+        }), max > 100 ? /*#__PURE__*/_jsx(Box, {
+          className: "absolute top-0 h-full w-px bg-darkGrey/40 dark:bg-white/40",
+          style: {
+            left: `${100 / max * 100}%`
+          }
+        }) : null]
       }), /*#__PURE__*/_jsx(Text, {
         size: "sm",
         className: "w-8 text-right font-head text-black dark:text-white",

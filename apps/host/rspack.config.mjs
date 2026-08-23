@@ -135,6 +135,20 @@ export default Repack.defineRspackConfig(env => {
             eager: true,
             requiredVersion: pkg.dependencies.nativewind,
           },
+          // The animation runtime passes the same identity test: reanimated and its worklets
+          // runtime register native views and a worklet runtime once per process, so a second
+          // JS copy in a remote registers the same native name twice and the app dies at load.
+          // One copy, provided here, consumed everywhere.
+          'react-native-reanimated': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['react-native-reanimated'],
+          },
+          'react-native-worklets': {
+            singleton: true,
+            eager: true,
+            requiredVersion: pkg.dependencies['react-native-worklets'],
+          },
         },
       }),
     ],

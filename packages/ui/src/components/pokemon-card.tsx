@@ -2,7 +2,7 @@ import React from 'react';
 import { type ImageSourcePropType } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { tintBgClassForType } from '../tokens/typeColours';
+import { bgClassForType, tintBgClassForType } from '../tokens/typeColours';
 
 import { Box } from './ui/box';
 import { Card } from './ui/card';
@@ -48,6 +48,7 @@ function PokemonCardInner({
   }));
   const primaryType = types[0] ?? 'normal';
   const tintBg = tintBgClassForType(primaryType);
+  const accent = bgClassForType(primaryType);
   const paddedId = String(id).padStart(3, '0');
   const idLabel = `#${paddedId}`;
   const source: ImageSourcePropType | undefined =
@@ -83,7 +84,7 @@ function PokemonCardInner({
       }}
     >
       <Animated.View style={springStyle}>
-      <Card className="items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
+      <Card className="items-center overflow-hidden rounded-2xl bg-white p-3 pb-4 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
         {onRemove ? (
           <Pressable
             onPress={onRemove}
@@ -111,11 +112,16 @@ function PokemonCardInner({
         <Text size="md" className="mb-1.5 text-center font-head text-black dark:text-white">
           {name}
         </Text>
-        <Box className="flex-row flex-wrap justify-center gap-1">
-          {types.map(t => (
+        {/* One fixed-height badge row: dual-type and single-type cards stay the same height, so
+            a three-column grid keeps its rows aligned. Two xs pills fit side by side. */}
+        <Box className="h-5 flex-row justify-center gap-1 overflow-hidden">
+          {types.slice(0, 2).map(t => (
             <TypeBadge key={t} type={t} size="xs" />
           ))}
         </Box>
+        {/* The type's colour as a hairline at the card's foot: the grid reads its types at a
+            glance, and the card gets a face of its own. */}
+        <Box className={`absolute bottom-0 left-0 right-0 h-1.5 ${accent}`} />
       </Card>
       </Animated.View>
     </Pressable>

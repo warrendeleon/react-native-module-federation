@@ -18,18 +18,18 @@ export interface StatBarProps {
   /** Pokémon type whose colour fills the bar. */
   colourType: string;
   /**
-   * Denominator for the fill fraction. A single base stat can technically reach 255 (Blissey's
-   * HP), but almost nothing does, so scaling to 255 leaves every bar looking half-empty. We scale
-   * to 200, a practical "elite stat" ceiling: a genuinely strong stat reads as nearly full, the
-   * rare 200+ stat clamps to 100% (fair, it is maxed), and the common 40-150 range spreads across
-   * a readable 20-75%.
+   * Denominator for the fill fraction. A single base stat can technically reach 255, but almost
+   * nothing does, so a 255 ceiling leaves every bar looking half-empty and alike. 160 is the
+   * practical "elite stat" ceiling: the common 40-120 range spreads across a readable 25-75%,
+   * and the rare 160+ stat clamps to full. A hairline tick marks 100, the round-number reference
+   * readers compare against.
    */
   max?: number;
   /** Row position, used to stagger the fill animation down the list. */
   index?: number;
 }
 
-export function StatBar({ label, value, colourType, max = 200, index = 0 }: StatBarProps) {
+export function StatBar({ label, value, colourType, max = 160, index = 0 }: StatBarProps) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   // The fill grows from zero on mount, each row a beat after the one above it.
   const progress = useSharedValue(0);
@@ -58,6 +58,12 @@ export function StatBar({ label, value, colourType, max = 200, index = 0 }: Stat
         <Animated.View style={[{ height: '100%' }, fillStyle]}>
           <Box className={`h-full w-full rounded-full ${bgClassForType(colourType)}`} />
         </Animated.View>
+        {max > 100 ? (
+          <Box
+            className="absolute top-0 h-full w-px bg-darkGrey/40 dark:bg-white/40"
+            style={{ left: `${(100 / max) * 100}%` }}
+          />
+        ) : null}
       </Box>
       <Text size="sm" className="w-8 text-right font-head text-black dark:text-white">
         {value}

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { tintBgClassForType } from "../tokens/typeColours.js";
+import { bgClassForType, tintBgClassForType } from "../tokens/typeColours.js";
 import { Box } from "./ui/box/index.js";
 import { Card } from "./ui/card/index.js";
 import { Image } from "./ui/image/index.js";
@@ -41,6 +41,7 @@ function PokemonCardInner({
   }));
   const primaryType = types[0] ?? 'normal';
   const tintBg = tintBgClassForType(primaryType);
+  const accent = bgClassForType(primaryType);
   const paddedId = String(id).padStart(3, '0');
   const idLabel = `#${paddedId}`;
   const source = spriteSource ?? (spriteUri ? {
@@ -75,7 +76,7 @@ function PokemonCardInner({
     children: /*#__PURE__*/_jsx(Animated.View, {
       style: springStyle,
       children: /*#__PURE__*/_jsxs(Card, {
-        className: "items-center rounded-2xl bg-white p-3 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
+        className: "items-center overflow-hidden rounded-2xl bg-white p-3 pb-4 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black",
         children: [onRemove ? /*#__PURE__*/_jsx(Pressable, {
           onPress: onRemove,
           accessible: false,
@@ -109,11 +110,13 @@ function PokemonCardInner({
           className: "mb-1.5 text-center font-head text-black dark:text-white",
           children: name
         }), /*#__PURE__*/_jsx(Box, {
-          className: "flex-row flex-wrap justify-center gap-1",
-          children: types.map(t => /*#__PURE__*/_jsx(TypeBadge, {
+          className: "h-5 flex-row justify-center gap-1 overflow-hidden",
+          children: types.slice(0, 2).map(t => /*#__PURE__*/_jsx(TypeBadge, {
             type: t,
             size: "xs"
           }, t))
+        }), /*#__PURE__*/_jsx(Box, {
+          className: `absolute bottom-0 left-0 right-0 h-1.5 ${accent}`
         })]
       })
     })

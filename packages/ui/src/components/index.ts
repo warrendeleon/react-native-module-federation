@@ -6,3 +6,4 @@ export { ErrorState, type ErrorStateProps } from './error-state';
 export { InfoRow, type InfoRowProps } from './info-row';
 export { StatBar, type StatBarProps } from './stat-bar';
 export { ThemeToggle, type ThemeToggleProps } from './theme-toggle';
+export { EmptySlot, type EmptySlotProps } from './empty-slot';
