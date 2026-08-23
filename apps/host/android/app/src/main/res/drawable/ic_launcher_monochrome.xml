@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13 themed-icon layer: band plus button ring and pupil as a single-colour
+     template; the launcher supplies the tint. evenOdd carves the ring out of the disc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M0,50h37v8h-37z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M71,50h37v8h-37z" />
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="M39,54a15,15 0 1,1 30,0a15,15 0 1,1 -30,0zM43.5,54a10.5,10.5 0 1,1 21,0a10.5,10.5 0 1,1 -21,0z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M50,54a4,4 0 1,1 8,0a4,4 0 1,1 -8,0z" />
+</vector>

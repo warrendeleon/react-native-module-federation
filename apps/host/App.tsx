@@ -41,16 +41,35 @@ const PokedexTab = withSuspense(ListStack);
 const PartyTab = withSuspense(PartyStack);
 
 // The branded splash as the app's own first frame: the launch storyboard carries the same
-// navy and ball, but this overlay guarantees the mark shows on every runtime, then fades
-// once the shell has had a beat to settle. Native code cannot arrive over the wire, and
-// neither can this: the ball ships as a host asset.
-function Splash({ onDone }: { onDone: () => void }) {
+// field and ball, but this overlay guarantees the mark shows on every runtime, then fades.
+// Native code cannot arrive over the wire, and neither can this: the ball ships as a host
+// asset. Two rules shape it:
+//
+//   - It hides on readiness, not on a stopwatch. `ready` flips when the navigation shell has
+//     mounted; the timer is only a floor so the mark never strobes on a fast launch. A fixed
+//     duration would tax every launch with the slowest one's wait.
+//   - The field follows the colour scheme — the scheme surface in light, navy in dark — so the
+//     fade lands on a surface of the same luminance instead of jumping navy-to-white.
+function Splash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+  const { colorScheme } = useColorScheme();
+  const [minShown, setMinShown] = useState(false);
   useEffect(() => {
-    const t = setTimeout(onDone, 900);
+    const t = setTimeout(() => setMinShown(true), 600);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
+  useEffect(() => {
+    if (ready && minShown) {
+      onDone();
+    }
+  }, [ready, minShown, onDone]);
   return (
-    <Animated.View exiting={FadeOut.duration(350)} style={[StyleSheet.absoluteFill, splashStyles.field]}>
+    <Animated.View
+      exiting={FadeOut.duration(350)}
+      style={[
+        StyleSheet.absoluteFill,
+        splashStyles.field,
+        { backgroundColor: colorScheme === 'dark' ? colours.navy : colours.offWhite },
+      ]}>
       <Image
         source={require('./src/assets/splash-ball.png')}
         style={splashStyles.ball}
@@ -61,7 +80,7 @@ function Splash({ onDone }: { onDone: () => void }) {
 }
 
 const splashStyles = StyleSheet.create({
-  field: { backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  field: { alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   ball: { width: 128, height: 128 },
 });
 
@@ -125,12 +144,13 @@ export default function App() {
   }, []);
 
   const [splashDone, setSplashDone] = useState(false);
+  const [navReady, setNavReady] = useState(false);
 
   return (
     <Provider store={store}>
       <SafeAreaProvider>
         <GluestackUIProvider mode={mode}>
-          <NavigationContainer theme={navTheme}>
+          <NavigationContainer theme={navTheme} onReady={() => setNavReady(true)}>
             <Tab.Navigator
               screenOptions={{
                 headerShown: false,
@@ -174,8 +194,12 @@ export default function App() {
                 }}
               />
             </Tab.Navigator>
-            {splashDone ? null : <Splash onDone={() => setSplashDone(true)} />}
           </NavigationContainer>
+          {/* The splash sits OUTSIDE the NavigationContainer: the remotes' native headers are
+              UIKit views that draw above any zIndex inside the container, so an overlay inside
+              it leaves the header's controls poking through the brand moment. As a later
+              sibling of the whole container it covers everything. */}
+          {splashDone ? null : <Splash ready={navReady} onDone={() => setSplashDone(true)} />}
         </GluestackUIProvider>
       </SafeAreaProvider>
     </Provider>

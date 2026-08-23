@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { bgClassForType, textOnTypeClass } from '../tokens/typeColours';
+import { badgeDarkClassForType, bgClassForType, textOnTypeClass } from '../tokens/typeColours';
 
 import { Box } from './ui/box';
 import { Text } from './ui/text';
@@ -22,8 +22,12 @@ export interface TypeBadgeProps {
 }
 
 export function TypeBadge({ type, size = 'sm', surface = 'card' }: TypeBadgeProps) {
-  const bg = surface === 'hero' ? 'bg-white/30' : bgClassForType(type);
-  const fg = surface === 'hero' ? 'text-black' : textOnTypeClass(type);
+  // On a card the pill dims to a tonal wash in dark mode; the hero variant never does, because
+  // the hero surface itself stays the light type tint in both schemes.
+  const bg =
+    surface === 'hero' ? 'bg-white/30' : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
+  const fg =
+    surface === 'hero' ? 'text-black' : `${textOnTypeClass(type)} dark:text-white/90`;
   const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
   const textSize = size === 'md' ? 'sm' : 'xs';
   // The card-sized badge drops bold for a medium weight: at this scale bold fills the pill

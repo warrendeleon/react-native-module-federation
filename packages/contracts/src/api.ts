@@ -159,8 +159,13 @@ export function parsePokemonDetail(raw: unknown, speciesRaw?: unknown): PokemonD
   if (speciesRaw !== undefined) {
     const species = PokemonSpeciesResponseSchema.parse(speciesRaw);
     const entry = species.flavor_text_entries.find(e => e.language.name === 'en');
-    // The API preserves the games' own line breaks and page-feed characters; print prose.
-    flavourText = entry?.flavor_text.replace(/[\n\f\r]/g, ' ').replace(/\s+/g, ' ').trim();
+    // The API preserves the games' own line breaks, page-feed characters, and the cartridge-era
+    // "POKéMON" casing; print prose gets normal whitespace and normal casing.
+    flavourText = entry?.flavor_text
+      .replace(/[\n\f\r]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/POKéMON/g, 'Pokémon')
+      .trim();
   }
   return {
     id: parsed.id,

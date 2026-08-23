@@ -1,3 +1,5 @@
 <resources>
-    <color name="splash_background">#0F172A</color>
+    <!-- Light scheme's surface; values-night overrides with the navy. The launch window
+         follows the system appearance the same way the iOS storyboard's named colour does. -->
+    <color name="splash_background">#F7F8FC</color>
 </resources>

@@ -5,12 +5,11 @@
 import '../global.css';
 
 import React from 'react';
-import { Pressable, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
-import { Box, ThemeToggle } from '@pokedex/ui';
+import { BackPill, Box, ThemeToggle } from '@pokedex/ui';
 import { addToParty, MAX_PARTY, type DetailParams, type PartySliceShape } from '@pokedex/contracts';
 import { useGetPokemonDetailQuery } from './detailApi';
 import type { ListParamList } from './routes';
@@ -58,25 +57,12 @@ function PokemonDetailRoute({
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}
     />
-      <Pressable
+      {/* The detail arrives as a push, so the floating control says "back", not "dismiss".
+          The design system owns the pill's look; only the safe-area position is this screen's. */}
+      <BackPill
         onPress={() => navigation.goBack()}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel="Close details"
-        style={{
-          position: 'absolute',
-          top: insets.top + 6,
-          left: 16,
-          height: 36,
-          width: 36,
-          borderRadius: 18,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(255,255,255,0.8)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-        }}>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: '#515151' }}>✕</Text>
-      </Pressable>
+        style={{ position: 'absolute', top: insets.top + 6, left: 16 }}
+      />
     </Box>
   );
 }

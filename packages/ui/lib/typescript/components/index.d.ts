@@ -7,4 +7,5 @@ export { InfoRow, type InfoRowProps } from './info-row.js';
 export { StatBar, type StatBarProps } from './stat-bar.js';
 export { ThemeToggle, type ThemeToggleProps } from './theme-toggle.js';
 export { EmptySlot, type EmptySlotProps } from './empty-slot.js';
+export { BackPill, type BackPillProps } from './back-pill.js';
 //# sourceMappingURL=index.d.ts.map

@@ -13,6 +13,7 @@ import type { PokemonDetail } from '@pokedex/contracts';
 import {
   bgClassForType,
   borderClassForType,
+  textOnTypeClass,
   Box,
   Button,
   ButtonText,
@@ -168,7 +169,7 @@ export default function PokemonDetailView({
         <Box
           className="rounded-t-3xl bg-offWhite dark:bg-navy"
           style={{ minHeight: windowHeight - topInset - COMPACT_BAR + 24 }}>
-          <VStack space="2xl" className="px-4 pb-12 pt-6">
+          <VStack space="2xl" className="flex-1 px-4 pb-12 pt-6">
             {pokemon.flavourText ? (
               <Box
                 className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm shadow-black/10 dark:border dark:border-l-4 dark:border-white/10 dark:bg-black ${borderClassForType(primary)}`}>
@@ -207,14 +208,24 @@ export default function PokemonDetailView({
             </VStack>
 
             {onAddToParty ? (
+              // The one primary action on the screen wears the type colour at full strength —
+              // the same colour the accent foot and the hero already speak — with the pale grey
+              // kept for the genuinely disabled "party is full" state. mt-auto anchors it to the
+              // sheet's bottom edge, so the air the sheet's minimum height creates sits between
+              // the stats and the button instead of dangling below it.
               <Button
                 onPress={onAddToParty}
                 disabled={addDisabled}
                 size="lg"
-                className={`rounded-xl ${addDisabled ? 'bg-lightGrey' : 'bg-pokemonGreen'}`}
+                className={`mt-auto rounded-xl ${
+                  addDisabled
+                    ? 'bg-lightGrey dark:bg-white/10'
+                    : bgClassForType(primary)
+                }`}
                 style={{ alignSelf: 'stretch' }}
                 accessibilityRole="button">
-                <ButtonText className={addDisabled ? 'text-midGrey' : 'text-black'}>
+                <ButtonText
+                  className={addDisabled ? 'text-midGrey' : textOnTypeClass(primary)}>
                   {addLabel ?? 'Add to party'}
                 </ButtonText>
               </Button>

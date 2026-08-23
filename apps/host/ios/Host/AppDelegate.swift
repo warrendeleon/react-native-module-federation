@@ -22,17 +22,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeFactory = factory
 
     window = UIWindow(frame: UIScreen.main.bounds)
-    // The launch screen's navy carries through the JS boot: without this the window flashes
-    // white between the splash and React's first frame.
-    let navy = UIColor(red: 0x0F / 255.0, green: 0x17 / 255.0, blue: 0x2A / 255.0, alpha: 1)
-    window?.backgroundColor = navy
+    // The launch screen's field carries through the JS boot: without this the window flashes
+    // white between the splash and React's first frame. SplashBackground is the dynamic colour
+    // the storyboard uses — the scheme surface in light, navy in dark — so the whole launch
+    // stays on one luminance in either appearance.
+    let field = UIColor(named: "SplashBackground") ?? UIColor.systemBackground
+    window?.backgroundColor = field
 
     factory.startReactNative(
       withModuleName: "Host",
       in: window,
       launchOptions: launchOptions
     )
-    window?.rootViewController?.view.backgroundColor = navy
+    window?.rootViewController?.view.backgroundColor = field
 
     return true
   }

@@ -116,7 +116,7 @@ function PokemonCardInner({
             size: "xs"
           }, t))
         }), /*#__PURE__*/_jsx(Box, {
-          className: `absolute bottom-0 left-0 right-0 h-1.5 ${accent}`
+          className: `absolute bottom-0 left-0 right-0 h-1.5 dark:opacity-60 ${accent}`
         })]
       })
     })

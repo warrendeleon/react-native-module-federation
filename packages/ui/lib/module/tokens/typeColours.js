@@ -135,9 +135,38 @@ const TYPE_BORDER_CLASS = {
   fairy: 'border-type-fairy'
 };
 
+// Dark-scheme tonal chip: the type colour pulled back to a 25% wash. In dark mode a fully
+// saturated pill is the brightest element on the card — brighter than the name it sits under.
+// The tonal variant keeps the hue but hands the hierarchy back to the content.
+const TYPE_BADGE_DARK_CLASS = {
+  normal: 'dark:bg-type-normal/25',
+  fire: 'dark:bg-type-fire/25',
+  water: 'dark:bg-type-water/25',
+  electric: 'dark:bg-type-electric/25',
+  grass: 'dark:bg-type-grass/25',
+  ice: 'dark:bg-type-ice/25',
+  fighting: 'dark:bg-type-fighting/25',
+  poison: 'dark:bg-type-poison/25',
+  ground: 'dark:bg-type-ground/25',
+  flying: 'dark:bg-type-flying/25',
+  psychic: 'dark:bg-type-psychic/25',
+  bug: 'dark:bg-type-bug/25',
+  rock: 'dark:bg-type-rock/25',
+  ghost: 'dark:bg-type-ghost/25',
+  dragon: 'dark:bg-type-dragon/25',
+  dark: 'dark:bg-type-dark/25',
+  steel: 'dark:bg-type-steel/25',
+  fairy: 'dark:bg-type-fairy/25'
+};
+
 /** Background class at full saturation: 'bg-type-fire'. */
 export function bgClassForType(type) {
   return TYPE_BG_CLASS[normaliseType(type)];
+}
+
+/** Dark-scheme tonal chip background: 'dark:bg-type-fire/25'. Pair with 'dark:text-white/90'. */
+export function badgeDarkClassForType(type) {
+  return TYPE_BADGE_DARK_CLASS[normaliseType(type)];
 }
 
 /** Background class faded to 30% (sprite-tint pattern): 'bg-type-fire/30'. */

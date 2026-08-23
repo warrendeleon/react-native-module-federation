@@ -121,7 +121,9 @@ function PokemonCardInner({
         </Box>
         {/* The type's colour as a hairline at the card's foot: the grid reads its types at a
             glance, and the card gets a face of its own. */}
-        <Box className={`absolute bottom-0 left-0 right-0 h-1.5 ${accent}`} />
+        {/* dark:opacity-60 pulls the foot back with the tonal badges: the type stays legible
+            without being the loudest thing on a dark card. */}
+        <Box className={`absolute bottom-0 left-0 right-0 h-1.5 dark:opacity-60 ${accent}`} />
       </Card>
       </Animated.View>
     </Pressable>

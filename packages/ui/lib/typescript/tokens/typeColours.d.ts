@@ -5,6 +5,8 @@ export declare const typeColours: Record<string, string>;
 export declare function colourForType(type: string): string;
 /** Background class at full saturation: 'bg-type-fire'. */
 export declare function bgClassForType(type: string): string;
+/** Dark-scheme tonal chip background: 'dark:bg-type-fire/25'. Pair with 'dark:text-white/90'. */
+export declare function badgeDarkClassForType(type: string): string;
 /** Background class faded to 30% (sprite-tint pattern): 'bg-type-fire/30'. */
 export declare function tintBgClassForType(type: string): string;
 /** Foreground text class chosen for contrast against bgClassForType: 'text-white' or 'text-black'. */
