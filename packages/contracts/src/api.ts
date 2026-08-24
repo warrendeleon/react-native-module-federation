@@ -44,7 +44,7 @@ const PokemonListResponseSchema = z.object({
   // trailing numeric id is a malformed payload, and the schema is where malformed payloads
   // are supposed to die. Checked here, a bad url becomes a caught query error at the seam
   // instead of a Pokémon #0 three layers later.
-  results: z.array(z.object({ name: z.string().min(1), url: z.string().regex(/\/\d+\/?$/) })),
+  results: z.array(z.object({ name: z.string().trim().min(1), url: z.string().regex(/\/\d+\/?$/) })),
 });
 
 const PokemonDetailResponseSchema = z.object({

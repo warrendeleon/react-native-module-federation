@@ -5,8 +5,8 @@ import type { PokemonDetail } from '@pokedex/contracts';
 
 // The static copy of the Pokémon data that lived here in 1.0.0 is gone, and so is the data access
 // that briefly replaced it. This is a view: it renders what it is handed and reports what is
-// pressed. Where the data comes from is the consumer's business — the package exports the hook
-// separately, and each app composes the two in its own container route.
+// pressed. Where the data comes from is the consumer's business; each app composes this view
+// with its own data in its own container route.
 export interface PokemonDetailViewProps {
   pokemon?: PokemonDetail;
   loading: boolean;

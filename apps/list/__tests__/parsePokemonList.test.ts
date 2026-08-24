@@ -55,3 +55,11 @@ test('a blank name fails the parse', () => {
     }),
   ).toThrow();
 });
+
+test('a whitespace-only name fails the parse', () => {
+  expect(() =>
+    parsePokemonList({
+      results: [{ name: '   ', url: 'https://pokeapi.co/api/v2/pokemon/25/' }],
+    }),
+  ).toThrow();
+});
