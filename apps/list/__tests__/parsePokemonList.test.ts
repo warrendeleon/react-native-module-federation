@@ -31,3 +31,27 @@ test('idFromResourceUrl throws on a url with no trailing id', () => {
     /no trailing id/,
   );
 });
+
+test('id 0 fails the parse instead of naming a phantom Pokémon', () => {
+  expect(() =>
+    parsePokemonList({
+      results: [{ name: 'missingno', url: 'https://pokeapi.co/api/v2/pokemon/0/' }],
+    }),
+  ).toThrow(/out of range/);
+});
+
+test('an id past the safe-integer range fails the parse', () => {
+  expect(() =>
+    parsePokemonList({
+      results: [{ name: 'glitch', url: 'https://pokeapi.co/api/v2/pokemon/99999999999999999999999/' }],
+    }),
+  ).toThrow(/out of range/);
+});
+
+test('a blank name fails the parse', () => {
+  expect(() =>
+    parsePokemonList({
+      results: [{ name: '', url: 'https://pokeapi.co/api/v2/pokemon/25/' }],
+    }),
+  ).toThrow();
+});

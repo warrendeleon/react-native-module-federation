@@ -44,7 +44,7 @@ const PokemonListResponseSchema = z.object({
   // trailing numeric id is a malformed payload, and the schema is where malformed payloads
   // are supposed to die. Checked here, a bad url becomes a caught query error at the seam
   // instead of a Pokémon #0 three layers later.
-  results: z.array(z.object({ name: z.string(), url: z.string().regex(/\/\d+\/?$/) })),
+  results: z.array(z.object({ name: z.string().min(1), url: z.string().regex(/\/\d+\/?$/) })),
 });
 
 const PokemonDetailResponseSchema = z.object({
@@ -68,7 +68,14 @@ export function idFromResourceUrl(url: string): number {
   if (!match) {
     throw new Error(`PokéAPI resource URL has no trailing id: ${url}`);
   }
-  return Number(match[1]);
+  const id = Number(match[1]);
+  // A trailing run of digits is not yet an id: /pokemon/0/ names nothing, and a digit string
+  // long enough to fall outside the safe-integer range has silently stopped being the number
+  // in the url. Both are malformed payloads, and malformed payloads die here.
+  if (!Number.isSafeInteger(id) || id < 1) {
+    throw new Error(`PokéAPI resource URL id is out of range: ${url}`);
+  }
+  return id;
 }
 
 // PokéAPI returns lower-case, hyphenated names ("mr-mime"); title-case each word for display.
