@@ -6,7 +6,6 @@
 // renders. It does not claim a spring interpolates — that is verified on a simulator, not here.
 // The surface below is exactly what this repo imports; anything new will fail loudly as
 // undefined rather than silently no-op.
-const React = require('react');
 const { View, ScrollView, FlatList } = require('react-native');
 
 // Entering/exiting animation builders are chainable and their return value is only ever handed

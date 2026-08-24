@@ -5,6 +5,7 @@
 import '../global.css';
 
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
@@ -33,11 +34,15 @@ function PokemonDetailRoute({
           design-system look, screen-owned position. */}
       <BackPill
         onPress={() => navigation.goBack()}
-        style={{ position: 'absolute', top: insets.top + 6, left: 16 }}
+        style={[styles.backPill, { top: insets.top + 6 }]}
       />
     </Box>
   );
 }
+
+// Defined once at module scope: a fresh render-prop each render would be a new component
+// type to the navigator on every pass.
+const renderThemeToggle = () => <ThemeToggle />;
 
 const Stack = createNativeStackNavigator<PartyParamList>();
 
@@ -57,7 +62,7 @@ export default function PartyStack() {
           headerLargeTitle: true,
           headerLargeTitleStyle: { fontFamily: 'Nunito-ExtraBold' },
           headerTitleStyle: { fontFamily: 'Nunito-Bold' },
-          headerRight: () => <ThemeToggle />,
+          headerRight: renderThemeToggle,
         }}
       />
       <Stack.Screen
@@ -68,3 +73,8 @@ export default function PartyStack() {
     </Stack.Navigator>
   );
 }
+
+// Static style values live in a sheet; only the safe-area offset is computed per render.
+const styles = StyleSheet.create({
+  backPill: { position: 'absolute', left: 16 },
+});

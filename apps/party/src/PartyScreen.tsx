@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { LayoutAnimation, ScrollView } from 'react-native';
+import { LayoutAnimation, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { MAX_PARTY, type PartySliceShape } from '@pokedex/contracts';
+import { MAX_PARTY, type PartyMember, type PartySliceShape } from '@pokedex/contracts';
 import { Box, EmptySlot, PokemonCard, ScreenContainer, Text, toast } from '@pokedex/ui';
 import { remove } from './partySlice';
 import type { PartyParamList } from './routes';
@@ -17,11 +17,58 @@ import type { PartyParamList } from './routes';
 // The Party tab rides the colour scheme like every other surface: offWhite in light, navy in
 // dark, members as the same PokemonCard the Pokédex uses — same component, same singleton
 // instance at runtime — and the empty slots keep their dashed outline as token classes.
+// A single shared empty array: a fresh [] per render from the selector would re-render
+// every consumer of `members` even while the party is unchanged.
+const EMPTY_MEMBERS: PartyMember[] = [];
+
+// One filled slot, memoised at module level: PokemonCard's memo only holds when its props
+// are stable, and closures built inside the slot map are new on every parent render. This
+// wrapper owns those closures and re-renders only when its member or a stable handler changes.
+const PartySlot = React.memo(function PartySlotRow({
+  member,
+  onOpen,
+  onRemoveMember,
+}: {
+  member: PartyMember;
+  onOpen: (id: number) => void;
+  onRemoveMember: (member: PartyMember) => void;
+}) {
+  return (
+    <Box className="w-1/2 p-1.5">
+      <PokemonCard
+        id={member.id}
+        name={member.name}
+        types={member.types}
+        spriteUri={member.spriteUri}
+        onPress={() => onOpen(member.id)}
+        onRemove={() => onRemoveMember(member)}
+      />
+    </Box>
+  );
+});
+
 export default function PartyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
   const dispatch = useDispatch();
-  const members = useSelector((s: PartySliceShape) => s.party?.members ?? []);
+  const members = useSelector((s: PartySliceShape) => s.party?.members ?? EMPTY_MEMBERS);
+  // Stable handlers, so the memoised slots above skip re-renders their props do not ask for.
+  const openDetail = React.useCallback(
+    (id: number) => navigation.navigate('PokemonDetail', { id }),
+    [navigation],
+  );
+  const removeMember = React.useCallback(
+    (member: PartyMember) => {
+      dispatch(remove(member.uid));
+      // The owner confirms its own write the same way the list confirms its add:
+      // one toast() into the shared singleton, shown by the host.
+      toast(`${member.name} left your party`, {
+        spriteUri: member.spriteUri,
+        accentType: member.types[0],
+      });
+    },
+    [dispatch],
+  );
 
   // A member arriving or leaving animates the grid into its new shape: the next render after
   // the store changes is wrapped in a spring. The write itself still crosses the seam as a
@@ -37,7 +84,7 @@ export default function PartyScreen() {
     <ScreenContainer>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}>
         <Box className="flex-row items-center justify-between">
           <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
@@ -57,24 +104,7 @@ export default function PartyScreen() {
         <Box className="flex-row flex-wrap">
           {slots.map((member, index) =>
             member ? (
-              <Box key={member.uid} className="w-1/2 p-1.5">
-                <PokemonCard
-                  id={member.id}
-                  name={member.name}
-                  types={member.types}
-                  spriteUri={member.spriteUri}
-                  onPress={() => navigation.navigate('PokemonDetail', { id: member.id })}
-                  onRemove={() => {
-                    dispatch(remove(member.uid));
-                    // The owner confirms its own write the same way the list confirms its
-                    // add: one toast() into the shared singleton, shown by the host.
-                    toast(`${member.name} left your party`, {
-                      spriteUri: member.spriteUri,
-                      accentType: member.types[0],
-                    });
-                  }}
-                />
-              </Box>
+              <PartySlot key={member.uid} member={member} onOpen={openDetail} onRemoveMember={removeMember} />
             ) : (
               <Box key={`empty-${index}`} className="w-1/2 p-1.5">
                 <EmptySlot number={index + 1} />
@@ -86,3 +116,8 @@ export default function PartyScreen() {
     </ScreenContainer>
   );
 }
+
+// Static style values live in a sheet; only the safe-area offset is computed per render.
+const styles = StyleSheet.create({
+  scrollContent: { padding: 20 },
+});

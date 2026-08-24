@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@gluestack-ui/core": "^3.0.21",
+    "@gluestack-ui/core": "^3.0.25",
     "@gluestack-ui/utils": "^3.0.21",
     "@pokedex/contracts": "^3.2.0",
     "@pokedex/ui": "^1.0.0",

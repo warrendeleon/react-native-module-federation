@@ -2,7 +2,7 @@
 
 Companion code for the blog series **[React Native Module Federation](https://warrendeleon.com/blog/)**. The series builds a federated React Native app from zero, one post at a time, with Re.Pack and Module Federation 2.0.
 
-Each post has a matching git tag holding that post's finished state, so you can clone the repo, check out the tag for the post you're reading, and run exactly what the post builds.
+Most posts have a matching git tag holding that post's finished state, so you can clone the repo, check out the tag for the post you're reading, and run exactly what the post builds. Post 1 is an essay and ships no code; posts 7 and later essays have no tag either — tags exist where there is a build to run.
 
 ## Posts and tags
 
@@ -14,10 +14,15 @@ Each post has a matching git tag holding that post's finished state, so you can 
 | `post-05-contracts` | The contract package | Each tab grows its own stack, the detail screen ships as a versioned package both stacks install, and a published contract types what they pass it |
 | `post-06-shared-store` | One shared store | The contract package exports one RTK Query instance; the host builds a store around it and the Pokédex domain injects its live PokéAPI endpoints into the one shared cache |
 | `post-08-client-state` | Client state across the seam | The party app injects its own slice into the shared store at runtime; the contract carries the one action that crosses; the detail view gains an optional Add button its consumers wire |
+| `post-09-tanstack-zustand` | State stacks under federation | The same app rebuilt on TanStack Query and Zustand — a fork off the post-08 line, not the next step on it, so this tag never folds into `main` |
 | `post-10-two-backends` | Two backends, one client? | A GraphQL endpoint joins the REST one in the same api slice via queryFn; both provide the same tag, so the host's one Refresh press refetches both protocols |
 | `post-11-design-system` | The design system as a federated singleton | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.0; one host toggle re-themes every bundle |
 
 `main` tracks the latest post. More tags land as the series grows.
+
+## Dependency advisories
+
+`npm audit fix` is applied where a compatible patched release exists. What remains (checked 2026-08-24: one high pair on `image-size`, a moderate chain through `@react-native-community/cli`) sits inside React Native 0.85's own build-time tooling — Metro and the CLI — which runs on the developer's machine and ships nothing into the app bundle. The `image-size` advisories cover every 1.x release and Metro pins `^1`, so the fix arrives with a React Native upgrade rather than an override that would hand Metro an API it was not built against.
 
 ## Layout
 
@@ -39,7 +44,7 @@ Requirements: Node 22.11+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPod
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
-git checkout post-06-shared-store
+git checkout post-11-design-system
 ```
 
 The apps install `@pokedex/contracts` from a local registry, so publish it before installing them. Leave the registry running in its own terminal:
@@ -49,6 +54,7 @@ npx verdaccio                                    # :4873, stays up
 npm adduser --registry http://localhost:4873     # any username, password and email
 ( cd packages/contracts && npm install && npm run build && npm publish )
 ( cd packages/detail && npm install && npm run build && npm publish )
+( cd packages/ui && npm install && npm run build && npm publish )
 ```
 
 Then the apps:

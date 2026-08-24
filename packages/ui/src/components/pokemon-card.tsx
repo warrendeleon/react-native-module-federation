@@ -14,11 +14,13 @@ import { TypeBadge } from './type-badge';
 // --- The Pokédex grid's primary card. White rounded background, hashed ID, circular tinted
 // sprite area (background tint is the primary type's colour at 30% opacity so the sprite
 // stays the focal point), name in semibold, type badges in a row at the bottom. Tapping the
-// card runs onPress (typically routes to Detail via shell.navigateTo).
+// card runs onPress; what the press navigates to is the consumer's business.
 //
 // Composed from Gluestack primitives only: Pressable wraps Card; the sprite background is a
 // Box with a tint-class from the token preset; the sprite itself is Gluestack Image; name +
-// ID are Text; type pills are TypeBadge (which composes Box + Text). No inline styles. ---
+// ID are Text; type pills are TypeBadge (which composes Box + Text). Styling is class-based
+// throughout; the one style object is the animated press spring, which has to be a style
+// because Reanimated drives it per frame. ---
 
 export interface PokemonCardProps {
   id: number;
@@ -59,7 +61,12 @@ function PokemonCardInner({
   // button: a Pressable sets accessible=true, which on iOS collapses its descendants, so a child
   // button would be unreachable to VoiceOver. The visual ✕ stays for sighted users but is taken
   // out of the a11y tree (the action covers screen-reader users) with a hitSlop-enlarged target.
-  const a11yLabel = `${name}, number ${paddedId}, ${types.join(' and ')} type`;
+  // When type loading has degraded the caller hands an empty array; the label then stops at
+  // the number instead of announcing a dangling ", type" with nothing in front of it.
+  const a11yLabel =
+    types.length > 0
+      ? `${name}, number ${paddedId}, ${types.join(' and ')} type`
+      : `${name}, number ${paddedId}`;
 
   return (
     <Pressable
@@ -131,6 +138,7 @@ function PokemonCardInner({
 }
 
 // Memoised: in a long grid the card's props are stable row to row, and its theme-dependent
-// classes update through the styling runtime rather than a React re-render, so the parent
-// can re-render (a theme flip, a count change) without paying for every visible card.
+// classes update through the styling runtime rather than a React re-render. The memo only
+// pays off when the consumer keeps its callback props stable too (useCallback in the grid
+// screens); a fresh onPress per parent render would defeat it row by row.
 export const PokemonCard = React.memo(PokemonCardInner);

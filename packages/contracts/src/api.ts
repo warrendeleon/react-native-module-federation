@@ -79,11 +79,12 @@ const PokemonDetailResponseSchema = z.object({
     .min(1)
     .refine(t => new Set(t.map(x => x.type.name.trim().toLowerCase())).size === t.length, { message: 'duplicate type name' }),
   // PokéAPI measures height in decimetres and weight in hectograms; the parse converts both to
-  // the metric units the screen prints, so no consumer repeats the arithmetic.
-  height: z.number(),
-  weight: z.number(),
-  abilities: z.array(z.object({ ability: z.object({ name: z.string() }) })),
-  stats: z.array(z.object({ base_stat: z.number(), stat: z.object({ name: z.string() }) })),
+  // the metric units the screen prints, so no consumer repeats the arithmetic. Neither
+  // measurement can be negative, and a stat is a whole non-negative number.
+  height: z.number().nonnegative(),
+  weight: z.number().nonnegative(),
+  abilities: z.array(z.object({ ability: z.object({ name: NonBlankSchema }) })),
+  stats: z.array(z.object({ base_stat: z.number().int().nonnegative(), stat: z.object({ name: NonBlankSchema }) })),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
@@ -156,9 +157,11 @@ const PokemonSpeciesResponseSchema = z.object({
 export function parsePokemonDetail(raw: unknown, speciesRaw?: unknown): PokemonDetail {
   const parsed = PokemonDetailResponseSchema.parse(raw);
   let flavourText: string | undefined;
-  if (speciesRaw !== undefined) {
-    const species = PokemonSpeciesResponseSchema.parse(speciesRaw);
-    const entry = species.flavor_text_entries.find(e => e.language.name === 'en');
+  // The species payload is decoration: a malformed one costs the flavour quote, never the
+  // screen. safeParse instead of parse, and a failure leaves flavourText undefined.
+  const species = speciesRaw !== undefined ? PokemonSpeciesResponseSchema.safeParse(speciesRaw) : undefined;
+  if (species?.success) {
+    const entry = species.data.flavor_text_entries.find(e => e.language.name === 'en');
     // The API preserves the games' own line breaks, page-feed characters, and the cartridge-era
     // "POKéMON" casing; print prose gets normal whitespace and normal casing.
     flavourText = entry?.flavor_text

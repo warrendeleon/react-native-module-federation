@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 import Animated, { FadeOut } from 'react-native-reanimated';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
@@ -19,8 +19,9 @@ import { store } from './src/store';
 //
 // As of this post the host also owns the design system's runtime: GluestackUIProvider is mounted
 // once, here, and every remote renders against it through the shared @pokedex/ui singleton. The
-// provider's mode is host state, which is what makes the theme toggle below repaint three
-// independently shipped bundles at once.
+// provider's mode is derived from NativeWind's colour-scheme observable — module-level state in
+// the shared styling runtime, not state the host owns — which is what makes one toggle repaint
+// three independently shipped bundles at once.
 const ListStack = React.lazy(() => import('listApp/ListStack'));
 const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
 
@@ -90,6 +91,44 @@ function ShellToaster() {
   const insets = useSafeAreaInsets();
   return <Toaster bottomOffset={insets.bottom + 49 + 12} />;
 }
+
+// The tab glyphs, defined once at module scope: an icon renderer created inside App would be a
+// new component type on every render, and the navigator would tear the icon subtree down each
+// time. Outline glyph tinted by the navigator when idle; the full-colour filled pokéball when
+// the tab is selected, untinted so it keeps its own colours.
+function TabIcon({
+  focused,
+  color,
+  size,
+  active,
+  idle,
+}: {
+  focused: boolean;
+  color: string;
+  size: number;
+  active: number;
+  idle: number;
+}) {
+  return (
+    <Image
+      source={focused ? active : idle}
+      style={{ width: size, height: size, ...(focused ? {} : { tintColor: color }) }}
+      resizeMode="contain"
+    />
+  );
+}
+
+const POKEDEX_ACTIVE = require('./src/assets/tab-pokedex-active.png');
+const POKEDEX_IDLE = require('./src/assets/tab-pokedex.png');
+const PARTY_ACTIVE = require('./src/assets/tab-party-active.png');
+const PARTY_IDLE = require('./src/assets/tab-party.png');
+
+const renderPokedexTabIcon = (p: { focused: boolean; color: string; size: number }) => (
+  <TabIcon {...p} active={POKEDEX_ACTIVE} idle={POKEDEX_IDLE} />
+);
+const renderPartyTabIcon = (p: { focused: boolean; color: string; size: number }) => (
+  <TabIcon {...p} active={PARTY_ACTIVE} idle={PARTY_IDLE} />
+);
 
 const Tab = createBottomTabNavigator();
 
@@ -167,38 +206,12 @@ export default function App() {
               <Tab.Screen
                 name="Pokédex"
                 component={PokedexTab}
-                options={{
-                  // Outline glyph tinted by the navigator when idle; the full-colour filled
-                  // pokéball when the tab is selected, untinted so it keeps its own colours.
-                  tabBarIcon: ({ focused, color, size }) => (
-                    <Image
-                      source={
-                        focused
-                          ? require('./src/assets/tab-pokedex-active.png')
-                          : require('./src/assets/tab-pokedex.png')
-                      }
-                      style={{ width: size, height: size, ...(focused ? {} : { tintColor: color }) }}
-                      resizeMode="contain"
-                    />
-                  ),
-                }}
+                options={{ tabBarIcon: renderPokedexTabIcon }}
               />
               <Tab.Screen
                 name="Party"
                 component={PartyTab}
-                options={{
-                  tabBarIcon: ({ focused, color, size }) => (
-                    <Image
-                      source={
-                        focused
-                          ? require('./src/assets/tab-party-active.png')
-                          : require('./src/assets/tab-party.png')
-                      }
-                      style={{ width: size, height: size, ...(focused ? {} : { tintColor: color }) }}
-                      resizeMode="contain"
-                    />
-                  ),
-                }}
+                options={{ tabBarIcon: renderPartyTabIcon }}
               />
             </Tab.Navigator>
           </NavigationContainer>
