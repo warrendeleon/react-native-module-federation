@@ -22,7 +22,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 
 ## Dependency advisories
 
-`npm audit fix` and the in-range bumps (`@module-federation/enhanced` 2.9.0, `@react-native-community/cli` 20.2.0) are applied, validated by `scripts/federation-smoke.sh` and the full test suites. What remains (checked 2026-08-25: four high per app) is one advisory pair on `image-size`, reached through Metro and through Re.Pack itself — build-time tooling that runs on the developer's machine and ships nothing into the app bundle. The advisories cover every `image-size` 1.x release and both chains pin `^1`, so the fix arrives with upstream Metro and Re.Pack releases rather than an override handing either an API it was not built against.
+`npm audit fix` and the in-range bumps are applied — `@module-federation/enhanced` 2.9.0, the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, and Metro's chain walked to its patched 0.84.5 — validated by `scripts/federation-smoke.sh` and the full test suites. What remains (checked 2026-08-24: three high per app, none in `packages/detail`) is one advisory pair on `image-size`, reached only through Re.Pack — build-time tooling that runs on the developer's machine and ships nothing into the app bundle. The advisories cover every `image-size` 1.x release and Re.Pack pins `^1`, so the fix arrives with an upstream Re.Pack release rather than an override handing it an API it was not built against.
 
 ## Layout
 

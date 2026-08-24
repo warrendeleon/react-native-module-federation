@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { LayoutAnimation, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -59,6 +59,12 @@ export default function PartyScreen() {
   );
   const removeMember = React.useCallback(
     (member: PartyMember) => {
+      // The spring is configured in the same tick as the dispatch, before React re-renders
+      // and lays out the five-slot grid, so the shrink animates. Configuring during render
+      // would be a side effect in a phase React is free to restart or abandon; this handler
+      // runs exactly once per tap. The write itself still crosses the seam as a plain
+      // action; the motion is presentation, owned by this screen.
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
       dispatch(remove(member.uid));
       // The owner confirms its own write the same way the list confirms its add:
       // one toast() into the shared singleton, shown by the host.
@@ -79,18 +85,6 @@ export default function PartyScreen() {
   useEffect(() => {
     dispatch(partyStateReady());
   }, [dispatch]);
-
-  // A member arriving or leaving animates the grid into its new shape. The configure call has
-  // to land BEFORE this commit's layout: an effect keyed on members.length runs after the
-  // changed layout has already committed, which configures the following pass instead — one
-  // render late. Detecting the change during render puts the spring on the layout that is
-  // about to happen. The write itself still crosses the seam as a plain action; the motion is
-  // presentation, owned by this screen.
-  const prevCount = useRef(members.length);
-  if (prevCount.current !== members.length) {
-    prevCount.current = members.length;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
-  }
 
   // Six slots: the first `members.length` filled, the rest dashed placeholders.
   const slots = Array.from({ length: MAX_PARTY }, (_, i) => members[i]);

@@ -11,6 +11,9 @@ trap 'rm -rf "$OUT"' EXIT
 bundle() {
   app=$1
   echo "== bundling $app =="
+  # Clear the previous run's artefacts first: a stale container from an earlier build
+  # would satisfy the existence checks below and hide a build that now fails.
+  rm -rf "apps/$app/build"
   ( cd "apps/$app" && npx react-native webpack-bundle \
       --platform ios --dev false --entry-file index.js \
       --bundle-output "$OUT/$app/main.jsbundle" --assets-dest "$OUT/$app-assets" \
@@ -27,7 +30,8 @@ bundle host
 # path), not to the CLI's bundle-output; the host's plain bundle goes where the CLI says.
 fail=0
 check() {
-  if [ -e "$1" ]; then echo "✔ $1"; else echo "✖ missing: $1"; fail=1; fi
+  # -s: the file must exist AND be non-empty — an empty artefact is a failed build too.
+  if [ -s "$1" ]; then echo "✔ $1"; else echo "✖ missing or empty: $1"; fail=1; fi
 }
 check apps/list/build/ios/listApp.container.js.bundle
 check apps/list/build/ios/mf-manifest.json
