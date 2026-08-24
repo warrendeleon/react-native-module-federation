@@ -64,5 +64,13 @@ test('Add stays disabled until partyStateReady surfaces the injected slice', asy
   // The gate lifts.
   expect(view().props.addDisabled).toBe(false);
 
-  tree.unmount();
+  // Unmount inside act (unmounting schedules React work), then drain what the
+  // navigator and the query middleware left on the fake-timer queue, so the
+  // suite exits with nothing still holding the process.
+  await act(async () => {
+    tree.unmount();
+  });
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
 });
