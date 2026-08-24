@@ -69,22 +69,31 @@ const PokemonListResponseSchema = z.object({
   results: z.array(z.object({ name: NonBlankSchema, url: z.string().regex(/\/\d+\/?$/) })),
 });
 
-// A Pokémon has at least one type, and the UI keys the badge row by type name, so an empty
-// or duplicated collection is a malformed payload and dies here.
+// A Pokémon has at least one of each of these, and the UI keys its lists by name, so an
+// empty collection renders an incomplete screen and a duplicated name collides React keys.
+// Both are malformed payloads, and both die here.
+const uniqueNames = (items: { name: string }[]) => new Set(items.map(i => i.name)).size === items.length;
+
 const PokemonDetailResponseSchema = z.object({
   id: PokemonIdSchema,
   name: NonBlankSchema,
   types: z
     .array(z.object({ type: z.object({ name: NonBlankSchema }) }))
     .min(1)
-    .refine(t => new Set(t.map(x => x.type.name.trim().toLowerCase())).size === t.length, { message: 'duplicate type name' }),
+    .refine(t => uniqueNames(t.map(x => x.type)), { message: 'duplicate type name' }),
   // PokéAPI measures height in decimetres and weight in hectograms; the parse converts both to
   // the metric units the screen prints, so no consumer repeats the arithmetic. Neither
-  // measurement can be negative, and a stat is a whole non-negative number.
-  height: z.number().nonnegative(),
-  weight: z.number().nonnegative(),
-  abilities: z.array(z.object({ ability: z.object({ name: NonBlankSchema }) })),
-  stats: z.array(z.object({ base_stat: z.number().int().nonnegative(), stat: z.object({ name: NonBlankSchema }) })),
+  // measurement can be negative or infinite, and a stat is a whole non-negative number.
+  height: z.number().nonnegative().finite(),
+  weight: z.number().nonnegative().finite(),
+  abilities: z
+    .array(z.object({ ability: z.object({ name: NonBlankSchema }) }))
+    .min(1)
+    .refine(a => uniqueNames(a.map(x => x.ability)), { message: 'duplicate ability name' }),
+  stats: z
+    .array(z.object({ base_stat: z.number().int().nonnegative(), stat: z.object({ name: NonBlankSchema }) }))
+    .min(1)
+    .refine(st => uniqueNames(st.map(x => x.stat)), { message: 'duplicate stat name' }),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
@@ -127,15 +136,8 @@ function formatName(name: string): string {
  */
 export function parsePokemonList(raw: unknown): PokemonSummary[] {
   const { results } = PokemonListResponseSchema.parse(raw);
-  const seen = new Set<number>();
   return results.map(entry => {
     const id = idFromResourceUrl(entry.url);
-    // The list keys its rows by id, so a repeated id is a malformed payload that would
-    // collide FlatList keys; it dies here like every other malformed shape.
-    if (seen.has(id)) {
-      throw new Error(`PokéAPI list payload repeats id ${id}`);
-    }
-    seen.add(id);
     return { id, name: formatName(entry.name), spriteUri: artworkUri(id) };
   });
 }

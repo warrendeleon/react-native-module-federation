@@ -6,6 +6,7 @@
 // renders. It does not claim a spring interpolates — that is verified on a simulator, not here.
 // The surface below is exactly what this repo imports; anything new will fail loudly as
 // undefined rather than silently no-op.
+const React = require('react');
 const { View, ScrollView, FlatList } = require('react-native');
 
 // Entering/exiting animation builders are chainable and their return value is only ever handed
@@ -25,8 +26,12 @@ module.exports = {
     FlatList,
     createAnimatedComponent: component => component,
   },
-  useSharedValue: initial => ({ value: initial }),
-  useAnimatedStyle: () => ({}),
+  // One stable {value} box per hook call site, like the real hook: a fresh object per
+  // render would reset the value every time a test re-renders.
+  useSharedValue: initial => React.useRef({ value: initial }).current,
+  // Evaluate the style worklet as a plain function: shared values are {value} objects here,
+  // so a test can drive the value, re-render, and read the style the worklet computes.
+  useAnimatedStyle: factory => factory(),
   useAnimatedScrollHandler: () => () => {},
   withSpring: identity,
   withTiming: identity,

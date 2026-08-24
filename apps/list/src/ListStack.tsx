@@ -7,7 +7,7 @@ import '../global.css';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
 import { BackPill, Box, ThemeToggle, toast } from '@pokedex/ui';
@@ -38,6 +38,7 @@ function PokemonDetailRoute({
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  const reduxStore = useStore();
   const members = useSelector((s: PartySliceShape) => s.party?.members);
   const partyReady = members !== undefined;
   const count = members?.length ?? 0;
@@ -53,15 +54,26 @@ function PokemonDetailRoute({
         if (!data) {
           return;
         }
-        dispatch(
+        const action = dispatch(
           addToParty({ id: data.id, name: data.name, spriteUri: data.spriteUri, types: data.types }),
         );
-        // Confirmation is this consumer's job — it owns the write, so it owns the feedback.
-        // toast() reaches the host's Toaster through the shared singleton, sprite and all.
-        toast(`${data.name} joined your party`, {
-          spriteUri: data.spriteUri,
-          accentType: data.types[0],
-        });
+        // Confirmation is this consumer's job: it owns the write, so it owns the feedback.
+        // And the feedback reports what the OWNER did, not what this side hoped. Two fast
+        // taps at five members both dispatch, the reducer rejects the seventh, and only a
+        // read-back tells the two outcomes apart, because the disabled state below is a
+        // render behind the store. toast() reaches the host's Toaster through the shared
+        // singleton, sprite and all.
+        const landed = (reduxStore.getState() as PartySliceShape).party?.members.some(
+          m => m.uid === action.payload.uid,
+        );
+        if (landed) {
+          toast(`${data.name} joined your party`, {
+            spriteUri: data.spriteUri,
+            accentType: data.types[0],
+          });
+        } else {
+          toast('Your party is full', { accentType: data.types[0] });
+        }
       }}
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}

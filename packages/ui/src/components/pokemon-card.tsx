@@ -65,7 +65,7 @@ function PokemonCardInner({
   // the number instead of announcing a dangling ", type" with nothing in front of it.
   const a11yLabel =
     types.length > 0
-      ? `${name}, number ${paddedId}, ${types.join(' and ')} type`
+      ? `${name}, number ${paddedId}, ${types.join(' and ')} ${types.length > 1 ? 'types' : 'type'}`
       : `${name}, number ${paddedId}`;
 
   return (

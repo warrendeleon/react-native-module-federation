@@ -57,7 +57,7 @@ function PokemonCardInner({
   // out of the a11y tree (the action covers screen-reader users) with a hitSlop-enlarged target.
   // When type loading has degraded the caller hands an empty array; the label then stops at
   // the number instead of announcing a dangling ", type" with nothing in front of it.
-  const a11yLabel = types.length > 0 ? `${name}, number ${paddedId}, ${types.join(' and ')} type` : `${name}, number ${paddedId}`;
+  const a11yLabel = types.length > 0 ? `${name}, number ${paddedId}, ${types.join(' and ')} ${types.length > 1 ? 'types' : 'type'}` : `${name}, number ${paddedId}`;
   return /*#__PURE__*/_jsx(Pressable, {
     onPress: onPress,
     accessibilityRole: "button",

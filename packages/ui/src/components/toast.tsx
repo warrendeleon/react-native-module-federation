@@ -38,7 +38,11 @@ type Listener = (entry: ToastEntry) => void;
 let listener: Listener | null = null;
 let counter = 0;
 
-/** Show a transient confirmation. Safe to call from any module; no-op until a Toaster mounts. */
+/**
+ * Show a transient confirmation. Safe to call from any module. Before a Toaster mounts the
+ * visual side goes nowhere, but the screen-reader announcement always fires: assistive users
+ * get the confirmation even if the host's chrome is not up yet.
+ */
 export function toast(message: string, options?: ToastOptions) {
   AccessibilityInfo.announceForAccessibility(message);
   listener?.({ id: ++counter, message, ...options });

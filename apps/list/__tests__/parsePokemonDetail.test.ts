@@ -50,8 +50,17 @@ test('a malformed species payload costs the flavour text, never the screen', () 
   expect(detail.flavourText).toBeUndefined();
 });
 
-test('type names colliding after formatting fail the parse', () => {
-  expect(() =>
-    parsePokemonDetail({ ...pikachu, types: [{ type: { name: 'electric' } }, { type: { name: 'Electric' } }] }),
-  ).toThrow();
+test.each([
+  ['infinite height', { ...pikachu, height: Infinity }],
+  ['infinite weight', { ...pikachu, weight: Infinity }],
+  ['empty types', { ...pikachu, types: [] }],
+  ['empty abilities', { ...pikachu, abilities: [] }],
+  ['empty stats', { ...pikachu, stats: [] }],
+  ['duplicate type name', { ...pikachu, types: [{ type: { name: 'electric' } }, { type: { name: 'electric' } }] }],
+  [
+    'duplicate stat name',
+    { ...pikachu, stats: [{ base_stat: 35, stat: { name: 'hp' } }, { base_stat: 40, stat: { name: 'hp' } }] },
+  ],
+])('%s fails the parse', (_label, raw) => {
+  expect(() => parsePokemonDetail(raw)).toThrow();
 });

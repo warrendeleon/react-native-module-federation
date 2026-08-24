@@ -141,8 +141,9 @@ export default function App() {
   const { colorScheme } = useColorScheme();
   const mode: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
 
-  // The navigation chrome rides the same host state as the styling runtime: headers and the
-  // tab bar are host-owned, so the host themes them, mapped to the design system's tokens.
+  // The navigation chrome reads the same NativeWind observable as the styling runtime:
+  // headers and the tab bar are host-owned, so the host themes them, mapped to the design
+  // system's tokens.
   // The remotes' own stack headers flip too, because @react-navigation/native is a shared
   // singleton and every navigator in the runtime reads this one container's theme.
   const navTheme =

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The branded launch window: the navy field with the pokeball centred, shown by the
-     activity theme before the first frame renders. -->
+<!-- The branded launch window: the field with the pokeball centred, shown by the activity
+     theme before the first frame renders. The field colour rides the scheme through
+     @color/splash_background: off-white in light, navy in dark (values-night). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />
     <item android:gravity="center">
