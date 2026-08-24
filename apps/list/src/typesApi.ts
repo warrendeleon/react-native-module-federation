@@ -5,10 +5,12 @@ import { baseApi } from '@pokedex/contracts';
 const GRAPHQL_URL = 'https://graphql.pokeapi.co/v1beta2';
 
 // The v1beta2 schema dropped the pokemon_v2_ prefix every pre-2025 tutorial uses. The unprefixed
-// shape below is the one the live endpoint answers; pokemon_v2_pokemon returns field-not-found.
+// shape here is the one the live endpoint answers; pokemon_v2_pokemon returns field-not-found.
+// The query states its whole demand: the Kanto ids, bounded and ordered, rather than trusting
+// the server's default row order to happen to be ascending.
 const POKEMON_TYPES = gql`
   {
-    pokemon(limit: 151) {
+    pokemon(limit: 151, where: { id: { _lte: 151 } }, order_by: { id: asc }) {
       id
       pokemontypes {
         type {
@@ -25,8 +27,10 @@ const POKEMON_TYPES = gql`
 const PokemonTypesResponseSchema = z.object({
   pokemon: z.array(
     z.object({
-      id: z.number(),
-      pokemontypes: z.array(z.object({ type: z.object({ name: z.string() }) })),
+      // The same boundaries the REST parsers hold: a positive safe-integer id and
+      // non-blank type names, so a malformed row dies here rather than rendering.
+      id: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+      pokemontypes: z.array(z.object({ type: z.object({ name: z.string().trim().min(1) }) })),
     }),
   ),
 });
