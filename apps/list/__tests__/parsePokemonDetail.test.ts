@@ -27,3 +27,10 @@ test.each([
 ])('%s fails the parse', (_label, raw) => {
   expect(() => parsePokemonDetail(raw)).toThrow();
 });
+
+test.each([
+  ['empty types', { ...pikachu, types: [] }],
+  ['duplicate type name', { ...pikachu, types: [{ type: { name: 'electric' } }, { type: { name: 'electric' } }] }],
+])('%s fails the parse', (_label, raw) => {
+  expect(() => parsePokemonDetail(raw)).toThrow();
+});

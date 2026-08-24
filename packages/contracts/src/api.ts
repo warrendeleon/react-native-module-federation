@@ -54,10 +54,15 @@ const PokemonListResponseSchema = z.object({
   results: z.array(z.object({ name: NonBlankSchema, url: z.string().regex(/\/\d+\/?$/) })),
 });
 
+// A Pokémon has at least one type, and the UI keys the badge row by type name, so an empty
+// or duplicated collection is a malformed payload and dies here.
 const PokemonDetailResponseSchema = z.object({
   id: PokemonIdSchema,
   name: NonBlankSchema,
-  types: z.array(z.object({ type: z.object({ name: NonBlankSchema }) })),
+  types: z
+    .array(z.object({ type: z.object({ name: NonBlankSchema }) }))
+    .min(1)
+    .refine(t => new Set(t.map(x => x.type.name)).size === t.length, { message: 'duplicate type name' }),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
