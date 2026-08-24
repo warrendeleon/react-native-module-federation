@@ -68,10 +68,11 @@ export default function App() {
   // and write-side consumers gate the add on `state.party` existing. Until then the button is
   // disabled; a tap can never dispatch into a store with no reducer for it.
   //
-  // It belongs in an effect rather than at module scope: there the import's side effects can
-  // resolve mid-way through React's first mount, which React reports as a state update on a
-  // component that has not mounted. An effect runs after the first commit, where a side effect
-  // belongs.
+  // It sits in an effect rather than at module scope for an observed reason, not a traced one:
+  // at module scope this import produced React's update-on-an-unmounted-component warning on
+  // some cold starts, and in an effect it does not. What creates that update is not established
+  // (inject() notifies nobody on its own), so this placement is the arrangement that made the
+  // warning stop, and an effect is where a side effect belongs anyway.
   //
   // Fire-and-forget: nothing awaits this, so an unreachable party server cannot block boot — the
   // federation runtime reports the failure on its own and the app runs without the slice, which
