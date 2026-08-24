@@ -126,6 +126,14 @@ export default function PokemonDetailView({
   const primary = pokemon.types[0] ?? 'normal';
   const dexNumber = `#${String(pokemon.id).padStart(3, '0')}`;
   const topInset = insets.top;
+  // The hero is painted in the type's own colour, and that colour runs from pale (grass, fairy)
+  // to nearly black (fighting, dark). Its text therefore cannot be a fixed colour: the design
+  // system already decided per type, once, from perceived luminance, so the hero asks the token
+  // rather than assuming. Hard-coded black put "Mankey" at 1.7:1 on the fighting hero.
+  const onHero = textOnTypeClass(primary);
+  const heroInk = onHero === 'text-white';
+  const heroMuted = heroInk ? 'text-white/70' : 'text-black/60';
+  const ghostInk = heroInk ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
 
   return (
     <ScreenContainer edges={[]}>
@@ -135,17 +143,17 @@ export default function PokemonDetailView({
           {/* Depth without a gradient: the dex number as a large ghost numeral behind the
               sprite, fading as the sheet arrives. */}
           <Animated.View style={[styles.ghostWrap, { top: topInset + 28 }, ghostStyle]}>
-            <Text style={styles.ghostNumeral}>{dexNumber}</Text>
+            <Text style={[styles.ghostNumeral, { color: ghostInk }]}>{dexNumber}</Text>
           </Animated.View>
           <VStack space="lg" className="flex-1 items-center justify-end pb-9" style={{ paddingTop: topInset }}>
             <Box className="rounded-full border-2 border-white/50 bg-white/35 p-5">
               <Image source={{ uri: pokemon.spriteUri }} alt={pokemon.name} size="xl" resizeMode="contain" />
             </Box>
             <VStack space="xs" className="items-center">
-              <Heading size="2xl" className="text-black">
+              <Heading size="2xl" className={onHero}>
                 {pokemon.name}
               </Heading>
-              <Text size="sm" className="font-head text-black/60">
+              <Text size="sm" className={`font-head ${heroMuted}`}>
                 {dexNumber}
               </Text>
             </VStack>

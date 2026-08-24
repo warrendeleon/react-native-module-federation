@@ -41,13 +41,16 @@ export function colourForType(type) {
   return typeColours[type.toLowerCase()] ?? '#9A9AB0';
 }
 
-// --- Pre-baked text-on-type colour class. Decided once per type from perceived luminance so
-// designers don't run a contrast calculation per render. White on the dark / saturated types;
-// black on the pale ones. ---
+// --- Pre-baked text-on-type colour class, so nothing runs a contrast calculation per render.
+// Every entry is the higher-contrast of black and white, computed from WCAG relative luminance
+// rather than judged by eye — the two differ more often than they look like they should. water
+// (#3A86FF) and psychic (#E75A7C) both read as "dark, saturated" and both take black: white
+// gives 3.48:1 and 3.41:1, under the 4.5:1 a badge's small text needs, where black clears 6:1.
+// Change a hex above and this map has to be recomputed with it. ---
 const TYPE_TEXT_ON_BG = {
   normal: 'text-black',
   fire: 'text-black',
-  water: 'text-white',
+  water: 'text-black',
   electric: 'text-black',
   grass: 'text-black',
   ice: 'text-black',
@@ -55,7 +58,7 @@ const TYPE_TEXT_ON_BG = {
   poison: 'text-black',
   ground: 'text-black',
   flying: 'text-black',
-  psychic: 'text-white',
+  psychic: 'text-black',
   bug: 'text-black',
   rock: 'text-white',
   ghost: 'text-white',

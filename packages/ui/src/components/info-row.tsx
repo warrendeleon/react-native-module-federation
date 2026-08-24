@@ -17,11 +17,15 @@ export interface InfoRowProps {
 export function InfoRow({ label, value, last = false }: InfoRowProps) {
   const rule = last ? '' : 'border-b border-lightGrey dark:border-darkGrey';
   return (
-    <Box className={`flex-row justify-between py-3.5 ${rule}`}>
-      <Text size="sm" className="text-darkGrey dark:text-lightGrey">
+    // The value takes the leftover width and wraps inside it. React Native gives flex items
+    // flexShrink: 0 (unlike the web's 1), so a long value — a three-ability Pokémon like
+    // Venomoth's "Shield Dust, Tinted Lens, Wonder Skin" — pushes past the card's edge instead
+    // of wrapping. flex-1 on the value and a non-shrinking label keep every row inside the card.
+    <Box className={`flex-row items-start justify-between gap-4 py-3.5 ${rule}`}>
+      <Text size="sm" className="shrink-0 text-darkGrey dark:text-lightGrey">
         {label}
       </Text>
-      <Text size="sm" bold className="text-black dark:text-white">
+      <Text size="sm" bold className="flex-1 text-right text-black dark:text-white">
         {value}
       </Text>
     </Box>
