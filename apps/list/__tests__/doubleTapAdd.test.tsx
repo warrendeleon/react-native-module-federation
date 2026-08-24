@@ -5,7 +5,7 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Provider } from 'react-redux';
-import { configureStore, createSlice } from '@reduxjs/toolkit';
+import { configureStore } from '@reduxjs/toolkit';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
@@ -47,34 +47,21 @@ const metrics = {
 };
 
 test('two taps at five members: one member joins and one honest rejection', async () => {
-  // The real party reducer shape with the cap enforced, injected the way the owner injects it.
-  const partySlice = createSlice({
-    name: 'party',
-    initialState: {
-      members: Array.from({ length: 5 }, (_, i) => ({
-        uid: `u${i}`,
-        id: i + 1,
-        name: `Member ${i + 1}`,
-        spriteUri: `sprite://${i + 1}`,
-        types: ['Normal'],
-      })),
-    },
-    reducers: {},
-    extraReducers: builder => {
-      builder.addCase(addToParty, (state, { payload }) => {
-        if (state.members.length >= 6) {
-          return;
-        }
-        state.members.push(payload);
-      });
-    },
-  });
   const store = configureStore({
     reducer: rootReducer,
     middleware: gdm => gdm().concat(baseApi.middleware),
   });
-  rootReducer.inject(partySlice, { overrideExisting: true });
+  // The party app's REAL slice, not a lookalike: importing it injects the owner's reducer
+  // into the shared rootReducer (the Jest mapping above makes both sides resolve one
+  // contracts instance), so a change to the owner's cap logic fails this test.
+  require('../../party/src/partySlice');
   store.dispatch(partyStateReady());
+  // Fill to five through the reducer itself.
+  for (let i = 1; i <= 5; i += 1) {
+    store.dispatch(
+      addToParty({ id: i, name: `Member ${i}`, spriteUri: `sprite://${i}`, types: ['Normal'] }),
+    );
+  }
 
   let tree!: ReactTestRenderer.ReactTestRenderer;
   await act(async () => {

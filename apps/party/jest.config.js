@@ -2,6 +2,11 @@ const preset = require('@react-native/jest-preset');
 
 module.exports = {
   preset: '@react-native/jest-preset',
+  // Reanimated drives animations through the JSI, which a Jest process has no runtime for;
+  // the stand-in in __mocks__ replaces it, same as the other apps.
+  moduleNameMapper: {
+    '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+  },
   // @gluestack-ui/utils ships .jsx files, and the base preset's transform pattern covers
   // (js|ts|tsx) only, so they would reach Jest untransformed and throw on their import
   // statements. Same transformer, one extension wider.

@@ -16,13 +16,13 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-08-client-state` | Client state across the seam | The party app injects its own slice into the shared store at runtime; the contract carries the one action that crosses; the detail view gains an optional Add button its consumers wire |
 | `post-09-tanstack-zustand` | State stacks under federation | The same app rebuilt on TanStack Query and Zustand — a fork off the post-08 line, not the next step on it, so this tag never folds into `main` |
 | `post-10-two-backends` | Two backends, one client? | A GraphQL endpoint joins the REST one in the same api slice via queryFn; both provide the same tag, so the host's one Refresh press refetches both protocols |
-| `post-11-design-system` | The design system as a federated singleton | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.0; one host toggle re-themes every bundle |
+| `post-11-design-system` | The design system as a federated singleton | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.2; one host toggle re-themes every bundle |
 
 `main` tracks the latest post. More tags land as the series grows.
 
 ## Dependency advisories
 
-`npm audit fix` is applied where a compatible patched release exists. What remains (checked 2026-08-24: one high pair on `image-size`, a moderate chain through `@react-native-community/cli`) sits inside React Native 0.85's own build-time tooling — Metro and the CLI — which runs on the developer's machine and ships nothing into the app bundle. The `image-size` advisories cover every 1.x release and Metro pins `^1`, so the fix arrives with a React Native upgrade rather than an override that would hand Metro an API it was not built against.
+`npm audit fix` and the in-range bumps (`@module-federation/enhanced` 2.9.0, `@react-native-community/cli` 20.2.0) are applied, validated by `scripts/federation-smoke.sh` and the full test suites. What remains (checked 2026-08-25: four high per app) is one advisory pair on `image-size`, reached through Metro and through Re.Pack itself — build-time tooling that runs on the developer's machine and ships nothing into the app bundle. The advisories cover every `image-size` 1.x release and both chains pin `^1`, so the fix arrives with upstream Metro and Re.Pack releases rather than an override handing either an API it was not built against.
 
 ## Layout
 
@@ -66,6 +66,9 @@ Then the apps:
 
 # install iOS pods for the host
 ( cd apps/host/ios && bundle install && bundle exec pod install )
+
+# prove the federation builds: three Re.Pack bundles, both remote manifests, the host bundle
+sh scripts/federation-smoke.sh
 ```
 
 Then, in four terminals:

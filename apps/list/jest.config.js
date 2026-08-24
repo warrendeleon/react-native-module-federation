@@ -7,6 +7,10 @@ module.exports = {
   // the same mock.
   moduleNameMapper: {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+    // The double-tap test imports the party app's REAL slice; pinning contracts to this
+    // app's copy keeps that file injecting into the same rootReducer instance the test's
+    // store was built from — the singleton, simulated in Jest.
+    '^@pokedex/contracts$': '<rootDir>/node_modules/@pokedex/contracts',
     // ListStack imports global.css for the federated styling runtime; Jest gets a stub.
     '\\.css$': '<rootDir>/__mocks__/styleMock.js',
   },

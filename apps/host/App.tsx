@@ -27,7 +27,7 @@ import { store } from './src/store';
 // React.lazy caches a rejection for good, so retrying means building a fresh lazy component
 // and remounting it, which is exactly what the boundary's Try again does. The tab degrades to
 // the design system's error state; the shell and the other tab keep running.
-class RemoteBoundary extends React.Component<
+export class RemoteBoundary extends React.Component<
   { load: () => Promise<{ default: React.ComponentType }> },
   { failed: boolean; attempt: number }
 > {
