@@ -1,6 +1,6 @@
 {
   "name": "@pokedex/contracts",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "The shared seam between federated remotes: the route params one side pushes and another reads, the shape of every exposed module, the single RTK Query API instance every side injects endpoints into, the root reducer remotes inject slices into, and the party interactions that cross an app boundary. Installed by version so separately-built apps agree without importing each other's code.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
