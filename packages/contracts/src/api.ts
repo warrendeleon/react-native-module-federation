@@ -72,7 +72,10 @@ const PokemonListResponseSchema = z.object({
 // A Pokémon has at least one of each of these, and the UI keys its lists by name, so an
 // empty collection renders an incomplete screen and a duplicated name collides React keys.
 // Both are malformed payloads, and both die here.
-const uniqueNames = (items: { name: string }[]) => new Set(items.map(i => i.name)).size === items.length;
+// Uniqueness is judged case-insensitively: the parse title-cases names for display, so
+// 'fire' and 'Fire' collide after formatting even though the raw strings differ.
+const uniqueNames = (items: { name: string }[]) =>
+  new Set(items.map(i => i.name.trim().toLowerCase())).size === items.length;
 
 const PokemonDetailResponseSchema = z.object({
   id: PokemonIdSchema,
@@ -136,8 +139,15 @@ function formatName(name: string): string {
  */
 export function parsePokemonList(raw: unknown): PokemonSummary[] {
   const { results } = PokemonListResponseSchema.parse(raw);
+  const seen = new Set<number>();
   return results.map(entry => {
     const id = idFromResourceUrl(entry.url);
+    // The list keys its rows by id, so a repeated id is a malformed payload that would
+    // collide FlatList keys; it dies here like every other malformed shape.
+    if (seen.has(id)) {
+      throw new Error(`PokéAPI list payload repeats id ${id}`);
+    }
+    seen.add(id);
     return { id, name: formatName(entry.name), spriteUri: artworkUri(id) };
   });
 }

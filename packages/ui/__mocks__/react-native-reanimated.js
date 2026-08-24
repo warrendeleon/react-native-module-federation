@@ -2,10 +2,11 @@
 // Its two implementations both refuse to load here: the `.native` one asks for a native worklets
 // runtime, the plain one asks for a DOM. So the module is replaced wholesale for tests.
 //
-// This keeps the smoke test honest about what it claims: the shell mounts and every screen
-// renders. It does not claim a spring interpolates — that is verified on a simulator, not here.
-// The surface below is exactly what this repo imports; anything new will fail loudly as
-// undefined rather than silently no-op.
+// The stand-in does slightly more than mount: style worklets run as plain functions against
+// stable {value} boxes, so a test can drive a shared value, re-render, and read the style the
+// worklet computes. What no test here claims is that a spring interpolates per frame; that is
+// verified on a simulator. The surface below is exactly what this repo imports; anything new
+// will fail loudly as undefined rather than silently no-op.
 const React = require('react');
 const { View, ScrollView, FlatList } = require('react-native');
 

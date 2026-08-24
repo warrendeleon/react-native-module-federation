@@ -6,7 +6,8 @@ import { Heading } from './ui/heading';
 import { Text } from './ui/text';
 
 // --- Error state with retry. Composed from Gluestack Center + Heading + Text + Button.
-// Variant tracks ScreenContainer so dark-themed screens (Party) get a dark error too. ---
+// Variant tracks ScreenContainer: the default rides the colour scheme, and 'dark' pairs
+// with a fixed-navy container if a screen ever uses one. ---
 
 export interface ErrorStateProps {
   title?: string;

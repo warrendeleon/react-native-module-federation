@@ -78,6 +78,9 @@ const Heading = /*#__PURE__*/memo(/*#__PURE__*/forwardRef(function Heading({
   as: AsComp,
   ...props
 }, ref) {
+  // The styling variants are consumed here, into the class string; the rest of the props
+  // travel to the rendered element. Spreading the originals as well would hand a custom
+  // `as` element props like isTruncated that only headingStyle understands.
   const {
     isTruncated,
     bold,
@@ -85,7 +88,8 @@ const Heading = /*#__PURE__*/memo(/*#__PURE__*/forwardRef(function Heading({
     strikeThrough,
     sub,
     italic,
-    highlight
+    highlight,
+    ...forwarded
   } = props;
   if (AsComp) {
     return /*#__PURE__*/_jsx(AsComp, {
@@ -100,7 +104,8 @@ const Heading = /*#__PURE__*/memo(/*#__PURE__*/forwardRef(function Heading({
         highlight: highlight,
         class: className
       }),
-      ...props
+      ...forwarded,
+      ref: ref
     });
   }
   return /*#__PURE__*/_jsx(MappedHeading, {

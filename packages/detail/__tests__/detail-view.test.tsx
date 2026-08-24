@@ -41,9 +41,11 @@ function texts(tree: ReactTestRenderer.ReactTestRenderer) {
   return tree.root.findAll(n => typeof n.props.children === 'string').map(n => n.props.children);
 }
 
-test('the loading state renders without data', async () => {
+test('the loading state shows the spinner and none of the data', async () => {
   const tree = await render({ loading: true, error: false, onRetry: jest.fn() });
-  expect(tree.root.findAll(n => n.props.accessibilityRole === 'progressbar').length).toBeGreaterThanOrEqual(0);
+  // The spinner is an ActivityIndicator under the hood; its presence is the state.
+  const spinners = tree.root.findAll(n => n.type === 'ActivityIndicator' || n.props.accessibilityRole === 'progressbar');
+  expect(spinners.length).toBeGreaterThan(0);
   expect(texts(tree)).not.toContain('Bulbasaur');
   await act(async () => tree.unmount());
 });
@@ -60,11 +62,33 @@ test('the error state offers the retry the consumer wired', async () => {
   await act(async () => tree.unmount());
 });
 
-test('the data state renders the model it is handed', async () => {
+test('the data state renders the whole model it is handed', async () => {
   const tree = await render({ pokemon: bulbasaur, loading: false, error: false, onRetry: jest.fn() });
   const t = texts(tree);
   expect(t).toContain('Bulbasaur');
   expect(t).toContain('A strange seed was planted on its back at birth.');
+  expect(t).toContain('Grass');
+  expect(t).toContain('Poison');
+  expect(t.join(' ')).toMatch(/0\.7\s?m/);
+  expect(t.join(' ')).toMatch(/6\.9\s?kg/);
+  expect(t).toContain('Overgrow');
+  expect(t).toContain('HP');
+  await act(async () => tree.unmount());
+});
+
+test('a wired Add renders the consumer\'s label and disabled state', async () => {
+  const onAddToParty = jest.fn();
+  const tree = await render({
+    pokemon: bulbasaur,
+    loading: false,
+    error: false,
+    onRetry: jest.fn(),
+    onAddToParty,
+    addDisabled: true,
+    addLabel: 'Party is full',
+  });
+  const t = texts(tree);
+  expect(t).toContain('Party is full');
   await act(async () => tree.unmount());
 });
 

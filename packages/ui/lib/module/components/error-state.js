@@ -7,7 +7,8 @@ import { Heading } from "./ui/heading/index.js";
 import { Text } from "./ui/text/index.js";
 
 // --- Error state with retry. Composed from Gluestack Center + Heading + Text + Button.
-// Variant tracks ScreenContainer so dark-themed screens (Party) get a dark error too. ---
+// Variant tracks ScreenContainer: the default rides the colour scheme, and 'dark' pairs
+// with a fixed-navy container if a screen ever uses one. ---
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 export function ErrorState({
   title = 'Something went wrong',

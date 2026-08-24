@@ -34,7 +34,8 @@ export function StatBar({
     /*#__PURE__*/
     // One accessible element so a screen reader announces "Attack, 49" as a value, not three
     // separate text reads. progressbar is the role for a bar showing a magnitude; accessibilityValue
-    // carries the spoken number (the visual scaling to `max` is presentation, so we speak the raw
+    // carries the numeric range assistive tech expects of that role, plus the spoken text
+    // (the visual scaling to `max` is presentation, so the text speaks the raw
     // value rather than a percentage).
     _jsxs(Box, {
       className: "flex-row items-center py-2.5",
@@ -42,6 +43,9 @@ export function StatBar({
       accessibilityRole: "progressbar",
       accessibilityLabel: label,
       accessibilityValue: {
+        min: 0,
+        max,
+        now: Math.min(value, max),
         text: String(value)
       },
       children: [/*#__PURE__*/_jsx(Text, {

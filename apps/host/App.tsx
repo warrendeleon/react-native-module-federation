@@ -5,7 +5,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { colours, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
+import { colours, ErrorState, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
 import { partyStateReady } from '@pokedex/contracts';
 import { useColorScheme } from 'nativewind';
 
@@ -22,23 +22,54 @@ import { store } from './src/store';
 // provider's mode is derived from NativeWind's colour-scheme observable — module-level state in
 // the shared styling runtime, not state the host owns — which is what makes one toggle repaint
 // three independently shipped bundles at once.
-const ListStack = React.lazy(() => import('listApp/ListStack'));
-const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
-
 // A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
-// spinner. Wrapping once here keeps the lazy boundary out of the remotes.
-function withSuspense(Remote: React.ComponentType) {
-  return function Tab() {
+// spinner. The boundary around it exists because a rejected chunk otherwise crashes the shell:
+// React.lazy caches a rejection for good, so retrying means building a fresh lazy component
+// and remounting it, which is exactly what the boundary's Try again does. The tab degrades to
+// the design system's error state; the shell and the other tab keep running.
+class RemoteBoundary extends React.Component<
+  { load: () => Promise<{ default: React.ComponentType }> },
+  { failed: boolean; attempt: number }
+> {
+  state = { failed: false, attempt: 0 };
+  lazyFor: React.LazyExoticComponent<React.ComponentType> | null = null;
+  lazyAttempt = -1;
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.warn('remote failed to load', error);
+  }
+  retry = () => this.setState(({ attempt }) => ({ failed: false, attempt: attempt + 1 }));
+  render() {
+    if (this.state.failed) {
+      return (
+        <ErrorState
+          title="This tab could not load"
+          message="The remote did not answer. Check its dev server, then try again."
+          onRetry={this.retry}
+          retryLabel="Try again"
+        />
+      );
+    }
+    // Keyed by attempt: a new key discards the lazy component whose rejection React cached
+    // and starts a fresh import. The lazy component itself is cached per attempt, because a
+    // fresh one on every render would remount the tab each time the shell re-renders.
+    if (!this.lazyFor || this.lazyAttempt !== this.state.attempt) {
+      this.lazyFor = React.lazy(this.props.load);
+      this.lazyAttempt = this.state.attempt;
+    }
+    const Remote = this.lazyFor;
     return (
-      <Suspense fallback={<LoadingState />}>
+      <Suspense key={this.state.attempt} fallback={<LoadingState />}>
         <Remote />
       </Suspense>
     );
-  };
+  }
 }
 
-const PokedexTab = withSuspense(ListStack);
-const PartyTab = withSuspense(PartyStack);
+const PokedexTab = () => <RemoteBoundary load={() => import('listApp/ListStack')} />;
+const PartyTab = () => <RemoteBoundary load={() => import('partyApp/PartyStack')} />;
 
 // The branded splash as the app's own first frame: the launch storyboard carries the same
 // field and ball, but this overlay guarantees the mark shows on every runtime, then fades.

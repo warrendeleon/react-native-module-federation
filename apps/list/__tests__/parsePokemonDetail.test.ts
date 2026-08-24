@@ -64,3 +64,21 @@ test.each([
 ])('%s fails the parse', (_label, raw) => {
   expect(() => parsePokemonDetail(raw)).toThrow();
 });
+
+test.each([
+  ['duplicate ability name', { ...pikachu, abilities: [{ ability: { name: 'static' } }, { ability: { name: 'static' } }] }],
+  ['type names colliding after formatting', { ...pikachu, types: [{ type: { name: 'electric' } }, { type: { name: 'Electric' } }] }],
+])('%s fails the parse', (_label, raw) => {
+  expect(() => parsePokemonDetail(raw)).toThrow();
+});
+
+test('the full model carries every field the screen renders', () => {
+  const detail = parsePokemonDetail(pikachu, species);
+  expect(detail.id).toBe(25);
+  expect(detail.types).toEqual(['Electric']);
+  expect(detail.heightM).toBeCloseTo(0.4);
+  expect(detail.weightKg).toBeCloseTo(6);
+  expect(detail.abilities).toEqual(['Static']);
+  expect(detail.stats).toEqual([{ name: 'hp', value: 35 }]);
+  expect(detail.spriteUri).toContain('/25.png');
+});

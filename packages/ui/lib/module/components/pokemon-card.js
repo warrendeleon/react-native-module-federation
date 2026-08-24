@@ -59,8 +59,11 @@ function PokemonCardInner({
   // the number instead of announcing a dangling ", type" with nothing in front of it.
   const a11yLabel = types.length > 0 ? `${name}, number ${paddedId}, ${types.join(' and ')} ${types.length > 1 ? 'types' : 'type'}` : `${name}, number ${paddedId}`;
   return /*#__PURE__*/_jsx(Pressable, {
-    onPress: onPress,
-    accessibilityRole: "button",
+    onPress: onPress
+    // A card with no press and no remove is information, not a control; announcing
+    // "button" on it promises an activation that does nothing.
+    ,
+    accessibilityRole: onPress || onRemove ? 'button' : undefined,
     accessibilityLabel: a11yLabel,
     accessibilityHint: onPress ? 'Opens details' : undefined,
     accessibilityActions: onRemove ? [{

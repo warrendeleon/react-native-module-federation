@@ -6,8 +6,8 @@ import { Spinner } from "./ui/spinner/index.js";
 import { Text } from "./ui/text/index.js";
 
 // --- Centred spinner with an optional caption. Composed from Gluestack Center + Spinner +
-// Text. Variant: 'light' tints the spinner blue against an off-white screen; 'dark' tints it
-// white against the navy Party tab background. ---
+// Text. The default 'light' variant rides the colour scheme (blue spinner on off-white,
+// white on navy); 'dark' is the fixed-navy pairing and currently has no caller. ---
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 export function LoadingState({
   caption,

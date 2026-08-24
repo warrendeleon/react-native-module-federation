@@ -40,14 +40,15 @@ export function StatBar({ label, value, colourType, max = 160, index = 0 }: Stat
   return (
     // One accessible element so a screen reader announces "Attack, 49" as a value, not three
     // separate text reads. progressbar is the role for a bar showing a magnitude; accessibilityValue
-    // carries the spoken number (the visual scaling to `max` is presentation, so we speak the raw
+    // carries the numeric range assistive tech expects of that role, plus the spoken text
+    // (the visual scaling to `max` is presentation, so the text speaks the raw
     // value rather than a percentage).
     <Box
       className="flex-row items-center py-2.5"
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label}
-      accessibilityValue={{ text: String(value) }}
+      accessibilityValue={{ min: 0, max, now: Math.min(value, max), text: String(value) }}
     >
       <Text size="sm" className="w-[72px] text-darkGrey dark:text-lightGrey">
         {label}

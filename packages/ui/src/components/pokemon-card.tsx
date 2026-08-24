@@ -71,7 +71,9 @@ function PokemonCardInner({
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
+      // A card with no press and no remove is information, not a control; announcing
+      // "button" on it promises an activation that does nothing.
+      accessibilityRole={onPress || onRemove ? 'button' : undefined}
       accessibilityLabel={a11yLabel}
       accessibilityHint={onPress ? 'Opens details' : undefined}
       accessibilityActions={onRemove ? [{ name: 'remove', label: 'Remove from party' }] : undefined}

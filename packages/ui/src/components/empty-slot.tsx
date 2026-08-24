@@ -13,7 +13,13 @@ export interface EmptySlotProps {
 
 export function EmptySlot({ number }: EmptySlotProps) {
   return (
-    <Box className="aspect-square items-center justify-center rounded-2xl border border-dashed border-midGrey/50">
+    // One accessible element with one meaningful sentence: the drawn pokeball and the bare
+    // numeral are decoration, and a screen reader that walked them would hear shapes and a
+    // number with no meaning attached.
+    <Box
+      accessible
+      accessibilityLabel={`Empty party slot ${number}`}
+      className="aspect-square items-center justify-center rounded-2xl border border-dashed border-midGrey/50">
       <Box className="h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-midGrey/35">
         <Box className="absolute left-0 right-0 h-0.5 bg-midGrey/35" />
         <Box className="h-5 w-5 items-center justify-center rounded-full border-2 border-midGrey/35 bg-offWhite dark:bg-navy">

@@ -84,6 +84,9 @@ const Heading = memo(
     { className, size = 'lg', as: AsComp, ...props },
     ref
   ) {
+    // The styling variants are consumed here, into the class string; the rest of the props
+    // travel to the rendered element. Spreading the originals as well would hand a custom
+    // `as` element props like isTruncated that only headingStyle understands.
     const {
       isTruncated,
       bold,
@@ -92,6 +95,7 @@ const Heading = memo(
       sub,
       italic,
       highlight,
+      ...forwarded
     } = props;
 
     if (AsComp) {
@@ -108,7 +112,8 @@ const Heading = memo(
             highlight: highlight as boolean,
             class: className,
           })}
-          {...props}
+          {...forwarded}
+          ref={ref}
         />
       );
     }

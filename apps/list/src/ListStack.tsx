@@ -45,6 +45,14 @@ function PokemonDetailRoute({
   const full = count >= MAX_PARTY;
   return (
     <Box className="flex-1">
+      {/* First in the tree so assistive traversal reaches Back before the content it
+          escapes from; the absolute position keeps it visually floating over the hero. */}
+      {/* The detail arrives as a push, so the floating control says "back", not "dismiss".
+          The design system owns the pill's look; only the safe-area position is this screen's. */}
+      <BackPill
+        onPress={() => navigation.goBack()}
+        style={[styles.backPill, { top: insets.top + 6 }]}
+      />
     <PokemonDetailView
       pokemon={data}
       loading={isLoading}
@@ -78,12 +86,6 @@ function PokemonDetailRoute({
       addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}
     />
-      {/* The detail arrives as a push, so the floating control says "back", not "dismiss".
-          The design system owns the pill's look; only the safe-area position is this screen's. */}
-      <BackPill
-        onPress={() => navigation.goBack()}
-        style={[styles.backPill, { top: insets.top + 6 }]}
-      />
     </Box>
   );
 }
@@ -127,5 +129,6 @@ export default function ListStack() {
 
 // Static style values live in a sheet; only the safe-area offset is computed per render.
 const styles = StyleSheet.create({
-  backPill: { position: 'absolute', left: 16 },
+  // zIndex keeps the pill painted over the detail it now precedes in the tree.
+  backPill: { position: 'absolute', left: 16, zIndex: 10 },
 });

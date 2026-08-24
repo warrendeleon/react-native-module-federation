@@ -142,12 +142,26 @@ export default function PokemonDetailView({
         <Box className={`flex-1 ${bgClassForType(primary)}`}>
           {/* Depth without a gradient: the dex number as a large ghost numeral behind the
               sprite, fading as the sheet arrives. */}
-          <Animated.View style={[styles.ghostWrap, { top: topInset + 28 }, ghostStyle]}>
+          {/* Decoration only: the spoken dex number lives on the visible label below, so the
+              ghost stays out of the accessibility tree on both platforms. */}
+          <Animated.View
+            style={[styles.ghostWrap, { top: topInset + 28 }, ghostStyle]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants">
             <Text style={[styles.ghostNumeral, { color: ghostInk }]}>{dexNumber}</Text>
           </Animated.View>
           <VStack space="lg" className="flex-1 items-center justify-end pb-9" style={{ paddingTop: topInset }}>
             <Box className="rounded-full border-2 border-white/50 bg-white/35 p-5">
-              <Image source={{ uri: pokemon.spriteUri }} alt={pokemon.name} size="xl" resizeMode="contain" />
+              {/* The name is announced by the heading one element later; an alt here would
+                  read it twice in a row. */}
+              <Image
+                source={{ uri: pokemon.spriteUri }}
+                alt=""
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                size="xl"
+                resizeMode="contain"
+              />
             </Box>
             <VStack space="xs" className="items-center">
               <Heading size="2xl" className={onHero}>
@@ -245,6 +259,10 @@ export default function PokemonDetailView({
       {/* Compact title: appears once the hero's name has scrolled away. */}
       <Animated.View
         pointerEvents="none"
+        // A visual echo of the hero's heading for sighted users mid-scroll; assistive tech
+        // already has the name once.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         style={[
           styles.compact,
           { height: topInset + COMPACT_BAR, paddingTop: topInset, backgroundColor: surface },

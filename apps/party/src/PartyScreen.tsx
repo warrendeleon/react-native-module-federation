@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { MAX_PARTY, type PartyMember, type PartySliceShape } from '@pokedex/contracts';
+import { MAX_PARTY, partyStateReady, type PartyMember, type PartySliceShape } from '@pokedex/contracts';
 import { Box, EmptySlot, PokemonCard, ScreenContainer, Text, toast } from '@pokedex/ui';
 import { remove } from './partySlice';
 import type { PartyParamList } from './routes';
@@ -69,6 +69,16 @@ export default function PartyScreen() {
     },
     [dispatch],
   );
+
+  // The owner announces its own arrival. Importing ./partySlice above injected the reducer
+  // as a side effect, so on the path where the boot import failed and this tab performed the
+  // injection instead, nothing has dispatched the marker and state.party is still unsurfaced,
+  // which would leave the Pokédex's Add disabled until some other action ran. Dispatching the
+  // marker here is idempotent: no case handles it, and it costs one no-op action when the
+  // boot path already fired it.
+  useEffect(() => {
+    dispatch(partyStateReady());
+  }, [dispatch]);
 
   // A member arriving or leaving animates the grid into its new shape: the next render after
   // the store changes is wrapped in a spring. The write itself still crosses the seam as a

@@ -5,8 +5,8 @@ import { Spinner } from './ui/spinner';
 import { Text } from './ui/text';
 
 // --- Centred spinner with an optional caption. Composed from Gluestack Center + Spinner +
-// Text. Variant: 'light' tints the spinner blue against an off-white screen; 'dark' tints it
-// white against the navy Party tab background. ---
+// Text. The default 'light' variant rides the colour scheme (blue spinner on off-white,
+// white on navy); 'dark' is the fixed-navy pairing and currently has no caller. ---
 
 export interface LoadingStateProps {
   caption?: string;
