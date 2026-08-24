@@ -31,7 +31,15 @@ const PokemonTypesResponseSchema = z.object({
       // (1 to 151) and non-blank type names, so a malformed row dies here rather than
       // rendering. The duplicate check below stops one row silently overwriting another.
       id: z.number().int().min(1).max(151),
-      pokemontypes: z.array(z.object({ type: z.object({ name: z.string().trim().min(1) }) })),
+      // A Pokémon has one or two types, never zero and never repeats; a row outside that
+      // is malformed and dies at the seam.
+      pokemontypes: z
+        .array(z.object({ type: z.object({ name: z.string().trim().min(1) }) }))
+        .min(1)
+        .max(2)
+        .refine(t => new Set(t.map(x => x.type.name.trim().toLowerCase())).size === t.length, {
+          message: 'duplicate type name',
+        }),
     }),
   ),
 });
@@ -42,6 +50,12 @@ function formatType(name: string): string {
 
 export function parsePokemonTypes(raw: unknown): Record<number, string[]> {
   const { pokemon } = PokemonTypesResponseSchema.parse(raw);
+  // The query asks for the whole Kanto set. 151 rows with unique ids bounded 1 to 151 is
+  // complete by construction; anything short means the server answered a different question,
+  // and the screen's wholesale degrade (no badges) is more honest than a partial one.
+  if (pokemon.length !== 151) {
+    throw new Error(`PokéAPI GraphQL payload has ${pokemon.length} rows for the 151 Kanto Pokémon`);
+  }
   const byId: Record<number, string[]> = {};
   for (const entry of pokemon) {
     if (byId[entry.id]) {
