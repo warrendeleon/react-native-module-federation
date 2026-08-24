@@ -39,18 +39,25 @@ export interface PokemonDetail {
 // later. So we parse the response with a Zod schema at the seam, and a bad shape becomes a caught
 // error the screen can show rather than a crash. The deep treatment of this idea is its own post
 // later in the series. ---
+// Two boundaries every identifier and label in this API answers to. An id is a positive safe
+// integer: zero names nothing, and past the safe-integer range the number in the payload has
+// stopped being representable. A label is non-blank once trimmed: a name of spaces renders as
+// a hole in the UI and an artwork url built from nothing.
+const PokemonIdSchema = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
+const NonBlankSchema = z.string().trim().min(1);
+
 const PokemonListResponseSchema = z.object({
   // The url is not just any string: the row's id is derived from it, so a url without a
   // trailing numeric id is a malformed payload, and the schema is where malformed payloads
   // are supposed to die. Checked here, a bad url becomes a caught query error at the seam
   // instead of a Pokémon #0 three layers later.
-  results: z.array(z.object({ name: z.string().trim().min(1), url: z.string().regex(/\/\d+\/?$/) })),
+  results: z.array(z.object({ name: NonBlankSchema, url: z.string().regex(/\/\d+\/?$/) })),
 });
 
 const PokemonDetailResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  types: z.array(z.object({ type: z.object({ name: z.string() }) })),
+  id: PokemonIdSchema,
+  name: NonBlankSchema,
+  types: z.array(z.object({ type: z.object({ name: NonBlankSchema }) })),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
