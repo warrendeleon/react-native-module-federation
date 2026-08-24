@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
@@ -15,17 +15,6 @@ import { store } from './src/store';
 // endpoints at build time.
 const ListStack = React.lazy(() => import('listApp/ListStack'));
 const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
-
-// Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
-// module that injects the party's reducer into the shared store, so the slice exists before the
-// first add is dispatched — even if the user never opens the Party tab. The host triggers the load
-// and knows nothing about what is inside. Fire-and-forget: nothing awaits this, so an unreachable
-// party server cannot block boot — the federation runtime reports the failure on its own and the
-// app runs without the slice, which is the state the tolerant read shape exists for. The catch
-// guards the rejection path so a failed load can never surface as an unhandled rejection.
-import('partyApp/partySlice').catch(err =>
-  console.warn('party state module failed to load', err),
-);
 
 // A host-owned control in host-owned chrome. It never imported getPokemonList and holds no
 // reference to it, yet dispatching invalidateTags(['PokemonList']) reaches across the seam: the tag
@@ -67,6 +56,28 @@ const renderRefreshButton = () => <RefreshButton />;
 const Tab = createBottomTabNavigator();
 
 export default function App() {
+  // Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
+  // module that injects the party's reducer into the shared store, so the slice exists before the
+  // first add is dispatched — even if the user never opens the Party tab. The host triggers the
+  // load and knows nothing about what is inside.
+  //
+  // It belongs in an effect rather than at module scope, and the reason is the whole point of a
+  // shared store. Injecting a reducer notifies every subscriber, and subscribers here live in
+  // other apps. At module scope the import resolves while React is still mounting the first
+  // screen, so the notification arrives at a component that has not finished mounting, and React
+  // says so. An effect runs after the first commit, so the notification always lands somewhere
+  // React can take it.
+  //
+  // Fire-and-forget: nothing awaits this, so an unreachable party server cannot block boot — the
+  // federation runtime reports the failure on its own and the app runs without the slice, which
+  // is the state the tolerant read shape exists for. The catch guards the rejection path so a
+  // failed load can never surface as an unhandled rejection.
+  useEffect(() => {
+    import('partyApp/partySlice').catch(err =>
+      console.warn('party state module failed to load', err),
+    );
+  }, []);
+
   return (
     <Provider store={store}>
       <SafeAreaProvider>
