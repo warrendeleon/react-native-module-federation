@@ -63,3 +63,14 @@ test('a whitespace-only name fails the parse', () => {
     }),
   ).toThrow();
 });
+
+test('a repeated id fails the parse instead of colliding list keys', () => {
+  expect(() =>
+    parsePokemonList({
+      results: [
+        { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
+        { name: 'bulbasaur-again', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
+      ],
+    }),
+  ).toThrow(/repeats id/);
+});

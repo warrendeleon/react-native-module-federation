@@ -62,7 +62,7 @@ const PokemonDetailResponseSchema = z.object({
   types: z
     .array(z.object({ type: z.object({ name: NonBlankSchema }) }))
     .min(1)
-    .refine(t => new Set(t.map(x => x.type.name)).size === t.length, { message: 'duplicate type name' }),
+    .refine(t => new Set(t.map(x => x.type.name.trim().toLowerCase())).size === t.length, { message: 'duplicate type name' }),
 });
 
 /** Official-artwork sprite URL, derived from the id (no extra request). */
@@ -105,8 +105,15 @@ function formatName(name: string): string {
  */
 export function parsePokemonList(raw: unknown): PokemonSummary[] {
   const { results } = PokemonListResponseSchema.parse(raw);
+  const seen = new Set<number>();
   return results.map(entry => {
     const id = idFromResourceUrl(entry.url);
+    // The list keys its rows by id, so a repeated id is a malformed payload that would
+    // collide FlatList keys; it dies here like every other malformed shape.
+    if (seen.has(id)) {
+      throw new Error(`PokéAPI list payload repeats id ${id}`);
+    }
+    seen.add(id);
     return { id, name: formatName(entry.name), spriteUri: artworkUri(id) };
   });
 }

@@ -34,3 +34,9 @@ test.each([
 ])('%s fails the parse', (_label, raw) => {
   expect(() => parsePokemonDetail(raw)).toThrow();
 });
+
+test('type names colliding after formatting fail the parse', () => {
+  expect(() =>
+    parsePokemonDetail({ ...pikachu, types: [{ type: { name: 'electric' } }, { type: { name: 'Electric' } }] }),
+  ).toThrow();
+});

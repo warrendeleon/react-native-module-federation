@@ -49,6 +49,10 @@ function withSuspense(Remote: React.ComponentType) {
 const PokedexTab = withSuspense(ListStack);
 const PartyTab = withSuspense(PartyStack);
 
+// Defined once at module scope: a fresh render-prop each render would be a new component
+// type to the navigator on every pass.
+const renderRefreshButton = () => <RefreshButton />;
+
 const Tab = createBottomTabNavigator();
 
 export default function App() {
@@ -67,7 +71,7 @@ export default function App() {
               // same agreement the params come from.
               options={({ route }) => ({
                 headerShown: getFocusedRouteNameFromRoute(route) !== 'PokemonDetail',
-                headerRight: () => <RefreshButton />,
+                headerRight: renderRefreshButton,
               })}
             />
             <Tab.Screen name="Party" component={PartyTab} />
