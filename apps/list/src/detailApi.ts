@@ -4,12 +4,12 @@ import { baseApi, parsePokemonDetail, type PokemonDetail } from '@pokedex/contra
 // live here — the installed detail view stays a pure component and is fed by the container below in
 // ListStack. No tags — nothing invalidates a single Pokémon yet. ---
 const detailApi = baseApi.injectEndpoints({
-  // Both tab remotes define this endpoint against the shared api: each domain owns its data
-  // access, and the definitions are identical by construction because both parse with the
+  // Both tab remotes define this same endpoint against the shared api: each domain owns its
+  // data access, and the definitions are identical by construction because both parse with the
   // contracts schema. Be exact about what this flag changes. Without it RTK keeps the FIRST
   // injection and skips the second, logging an error in dev; with it, the LAST injection wins.
-  // Either way load order decides, which neither app controls, so the two definitions have to
-  // stay identical rather than merely similar.
+  // Either way the winner is decided by load order, which neither app controls, so the two
+  // definitions have to stay identical rather than merely similar.
   overrideExisting: true,
   endpoints: build => ({
     getPokemonDetail: build.query<PokemonDetail, number>({

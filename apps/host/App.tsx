@@ -5,8 +5,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { partyStateReady } from '@pokedex/contracts';
 import { colours, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
+import { partyStateReady } from '@pokedex/contracts';
 import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
@@ -23,7 +23,6 @@ import { store } from './src/store';
 // independently shipped bundles at once.
 const ListStack = React.lazy(() => import('listApp/ListStack'));
 const PartyStack = React.lazy(() => import('partyApp/PartyStack'));
-
 
 // A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
 // spinner. Wrapping once here keeps the lazy boundary out of the remotes.
@@ -122,6 +121,9 @@ export default function App() {
         }
       : { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: colours.blue } };
 
+  const [splashDone, setSplashDone] = useState(false);
+  const [navReady, setNavReady] = useState(false);
+
   // Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
   // module that injects the party's reducer into the shared store — even if the user never opens
   // the Party tab. The host triggers the load and knows nothing about what is inside.
@@ -150,9 +152,6 @@ export default function App() {
       .then(() => store.dispatch(partyStateReady()))
       .catch(err => console.warn('party state module failed to load', err));
   }, []);
-
-  const [splashDone, setSplashDone] = useState(false);
-  const [navReady, setNavReady] = useState(false);
 
   return (
     <Provider store={store}>
