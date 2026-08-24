@@ -6,8 +6,10 @@ import { baseApi, parsePokemonDetail, type PokemonDetail } from '@pokedex/contra
 const detailApi = baseApi.injectEndpoints({
   // Both tab remotes define this endpoint against the shared api: each domain owns its data
   // access, and the definitions are identical by construction because both parse with the
-  // contracts schema. The duplication is deliberate, so it is declared: without this RTK skips
-  // whichever injection lands second and the surviving definition depends on load order.
+  // contracts schema. Be exact about what this flag changes. Without it RTK keeps the FIRST
+  // injection and skips the second, logging an error in dev; with it, the LAST injection wins.
+  // Either way load order decides, which neither app controls, so the two definitions have to
+  // stay identical rather than merely similar.
   overrideExisting: true,
   endpoints: build => ({
     getPokemonDetail: build.query<PokemonDetail, number>({
