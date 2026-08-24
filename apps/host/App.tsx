@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider, useDispatch } from 'react-redux';
 import { NavigationContainer, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { baseApi } from '@pokedex/contracts';
+import { baseApi, partyStateReady } from '@pokedex/contracts';
 
 import { store } from './src/store';
 
@@ -57,25 +57,31 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   // Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
-  // module that injects the party's reducer into the shared store, so the slice exists before the
-  // first add is dispatched — even if the user never opens the Party tab. The host triggers the
-  // load and knows nothing about what is inside.
+  // module that injects the party's reducer into the shared store — even if the user never opens
+  // the Party tab. The host triggers the load and knows nothing about what is inside.
   //
-  // It belongs in an effect rather than at module scope, and the reason is the whole point of a
-  // shared store. Injecting a reducer notifies every subscriber, and subscribers here live in
-  // other apps. At module scope the import resolves while React is still mounting the first
-  // screen, so the notification arrives at a component that has not finished mounting, and React
-  // says so. An effect runs after the first commit, so the notification always lands somewhere
-  // React can take it.
+  // Loading at boot is a head start, not a guarantee: the chunk arrives over the network, and
+  // nothing here stops a user reaching an Add button before it lands. So the resolve is made
+  // visible. rootReducer.inject() swaps an entry in a reducer map and rebuilds the combined
+  // reducer; it never dispatches, so the store's state gains no `party` key until the next
+  // action runs. partyStateReady is that action: dispatching it surfaces the injected slice,
+  // and write-side consumers gate the add on `state.party` existing. Until then the button is
+  // disabled; a tap can never dispatch into a store with no reducer for it.
+  //
+  // It belongs in an effect rather than at module scope: there the import's side effects can
+  // resolve mid-way through React's first mount, which React reports as a state update on a
+  // component that has not mounted. An effect runs after the first commit, where a side effect
+  // belongs.
   //
   // Fire-and-forget: nothing awaits this, so an unreachable party server cannot block boot — the
   // federation runtime reports the failure on its own and the app runs without the slice, which
-  // is the state the tolerant read shape exists for. The catch guards the rejection path so a
-  // failed load can never surface as an unhandled rejection.
+  // is the state the tolerant read shape exists for: reads render honestly, and the add stays
+  // disabled rather than pretending. The catch guards the rejection path so a failed load can
+  // never surface as an unhandled rejection.
   useEffect(() => {
-    import('partyApp/partySlice').catch(err =>
-      console.warn('party state module failed to load', err),
-    );
+    import('partyApp/partySlice')
+      .then(() => store.dispatch(partyStateReady()))
+      .catch(err => console.warn('party state module failed to load', err));
   }, []);
 
   return (

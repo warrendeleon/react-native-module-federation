@@ -13,13 +13,18 @@ import PokedexScreen from './PokedexScreen';
 //
 // The write path is wired here too. The view exposes an optional onAddToParty; this consumer hands
 // it the contract's action creator, so the tap crosses the seam as `party/add` and lands in a
-// reducer another app owns. The count is read through the tolerant PartySliceShape — the party's
-// slice is injected at runtime, so before its module loads, s.party is undefined and ?? 0 is the
-// honest answer.
+// reducer another app owns. The party is read through the tolerant PartySliceShape — the party's
+// slice is injected at runtime, so until its module loads, s.party is undefined. That undefined
+// does double duty: the count falls back to 0 honestly, and the add stays disabled, because a
+// dispatch before the reducer exists would vanish without a trace. The host surfaces the slice
+// with the contract's partyStateReady marker the moment the module lands, so the gate lifts on
+// its own — usually before anyone has navigated this deep.
 function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
   const { data, isLoading, isError, refetch } = useGetPokemonDetailQuery(route.params.id);
   const dispatch = useDispatch();
-  const count = useSelector((s: PartySliceShape) => s.party?.members.length ?? 0);
+  const members = useSelector((s: PartySliceShape) => s.party?.members);
+  const partyReady = members !== undefined;
+  const count = members?.length ?? 0;
   const full = count >= MAX_PARTY;
   return (
     <PokemonDetailView
@@ -30,7 +35,7 @@ function PokemonDetailRoute({ route }: { route: { params: DetailParams } }) {
       onAddToParty={() =>
         data && dispatch(addToParty({ id: data.id, name: data.name, spriteUri: data.spriteUri }))
       }
-      addDisabled={full}
+      addDisabled={full || !partyReady}
       addLabel={full ? 'Party is full' : 'Add to party'}
     />
   );

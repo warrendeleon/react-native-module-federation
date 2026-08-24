@@ -25,6 +25,14 @@ export const addToParty = createAction(
   (member: Omit<PartyMember, 'uid'>) => ({ payload: { ...member, uid: nanoid() } }),
 );
 
+// Dispatched by the host once the party's state module has loaded and injected its reducer.
+// rootReducer.inject() swaps an entry in the reducer map and rebuilds the combined reducer, but
+// it never dispatches, so the store's state does not gain a `party` key until the NEXT action
+// runs through the new reducer. This marker is that action: no case handles it, and dispatching
+// it does exactly one useful thing — `state.party` appears, which is the signal write-side
+// consumers gate on before offering the add.
+export const partyStateReady = createAction('party/stateReady');
+
 // The tolerant read shape. The party's slice is injected at runtime by a module the reader does
 // not control, so at the moment a foreign module reads, the slice may not exist yet. The optional
 // is the design, not defensiveness: readers write `s.party?.members ?? []` and render something

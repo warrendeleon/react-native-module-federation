@@ -6,14 +6,12 @@ import { baseApi, parsePokemonDetail, type PokemonDetail } from '@pokedex/contra
 // release cycles, so the roughly twenty lines are duplicated on purpose.
 //
 // The endpoint NAME collides on purpose too. Both apps inject `getPokemonDetail` into the one
-// baseApi; RTK skips the second injection (loudly in dev, silently in production), so both share
-// whichever definition loaded first — and its cache entries. Identical definitions make the skip
-// harmless. Drifted definitions would make it a bug, which is why this copy tracks the list app's
-// byte for byte. ---
+// baseApi and both declare the collision with overrideExisting, so the last injection wins;
+// undeclared, RTK would keep the first and skip this one. Either way load order decides, and
+// either way there is one definition and one set of cache entries. Identical definitions make
+// that harmless. Drifted definitions would make it a bug, which is why this copy tracks the
+// list app's byte for byte. ---
 const detailApi = baseApi.injectEndpoints({
-  // The duplicate endpoint name is deliberate, so it is declared here too. Undeclared, RTK
-  // would keep the first injection and skip this one; declared, the last wins. Load order
-  // decides either way, which is why this copy tracks the list app's definition exactly.
   overrideExisting: true,
   endpoints: build => ({
     getPokemonDetail: build.query<PokemonDetail, number>({
