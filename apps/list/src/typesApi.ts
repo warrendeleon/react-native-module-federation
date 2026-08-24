@@ -10,7 +10,7 @@ const GRAPHQL_URL = 'https://graphql.pokeapi.co/v1beta2';
 // the server's default row order to happen to be ascending.
 const POKEMON_TYPES = gql`
   {
-    pokemon(limit: 151, where: { id: { _lte: 151 } }, order_by: { id: asc }) {
+    pokemon(limit: 151, where: { id: { _gte: 1, _lte: 151 } }, order_by: { id: asc }) {
       id
       pokemontypes {
         type {
@@ -27,9 +27,10 @@ const POKEMON_TYPES = gql`
 const PokemonTypesResponseSchema = z.object({
   pokemon: z.array(
     z.object({
-      // The same boundaries the REST parsers hold: a positive safe-integer id and
-      // non-blank type names, so a malformed row dies here rather than rendering.
-      id: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+      // The parser enforces the query's whole demand, not just its shape: Kanto ids only
+      // (1 to 151) and non-blank type names, so a malformed row dies here rather than
+      // rendering. The duplicate check below stops one row silently overwriting another.
+      id: z.number().int().min(1).max(151),
       pokemontypes: z.array(z.object({ type: z.object({ name: z.string().trim().min(1) }) })),
     }),
   ),
@@ -43,6 +44,9 @@ export function parsePokemonTypes(raw: unknown): Record<number, string[]> {
   const { pokemon } = PokemonTypesResponseSchema.parse(raw);
   const byId: Record<number, string[]> = {};
   for (const entry of pokemon) {
+    if (byId[entry.id]) {
+      throw new Error(`PokéAPI GraphQL payload repeats id ${entry.id}`);
+    }
     byId[entry.id] = entry.pokemontypes.map(t => formatType(t.type.name));
   }
   return byId;

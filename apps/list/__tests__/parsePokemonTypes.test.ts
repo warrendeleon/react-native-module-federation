@@ -20,3 +20,20 @@ test.each([
 ])('%s fails the parse', (_label, raw) => {
   expect(() => parsePokemonTypes(raw)).toThrow();
 });
+
+test('an id past the Kanto range fails the parse', () => {
+  expect(() =>
+    parsePokemonTypes({ pokemon: [{ id: 152, pokemontypes: [{ type: { name: 'grass' } }] }] }),
+  ).toThrow();
+});
+
+test('a repeated id fails the parse instead of overwriting a row', () => {
+  expect(() =>
+    parsePokemonTypes({
+      pokemon: [
+        { id: 1, pokemontypes: [{ type: { name: 'grass' } }] },
+        { id: 1, pokemontypes: [{ type: { name: 'poison' } }] },
+      ],
+    }),
+  ).toThrow(/repeats id/);
+});
