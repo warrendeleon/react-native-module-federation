@@ -19,8 +19,9 @@ import { useGetPokemonListQuery } from './listApi';
 import { useGetPokemonTypesQuery } from './typesApi';
 
 // The data no longer lives here. useGetPokemonListQuery reads the shared cache in the host's store,
-// filled by the endpoint this remote injected into the one baseApi. The host owns the title and the
-// refresh control in its header; this screen owns the list and the stack it navigates in.
+// filled by the endpoint this remote injected into the one baseApi. The chrome moved the other way:
+// this screen owns its own large-title header and the pull-to-refresh below it, along with the
+// list and the stack it navigates in.
 //
 // The look no longer lives here either. Every colour on this screen is a token class from
 // @pokedex/ui, and the row markup is the design system's PokemonCard — the same component, and at
