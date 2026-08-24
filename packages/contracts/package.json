@@ -1,6 +1,6 @@
 {
   "name": "@pokedex/contracts",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "The shared seam between federated remotes: the route params one side pushes and another reads, the shape of every exposed module, the single QueryClient every side reads and writes, the key factory that makes a prefix a promise, and the party store with the cap its owner declared. Installed by version so separately-built apps agree without importing each other's code.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
