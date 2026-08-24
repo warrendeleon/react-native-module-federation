@@ -6,7 +6,16 @@ import { QueryClient } from '@tanstack/react-query';
 // QueryClientProvider; a remote shipped months later calls useQuery and lands in that cache without
 // registering anything first. Nothing is injected, because there is nothing to inject into: a query
 // exists the moment a component asks for it. ---
-export const queryClient = new QueryClient();
+//
+// The one default worth overriding for this comparison: left on its defaults, TanStack treats
+// cached data as stale immediately (staleTime: 0), so a second observer mounting on the same
+// key renders the cached data AND fires a background refetch. staleTime is the promise that
+// data this fresh is fine to serve as-is; a minute matches how long the Redux build keeps an
+// unsubscribed cache entry, so the two builds answer a remount the same way: from cache, no
+// second request.
+export const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 60_000 } },
+});
 
 // --- The key factory. TanStack has no central API object, so the only thing two teams can agree on
 // is the shape of the key, and agreement by convention is agreement that can drift. Exporting the
