@@ -14,9 +14,11 @@ export const partySlice = createSlice({
     },
   },
   extraReducers: builder => {
-    // The crossing interaction. The list app dispatches the contract's addToParty; this case
-    // matches it because both sides hold the SAME action creator — @pokedex/contracts is a
-    // federation singleton, so `party/add` is one object, not two that happen to share a string.
+    // The crossing interaction. The list app dispatches the contract's addToParty, and this case
+    // matches it on the type string: addCase reads actionCreator.type and keys the reducer by
+    // `party/add`, so agreement on that string is what makes the match work, not the identity of
+    // the creator object. Sharing @pokedex/contracts as a singleton is what stops the two sides
+    // from retyping that string, the cap and the read shape separately.
     builder.addCase(addToParty, (state, { payload }) => {
       if (state.members.length >= MAX_PARTY) return; // the cap lives with the owner
       state.members.push(payload);

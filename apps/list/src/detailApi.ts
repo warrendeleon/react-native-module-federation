@@ -4,6 +4,11 @@ import { baseApi, parsePokemonDetail, type PokemonDetail } from '@pokedex/contra
 // live here — the installed detail view stays a pure component and is fed by the container below in
 // ListStack. No tags — nothing invalidates a single Pokémon yet. ---
 const detailApi = baseApi.injectEndpoints({
+  // Both tab remotes define this endpoint against the shared api: each domain owns its data
+  // access, and the definitions are identical by construction because both parse with the
+  // contracts schema. The duplication is deliberate, so it is declared: without this RTK skips
+  // whichever injection lands second and the surviving definition depends on load order.
+  overrideExisting: true,
   endpoints: build => ({
     getPokemonDetail: build.query<PokemonDetail, number>({
       // One Pokémon by id. parsePokemonDetail validates the payload with Zod at the seam and keeps

@@ -11,6 +11,10 @@ import { baseApi, parsePokemonDetail, type PokemonDetail } from '@pokedex/contra
 // harmless. Drifted definitions would make it a bug, which is why this copy tracks the list app's
 // byte for byte. ---
 const detailApi = baseApi.injectEndpoints({
+  // The duplicate endpoint name is deliberate (see the comment above), so it is declared here
+  // too. Left undeclared, RTK skips whichever injection lands second and which definition
+  // survives depends on which app loaded first.
+  overrideExisting: true,
   endpoints: build => ({
     getPokemonDetail: build.query<PokemonDetail, number>({
       // One Pokémon by id. parsePokemonDetail validates the payload with Zod at the seam and keeps
