@@ -7,6 +7,7 @@ import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PokemonDetailView } from '@pokedex/detail';
 import { baseApi, partyStateReady, rootReducer } from '@pokedex/contracts';
 
@@ -15,16 +16,31 @@ import ListStack from '../src/ListStack';
 // The detail data is not what this test is about; the query hook resolves instantly.
 jest.mock('../src/detailApi', () => ({
   useGetPokemonDetailQuery: () => ({
-    data: { id: 1, name: 'Bulbasaur', spriteUri: 'sprite://1', types: ['grass'] },
+    data: {
+      id: 1,
+      name: 'Bulbasaur',
+      spriteUri: 'sprite://1',
+      types: ['grass'],
+      heightM: 0.7,
+      weightKg: 6.9,
+      abilities: ['overgrow'],
+      stats: [{ name: 'hp', value: 45 }],
+    },
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
   }),
 }));
 
+// Safe-area metrics so useSafeAreaInsets returns real numbers under test.
 // Fake timers keep the navigator's scheduled work inside the test's lifetime, so nothing
 // fires after Jest tears the environment down.
 jest.useFakeTimers();
+
+const metrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, left: 0, right: 0, bottom: 34 },
+};
 
 test('Add stays disabled until partyStateReady surfaces the injected slice', async () => {
   const store = configureStore({
@@ -36,16 +52,18 @@ test('Add stays disabled until partyStateReady surfaces the injected slice', asy
   await act(async () => {
     tree = ReactTestRenderer.create(
       <Provider store={store}>
-        <NavigationContainer
-          initialState={{
-            routes: [
-              { name: 'PokedexList' },
-              { name: 'PokemonDetail', params: { id: 1 } },
-            ],
-            index: 1,
-          }}>
-          <ListStack />
-        </NavigationContainer>
+        <SafeAreaProvider initialMetrics={metrics}>
+          <NavigationContainer
+            initialState={{
+              routes: [
+                { name: 'PokedexList' },
+                { name: 'PokemonDetail', params: { id: 1 } },
+              ],
+              index: 1,
+            }}>
+            <ListStack />
+          </NavigationContainer>
+        </SafeAreaProvider>
       </Provider>,
     );
   });

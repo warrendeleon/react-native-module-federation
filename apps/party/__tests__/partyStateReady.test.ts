@@ -10,7 +10,7 @@ import {
   type PartySliceShape,
 } from '@pokedex/contracts';
 
-const bulbasaur = { id: 1, name: 'Bulbasaur', spriteUri: 'sprite://1' };
+const bulbasaur = { id: 1, name: 'Bulbasaur', spriteUri: 'sprite://1', types: ['grass'] };
 
 test('an add before the slice module loads vanishes; the marker closes the window', () => {
   const store = configureStore({ reducer: rootReducer });

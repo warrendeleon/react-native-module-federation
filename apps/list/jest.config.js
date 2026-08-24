@@ -2,6 +2,14 @@ const preset = require('@react-native/jest-preset');
 
 module.exports = {
   preset: '@react-native/jest-preset',
+  // Reanimated drives animations through the JSI, which a Jest process has no runtime for, so it
+  // is replaced by the stand-in in __mocks__. @pokedex/detail's collapse animation resolves to
+  // the same mock.
+  moduleNameMapper: {
+    '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+    // ListStack imports global.css for the federated styling runtime; Jest gets a stub.
+    '\\.css$': '<rootDir>/__mocks__/styleMock.js',
+  },
   // @gluestack-ui/utils ships .jsx files, and the base preset's transform pattern covers
   // (js|ts|tsx) only, so they would reach Jest untransformed and throw on their import
   // statements. Same transformer, one extension wider.
@@ -16,6 +24,6 @@ module.exports = {
   // @react-native and @react-native-community, and nothing else. Add these too or Jest tries to
   // require raw `export` syntax and throws before any test runs.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-redux|@reduxjs/toolkit|immer|redux|reselect|redux-thunk|@pokedex/ui|nativewind|react-native-css-interop|@gluestack-ui|@expo/html-elements)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-redux|@reduxjs/toolkit|immer|redux|reselect|redux-thunk|@pokedex/ui|nativewind|react-native-css-interop|@gluestack-ui|@expo/html-elements|@pokedex/detail)/)',
   ],
 };
