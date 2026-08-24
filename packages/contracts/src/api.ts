@@ -40,7 +40,11 @@ export interface PokemonDetail {
 // error the screen can show rather than a crash. The deep treatment of this idea is its own post
 // later in the series. ---
 const PokemonListResponseSchema = z.object({
-  results: z.array(z.object({ name: z.string(), url: z.string() })),
+  // The url is not just any string: the row's id is derived from it, so a url without a
+  // trailing numeric id is a malformed payload, and the schema is where malformed payloads
+  // are supposed to die. Checked here, a bad url becomes a caught query error at the seam
+  // instead of a Pokémon #0 three layers later.
+  results: z.array(z.object({ name: z.string(), url: z.string().regex(/\/\d+\/?$/) })),
 });
 
 const PokemonDetailResponseSchema = z.object({
@@ -54,10 +58,17 @@ export function artworkUri(id: number): string {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
-/** PokéAPI resource URLs end with the numeric id: .../pokemon/25/ -> 25. */
+/**
+ * PokéAPI resource URLs end with the numeric id: .../pokemon/25/ -> 25. Throws on a url with no
+ * trailing id rather than inventing one: inside parsePokemonList the schema has already policed
+ * the shape, and any other caller gets a loud error instead of a silent 0.
+ */
 export function idFromResourceUrl(url: string): number {
   const match = url.match(/\/(\d+)\/?$/);
-  return match ? Number(match[1]) : 0;
+  if (!match) {
+    throw new Error(`PokéAPI resource URL has no trailing id: ${url}`);
+  }
+  return Number(match[1]);
 }
 
 // PokéAPI returns lower-case, hyphenated names ("mr-mime"); title-case each word for display.
