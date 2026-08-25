@@ -10,6 +10,7 @@ module.exports = {
   moduleNameMapper: {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^partyApp/partySlice$': '<rootDir>/__mocks__/partyApp-partySlice.js',
+    '^partyApp/styles$': '<rootDir>/__mocks__/partyApp-styles.js',
   },
   // @gluestack-ui/utils ships .jsx files, and the base preset's transform pattern covers
   // (js|ts|tsx) only, so they would reach Jest untransformed and throw on their import
