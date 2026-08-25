@@ -21,3 +21,7 @@ declare module 'partyApp/PartyStack' {
 // reducer — so the declaration body is empty: the host holds no reference to anything inside, and
 // the compiler rejects any attempt to name an export.
 declare module 'partyApp/partySlice' {}
+
+// Same reasoning as the state module: imported for the side effect of registering this remote's
+// styles with the shared styling runtime, so the declaration body stays empty.
+declare module 'partyApp/styles' {}

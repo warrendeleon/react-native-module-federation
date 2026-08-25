@@ -219,6 +219,7 @@ export default function App() {
   // disabled rather than pretending. The catch guards the rejection path so a failed load can
   // never surface as an unhandled rejection.
   useEffect(() => {
+    import('partyApp/styles').catch(err => console.warn('party styles failed to load', err));
     import('partyApp/partySlice')
       .then(() => store.dispatch(partyStateReady()))
       .catch(err => console.warn('party state module failed to load', err));

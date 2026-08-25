@@ -60,6 +60,7 @@ export default Repack.defineRspackConfig(env => {
           // A state module, not a screen. The host imports it at boot for its side effect: running
           // it injects the party's reducer into the shared store.
           './partySlice': './src/partySlice.ts',
+          './styles': './src/styles.ts',
         },
         dts: false,
         shared: {
