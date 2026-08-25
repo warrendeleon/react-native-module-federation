@@ -37,6 +37,7 @@
     "@babel/runtime": "^7.25.0",
     "@callstack/repack": "^5.2.5",
     "@callstack/repack-plugin-nativewind": "5.2.5",
+    "@callstack/repack-plugin-reanimated": "^5.2.5",
     "@module-federation/enhanced": "^2.9.0",
     "@react-native-community/cli": "^20.2.0",
     "@react-native-community/cli-platform-android": "^20.2.0",

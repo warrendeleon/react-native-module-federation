@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
 import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
+import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import pkg from './package.json' with { type: 'json' };
 // Read the installed versions rather than letting the bundler work them out. It cannot for a
 // package resolved through an `exports` map: see the `version` note in the shared block below.
@@ -53,6 +54,10 @@ export default Repack.defineRspackConfig(env => {
       // transform into the Re.Pack build. Official Callstack integration, version-locked to
       // the installed @callstack/repack.
       new NativeWindPlugin(),
+      // react-native-reanimated ships a Babel/SWC transform its worklets depend on. Re.Pack
+      // detects the package and warns when the plugin is absent; the official Callstack plugin
+      // wires that transform in, version-locked to the installed @callstack/repack.
+      new ReanimatedPlugin(),
       new Repack.plugins.ModuleFederationPluginV2({
         name: 'host',
         filename: 'host.container.js.bundle',
