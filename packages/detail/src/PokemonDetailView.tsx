@@ -244,7 +244,11 @@ export default function PokemonDetailView({
                     ? 'bg-lightGrey dark:bg-white/10'
                     : bgClassForType(primary)
                 }`}
-                style={{ alignSelf: 'stretch' }}
+                // The 44pt bar is declared here rather than inherited from the size variant.
+                // A variant is a visual decision that can change; the minimum tappable height of
+                // the screen's one primary action is a commitment, and the accessibility suite
+                // can only verify what the control actually declares.
+                style={{ alignSelf: 'stretch', minHeight: 44 }}
                 accessibilityRole="button">
                 <ButtonText
                   className={addDisabled ? 'text-midGrey' : textOnTypeClass(primary)}>

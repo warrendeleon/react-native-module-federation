@@ -29,10 +29,18 @@ export function ErrorState({
       size: "sm",
       className: `mb-4 text-center ${bodyClass}`,
       children: message
-    }) : null, onRetry ? /*#__PURE__*/_jsx(Button, {
+    }) : null, onRetry ?
+    /*#__PURE__*/
+    // The retry is the only way out of a failed load, so its tappable height is declared
+    // here rather than left to the size variant. A variant is a visual decision; the minimum
+    // target is a commitment, and a declared one is the only kind a suite can verify.
+    _jsx(Button, {
       action: "primary",
       size: "md",
       onPress: onRetry,
+      style: {
+        minHeight: 44
+      },
       children: /*#__PURE__*/_jsx(ButtonText, {
         children: retryLabel
       })

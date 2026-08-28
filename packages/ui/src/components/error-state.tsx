@@ -37,7 +37,14 @@ export function ErrorState({
         </Text>
       ) : null}
       {onRetry ? (
-        <Button action="primary" size="md" onPress={onRetry}>
+        // The retry is the only way out of a failed load, so its tappable height is declared
+        // here rather than left to the size variant. A variant is a visual decision; the minimum
+        // target is a commitment, and a declared one is the only kind a suite can verify.
+        <Button
+          action="primary"
+          size="md"
+          onPress={onRetry}
+          style={{ minHeight: 44 }}>
           <ButtonText>{retryLabel}</ButtonText>
         </Button>
       ) : null}

@@ -1,16 +1,12 @@
-const preset = require('@react-native/jest-preset');
+// Same preset as the design system and both remotes: the accessibility bar is a package every
+// side installs, not a convention each side re-implements. It extends the React Native preset,
+// so the view's existing suite runs unchanged.
+const preset = require('@pokedex/a11y-testing/jest-preset');
 
 module.exports = {
-  preset: '@react-native/jest-preset',
+  preset: '@pokedex/a11y-testing',
   moduleNameMapper: {
+    ...preset.moduleNameMapper,
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
   },
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': preset.transform['^.+\\.(js|ts|tsx)$'],
-    '^.+\\.(bmp|gif|jpg|jpeg|mp4|png|psd|svg|webp)$':
-      preset.transform['^.+\\.(bmp|gif|jpg|jpeg|mp4|png|psd|svg|webp)$'],
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|nativewind|react-native-css-interop|@gluestack-ui|@expo/html-elements|react-native-safe-area-context|@pokedex/ui)/)',
-  ],
 };
