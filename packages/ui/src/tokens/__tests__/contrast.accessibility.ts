@@ -130,10 +130,14 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
   // to 4.5:1 is this project's own choice and is filed below rather than here, where it would
   // read as a criterion failure it is not.
   //
-  // Fixing the token is a palette decision, not a test decision: darkening past roughly #5F5F6D
-  // clears AA on every surface it is drawn on, and changes every secondary line in every remote
-  // at once, which is the kind of change that belongs to the package that owns the token rather
-  // than to whichever app noticed first.
+  // Fixing the token is a palette decision, not a test decision, and there is no single darker
+  // value that does it. Past roughly #5F5F6D the token clears AA on the three light surfaces
+  // (5.96:1, 5.45:1, 4.57:1), but the detail sheet is dark:bg-navy and those headings carry no
+  // dark override, so the navy pair below — comfortable at 6.48:1 today — drops to 2.84:1. The
+  // 70% caption would still sit at 3.12:1. It needs a second token for the dark surface and a
+  // different treatment for the caption, which changes every secondary line in every remote at
+  // once: the kind of change that belongs to the package that owns the token rather than to
+  // whichever app noticed first.
   knownFinding('secondary text on the detail sheet', 'midGrey is 2.60:1, AA needs 4.5:1', () => {
     expectColorContrast(colours.midGrey, colours.offWhite);
   });
