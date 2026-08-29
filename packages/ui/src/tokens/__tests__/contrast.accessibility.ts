@@ -132,9 +132,9 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
   //
   // Fixing the token is a palette decision, not a test decision, and there is no single darker
   // value that does it. Past roughly #5F5F6D the token clears AA on the three light surfaces
-  // (5.96:1, 5.45:1, 4.57:1), but the detail sheet is dark:bg-navy and those headings carry no
+  // (5.92:1, 5.60:1, 4.60:1), but the detail sheet is dark:bg-navy and those headings carry no
   // dark override, so the navy pair below — comfortable at 6.48:1 today — drops to 2.84:1. The
-  // 70% caption would still sit at 3.12:1. It needs a second token for the dark surface and a
+  // 70% caption would still sit at 3.09:1. It needs a second token for the dark surface and a
   // different treatment for the caption, which changes every secondary line in every remote at
   // once: the kind of change that belongs to the package that owns the token rather than to
   // whichever app noticed first.
