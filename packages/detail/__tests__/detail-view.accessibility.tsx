@@ -96,9 +96,10 @@ describe('WCAG 4.1.2 Name, Role, Value — the Add action', () => {
 });
 
 describe('WCAG 2.5.5 Target Size — the Add action', () => {
-  // 44pt is Apple's stated minimum tappable size, adopted as this project's bar. It is not the
-  // AA requirement: SC 2.5.5 is Level AAA, and WCAG 2.2's AA criterion (2.5.8) asks for 24x24.
-  // Clearing 44 clears the AA bar; Android's 48dp guidance is the one to watch on that side.
+  // 44pt is Apple's recommended default control size, adopted as this project's bar. It is not
+  // Apple's floor either: the Human Interface Guidelines put the iOS minimum at 28x28. And it is
+  // not the AA requirement: SC 2.5.5 is Level AAA, and WCAG 2.2's AA criterion (2.5.8) asks for
+  // 24x24. Clearing 44 clears the AA bar; Android's 48dp guidance is the one to watch on that side.
   test('the Add button declares at least 44pt on both axes', async () => {
     const { getByRole } = await renderWithTheme(view({ onAddToParty: () => {} }));
     expectMinTouchTarget(getByRole('button'));
