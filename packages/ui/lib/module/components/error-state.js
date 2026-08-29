@@ -19,32 +19,45 @@ export function ErrorState({
 }) {
   const titleClass = variant === 'dark' ? 'text-white' : 'text-red dark:text-white';
   const bodyClass = variant === 'dark' ? 'text-lightGrey' : 'text-darkGrey dark:text-lightGrey';
-  return /*#__PURE__*/_jsxs(Center, {
-    className: "flex-1 px-6",
-    children: [/*#__PURE__*/_jsx(Heading, {
-      size: "lg",
-      className: `mb-2 ${titleClass}`,
-      children: title
-    }), message ? /*#__PURE__*/_jsx(Text, {
-      size: "sm",
-      className: `mb-4 text-center ${bodyClass}`,
-      children: message
-    }) : null, onRetry ?
+  return (
     /*#__PURE__*/
-    // The retry is the only way out of a failed load, so its tappable height is declared
-    // here rather than left to the size variant. A variant is a visual decision; the minimum
-    // target is a commitment, and a declared one is the only kind a suite can verify.
-    _jsx(Button, {
-      action: "primary",
-      size: "md",
-      onPress: onRetry,
-      style: {
-        minHeight: 44
-      },
-      children: /*#__PURE__*/_jsx(ButtonText, {
-        children: retryLabel
-      })
-    }) : null]
-  });
+    // A failed load is a status message (SC 4.1.3): it appears without moving focus, so a
+    // screen reader has to be told about it or it is silent. `alert` announces on both
+    // platforms without a live region, which iOS has no equivalent for.
+    // `accessible` is what makes the region one element to a screen reader, and what makes the
+    // role queryable at all: a role on a view nobody has marked accessible is inert.
+    _jsxs(Center, {
+      className: "flex-1 px-6",
+      accessible: true,
+      accessibilityRole: "alert",
+      children: [/*#__PURE__*/_jsx(Heading, {
+        size: "lg",
+        className: `mb-2 ${titleClass}`,
+        children: title
+      }), message ? /*#__PURE__*/_jsx(Text, {
+        size: "sm",
+        className: `mb-4 text-center ${bodyClass}`,
+        children: message
+      }) : null, onRetry ?
+      /*#__PURE__*/
+      // The retry is the only way out of a failed load, so its tappable size is declared here
+      // rather than left to the size variant. A variant is a visual decision; the minimum
+      // target is a commitment, and a declared one is the only kind a suite can verify.
+      // Both axes are declared: the button is far wider than 44 in every layout it appears in,
+      // but a width nobody states is a width nobody has measured.
+      _jsx(Button, {
+        action: "primary",
+        size: "md",
+        onPress: onRetry,
+        style: {
+          minWidth: 44,
+          minHeight: 44
+        },
+        children: /*#__PURE__*/_jsx(ButtonText, {
+          children: retryLabel
+        })
+      }) : null]
+    })
+  );
 }
 //# sourceMappingURL=error-state.js.map

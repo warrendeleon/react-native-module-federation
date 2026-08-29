@@ -13,6 +13,7 @@ export declare const colours: {
     readonly darkGrey: "#515151";
     readonly navy: "#0F172A";
     readonly black: "#2E3138";
+    readonly typeInk: "#000000";
 };
 export type ColourToken = keyof typeof colours;
 //# sourceMappingURL=colours.d.ts.map

@@ -18,7 +18,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-09-tanstack-zustand` | [State stacks under federation](https://warrendeleon.com/blog/state-stacks-under-federation-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-state-stacks) | The same app rebuilt on TanStack Query and Zustand, a fork off the post-08 line rather than the next step on it, so this tag never folds into `main` |
 | `post-10-two-backends` | [Two backends, one client?](https://warrendeleon.com/blog/rtk-query-vs-apollo-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-rtk-query-apollo) | A GraphQL endpoint joins the REST one in the same api slice via queryFn; both provide the same tag, so the host's one Refresh press refetches both protocols |
 | `post-11-design-system` | [The design system as a federated singleton](https://warrendeleon.com/blog/federated-design-system-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-design-system) | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.2; one host toggle re-themes every bundle |
-| `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and two declared touch targets ship as ui 1.0.3 and detail 4.0.3 |
+| `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and the touch targets and status regions it found ship as ui 1.0.5 and detail 4.0.5, which the host takes too |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -34,6 +34,7 @@ apps/
 ├── list/     a federated remote; exposes the Pokédex stack
 └── party/    a federated remote; exposes the Party stack
 packages/
+├── a11y-testing/ the shared accessibility bar: Jest preset, WCAG helpers, report (devDependency only, never bundled)
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
 ├── detail/     @pokedex/detail — the Pokémon detail view as a versioned component; presentational, fed by each consumer's own container
 └── ui/         @pokedex/ui — the design system: gluestack-ui copy-in primitives, colour tokens and composed components, shared at runtime as a host-provided singleton
@@ -49,15 +50,22 @@ cd react-native-module-federation
 git checkout post-12-a11y-testing
 ```
 
-The apps install `@pokedex/contracts` from a local registry, so publish it before installing them. Leave the registry running in its own terminal:
+The apps install four `@pokedex` packages from a local registry, so publish them before installing anything. Leave the registry running in its own terminal:
 
 ```sh
 npx verdaccio                                    # :4873, stays up
 npm adduser --registry http://localhost:4873     # any username, password and email
+```
+
+Publish in dependency order. Each package's own `npm install` resolves the `@pokedex` packages
+it depends on, so a package has to be on the registry before the one that needs it runs:
+`a11y-testing` is a devDependency of `ui` and `detail`, and `ui` is a peer of `detail`.
+
+```sh
 ( cd packages/contracts && npm install && npm run build && npm publish )
-( cd packages/detail && npm install && npm run build && npm publish )
-( cd packages/ui && npm install && npm run build && npm publish )
 ( cd packages/a11y-testing && npm install && npm run build && npm publish )
+( cd packages/ui && npm install && npm run build && npm publish )
+( cd packages/detail && npm install && npm run build && npm publish )
 ```
 
 Then the apps:
@@ -96,7 +104,7 @@ The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, w
 
 ```mermaid
 flowchart TD
-    registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail · @pokedex/ui")]
+    registry[("local registry :4873<br/>@pokedex/contracts · @pokedex/detail · @pokedex/ui<br/>@pokedex/a11y-testing (devDependency, never bundled)")]
     pokeapi(["PokéAPI"])
     subgraph host["host — the shell (:8081)"]
         tabs["bottom tab bar"]

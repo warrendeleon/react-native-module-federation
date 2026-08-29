@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "lib": ["es2017"],
+    "lib": [
+      "es2017"
+    ],
     "module": "commonjs",
     "moduleResolution": "node",
     "jsx": "react-jsx",
@@ -9,7 +11,13 @@
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": [
+      "jest"
+    ]
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "__tests__"
+  ]
 }

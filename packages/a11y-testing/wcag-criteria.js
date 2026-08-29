@@ -42,6 +42,9 @@ module.exports = {
   '2.3.1': { name: 'Three Flashes or Below Threshold', level: 'A', layer: 'manual' },
   '2.4.1': { name: 'Bypass Blocks', level: 'A', layer: 'n-a' },
   '2.4.2': { name: 'Page Titled', level: 'A', layer: 'automated' },
+  // Android's Accessibility Test Framework has a traversal-order check; iOS's
+  // performAccessibilityAudit has no equivalent. A criterion only one platform can automate is
+  // not one a report should claim, so it stays with the person driving the screen reader.
   '2.4.3': { name: 'Focus Order', level: 'A', layer: 'manual' },
   '2.4.4': { name: 'Link Purpose (In Context)', level: 'A', layer: 'automated' },
   '2.4.5': { name: 'Multiple Ways', level: 'AA', layer: 'manual' },
@@ -61,6 +64,11 @@ module.exports = {
   '3.3.2': { name: 'Labels or Instructions', level: 'A', layer: 'automated' },
   '3.3.3': { name: 'Error Suggestion', level: 'AA', layer: 'manual' },
   '3.3.4': { name: 'Error Prevention (Legal, Financial, Data)', level: 'AA', layer: 'n-a' },
+  // WCAG 2.1 carries 4.1.1 Parsing at Level A. It is listed here so this catalogue is the
+  // whole A + AA set (50 criteria) rather than a set with a silent hole in it, and tagged n-a
+  // because it is about parsing markup: the spec's own note says it is always satisfied for
+  // HTML or XML content, and this app renders neither. WCAG 2.2 removed it outright.
+  '4.1.1': { name: 'Parsing', level: 'A', layer: 'n-a' },
   '4.1.2': { name: 'Name, Role, Value', level: 'A', layer: 'automated' },
   '4.1.3': { name: 'Status Messages', level: 'AA', layer: 'automated' },
 };

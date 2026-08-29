@@ -9,8 +9,12 @@ export declare function bgClassForType(type: string): string;
 export declare function badgeDarkClassForType(type: string): string;
 /** Background class faded to 30% (sprite-tint pattern): 'bg-type-fire/30'. */
 export declare function tintBgClassForType(type: string): string;
-/** Foreground text class chosen for contrast against bgClassForType: 'text-white' or 'text-black'. */
-export declare function textOnTypeClass(type: string): 'text-white' | 'text-black';
+/** Foreground text class chosen for contrast against bgClassForType. */
+export declare function textOnTypeClass(type: string): 'text-white' | 'text-typeInk';
+/** Foreground text class for a badge sitting on the hero's translucent scrim. */
+export declare function textOnHeroScrimClass(type: string): 'text-white' | 'text-typeInk';
+/** The scrim alpha TypeBadge's hero variant paints, exported so tests composite the same value. */
+export declare const HERO_SCRIM_ALPHA = 0.3;
 /** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
 export declare function borderClassForType(type: string): string;
 //# sourceMappingURL=typeColours.d.ts.map

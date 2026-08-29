@@ -30,6 +30,11 @@ const colours = {
   // --- Neutrals (dark theme; Party tab) ---
   navy: '#0F172A',
   black: '#2E3138',
+  // The near-black surface above is a neutral, not a foreground. Type badges need real black:
+  // `text-black` resolves to #2E3138 here because this scale shadows Tailwind's default, and on
+  // the water and psychic fills that is 3.74:1 and 3.81:1 — under the 4.5:1 small text needs.
+  // typeInk keeps the badge foreground at the value the contrast maps were computed against.
+  typeInk: '#000000',
 };
 
 const typeColours = {

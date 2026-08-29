@@ -16,8 +16,8 @@ everywhere, so it stays out of every Module Federation shared map.
 | `jest-preset.js` | Extends `@react-native/jest-preset`, adds `nativewind/babel` to the transform and the interop's `toHaveStyle` matcher. Without it `className` is an inert prop in tests and every colour assertion reads `undefined`. |
 | `createThemedRender(preset)` | Binds a Tailwind preset once and returns an async render that resolves classes to real styles. |
 | `expectColorContrast` | WCAG 1.4.3 / 1.4.11 against the current relative-luminance definition. |
-| `expectMinTouchTarget`, `expectMinHitSlop` | The project's 44pt bar on declared sizes. |
-| `expectAccessibilityProps` | Name, role and — the half teams forget — state. |
+| `expectMinTouchTarget`, `expectMinHitSlop` | The project's 44pt bar on declared sizes, both axes, throwing where nothing is declared. |
+| `expectAccessibilityProps` | Name, role, and the half teams forget: state. |
 | `expectScreenReaderAnnouncement`, `expectNonColourCue` | Status regions and SC 1.4.1. |
 | `wcag-criteria.js` | The WCAG 2.1 A + AA catalogue, tagged by the layer that can verify each criterion. |
 | `reporter.js` | Turns a suite run into one `accessibility-report.md`. |
@@ -44,20 +44,29 @@ const { getByRole } = await renderWithTheme(<AddButton disabled />);
 expectAccessibilityProps(getByRole('button'), { role: 'button', state: { disabled: true } });
 ```
 
-Name every accessibility `describe` after its criterion — `WCAG 4.1.2 …` — and the reporter groups
+Name every accessibility `describe` after its criterion (`WCAG 4.1.2 …`) and the reporter groups
 the run by criterion on its own.
 
 ## Two things worth knowing
 
 **`nativewind/test` and `react-native-css-interop/test` are real, shipped and undocumented.**
-nativewind.dev has no testing section. They power NativeWind's own suite. Versions are pinned
-deliberately (nativewind 4.2.6, css-interop 0.2.6, RNTL ^13.3.3 — the pairing this is proven
-against) and re-checked when NativeWind moves.
+nativewind.dev has no testing section. They power NativeWind's own suite. (`nativewind/babel`,
+which the preset also adds, *is* documented: it is step 3 of NativeWind's installation guide.)
+The versions this is proven against are nativewind 4.2.6, css-interop 0.2.6 and RNTL 13.3.3.
+RNTL is held below 14, whose async rewrite this render path has not been exercised against; the
+two styling packages are carried on caret ranges rather than exact pins, so a minor release
+arrives without a change here and the pairing is re-checked when NativeWind moves.
 
-**Class-derived sizes do not survive the test renderer.** Under `nativewind/test` a rem resolves to
-about 14, so `h-11` is not 44. The touch-target helper reads declared style and props, and throws
-rather than passing when there is nothing measurable — a silent pass would report a control as
-accessible precisely when the test could not see it.
+**Class-derived sizes do not survive the test renderer.** `nativewind/test` compiles the class
+strings present on the element tree handed to `render`, so a class a component's variant builds
+during its own render is not one of them: the element arrives carrying no size at all. And where
+a class does resolve, the number is not the one web habits predict. NativeWind's rem on React
+Native is 14, so `h-11` is 38.5 points, not 44.
+
+The touch-target helper therefore reads declared style and props, and throws rather than passing
+when an axis has nothing measurable behind it. Per axis, not just per element: substituting the
+bar for an undeclared width reports a control as accessible precisely where the test could not
+see it. A `hitSlop` is measured too, not merely counted.
 
 ## What it cannot check
 

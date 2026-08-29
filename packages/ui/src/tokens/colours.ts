@@ -22,6 +22,10 @@ export const colours = {
   // --- Neutrals (dark theme; Party tab uses these) ---
   navy: '#0F172A',
   black: '#2E3138',
+
+  // --- Foreground ink for type-coloured surfaces. Real black, unlike the `black` neutral
+  // above: see the note in tailwind.preset.js. ---
+  typeInk: '#000000',
 } as const;
 
 export type ColourToken = keyof typeof colours;

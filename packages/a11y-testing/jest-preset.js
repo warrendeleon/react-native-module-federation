@@ -5,15 +5,15 @@
 //
 // Two things it adds on top of the base preset:
 //
-//   1. `nativewind/babel` in the transform. NativeWind rewrites the JSX import source and turns
-//      className into style at build time. Without this, className is an inert prop in tests and
-//      every colour assertion reads undefined.
+//   1. `nativewind/babel` in the transform. NativeWind rewrites the JSX import source, so
+//      className reaches the styling runtime as style. Without it className is an inert prop in
+//      tests and every colour assertion reads undefined. This one is documented: it is step 3
+//      of NativeWind's own installation guide.
 //   2. `react-native-css-interop/dist/test/setupAfterEnv.js`. This ships the toHaveStyle matcher
-//      that the interop's own suite uses.
-//
-// Both entry points are real and shipped, and neither is documented: nativewind.dev has no
-// testing section at all. They are pinned deliberately (see the versions in package.json) and
-// re-checked when NativeWind moves. ---
+//      that the interop's own suite uses, and it is not documented anywhere. Neither is
+//      `nativewind/test`, which src/render.tsx imports: nativewind.dev has no testing section at
+//      all. Those two are the undocumented pair, and the reason the styling versions are held to
+//      a range this package has actually exercised. ---
 
 const path = require('path');
 
@@ -39,8 +39,10 @@ module.exports = {
   ...reactNativePreset,
   // Exported so a consumer can widen the list rather than replace it. An app that also pulls in
   // React Navigation or the Redux stack spreads this array, appends its own entries and rebuilds
-  // the pattern. Replacing the array outright is how a shared preset quietly stops being shared:
-  // the app keeps running, and the styling stack silently drops out of the transform.
+  // the pattern. Replacing the array outright does not fail subtly: the styling stack ships ES
+  // modules, so Jest hits `SyntaxError: Cannot use import statement outside a module` before a
+  // single test runs. Loud is the good case. The trap is that the error names a file deep in
+  // node_modules and reads like a broken dependency rather than a config the app owns.
   uncompiledPackages: packagesThatShipUncompiledSource,
   setupFilesAfterEnv: [
     ...(reactNativePreset.setupFilesAfterEnv ?? []),

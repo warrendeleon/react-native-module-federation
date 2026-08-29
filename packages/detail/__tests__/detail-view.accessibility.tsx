@@ -1,19 +1,23 @@
 // --- The shared view carries its own accessibility suite.
 //
 // This package ships one screen to two apps that never import each other. If the screen is
-// checked here, at the source, both consumers inherit the result — and when something fails, one
-// patch release heals both of them without either team touching their code.
+// checked here, at the source, both consumers inherit the result, and when something fails one
+// patch release repairs both of them without either team touching their code.
 //
 // The tests hand the view its props directly. That is the same seam the List and Party apps use
 // to feed it, so nothing here needs a store, a query client or a navigator.
 
 import React from 'react';
+import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { PokemonDetail } from '@pokedex/contracts';
+import { HERO_SCRIM_ALPHA, colourForType, colours, textOnHeroScrimClass } from '@pokedex/ui';
 import {
   createThemedRender,
   expectAccessibilityProps,
+  expectColorContrast,
   expectMinTouchTarget,
+  expectNonColourCue,
 } from '@pokedex/a11y-testing';
 
 import { PokemonDetailView } from '../src';
@@ -44,10 +48,21 @@ const charizard: PokemonDetail = {
   flavourText: 'It spits fire hot enough to melt boulders.',
 };
 
-function view(overrides: Partial<React.ComponentProps<typeof PokemonDetailView>> = {}) {
+type ViewProps = React.ComponentProps<typeof PokemonDetailView>;
+
+function view(overrides: Partial<ViewProps> = {}) {
+  // `loading` and `error` are required on the view's props, so the spread is merged over
+  // explicit defaults rather than handed to the component as possibly-undefined.
+  const props: ViewProps = {
+    pokemon: charizard,
+    loading: false,
+    error: false,
+    onRetry: () => {},
+    ...overrides,
+  };
   return (
     <SafeAreaProvider initialMetrics={metrics}>
-      <PokemonDetailView pokemon={charizard} {...overrides} />
+      <PokemonDetailView {...props} />
     </SafeAreaProvider>
   );
 }
@@ -72,36 +87,72 @@ describe('WCAG 4.1.2 Name, Role, Value — the Add action', () => {
 });
 
 describe('WCAG 2.5.5 Target Size — the Add action', () => {
-  // 44pt is Apple's recommended default control size, adopted as this project's bar. It is not
-  // the AA requirement: SC 2.5.5 is Level AAA, and WCAG 2.2's AA criterion (2.5.8) asks for
-  // 24x24. Clearing 44 clears both, and Android's 48dp guidance is the one to watch on that side.
-  test('the Add button is at least 44pt tall', async () => {
+  // 44pt is Apple's stated minimum tappable size, adopted as this project's bar. It is not the
+  // AA requirement: SC 2.5.5 is Level AAA, and WCAG 2.2's AA criterion (2.5.8) asks for 24x24.
+  // Clearing 44 clears the AA bar; Android's 48dp guidance is the one to watch on that side.
+  test('the Add button declares at least 44pt on both axes', async () => {
     const { getByRole } = await renderWithTheme(view({ onAddToParty: () => {} }));
     expectMinTouchTarget(getByRole('button'));
   });
 });
 
 describe('WCAG 1.1.1 Non-text Content — the sprite', () => {
-  test('the hero sprite is either labelled or explicitly decorative', async () => {
-    const { getByRole, queryByRole } = await renderWithTheme(view());
-    const image = queryByRole('image') ?? queryByRole('img');
-    if (image) {
-      // If it is exposed at all, it must say what it is.
-      expectAccessibilityProps(image, { label: expect.stringContaining('Charizard') as never });
+  // The sprite repeats the heading beside it, so the right answer is to hide it rather than to
+  // label it twice. Either answer is acceptable; what is not acceptable is neither, which is
+  // what an unlabelled visible image would be. This asserts the sprite element itself, because
+  // a check that falls back to "well, there is a heading" would pass a regression that removed
+  // the hiding props.
+  test('the hero sprite is explicitly decorative, or else it is labelled', async () => {
+    const { UNSAFE_getAllByType } = await renderWithTheme(view());
+    const sprites = UNSAFE_getAllByType(Image).filter(
+      image => (image.props.source as { uri?: string })?.uri === charizard.spriteUri,
+    );
+    expect(sprites).toHaveLength(1);
+
+    const sprite = sprites[0];
+    const label = sprite.props.accessibilityLabel ?? sprite.props['aria-label'];
+    const hidden =
+      sprite.props.accessibilityElementsHidden === true &&
+      sprite.props.importantForAccessibility === 'no-hide-descendants';
+
+    if (label) {
+      expect(String(label)).toContain(charizard.name);
     } else {
-      // Hidden from the tree is the other valid answer for art that repeats the heading.
-      expect(getByRole('header')).toBeTruthy();
+      // Hidden on both platforms, not just one: iOS reads accessibilityElementsHidden and
+      // Android reads importantForAccessibility, so one without the other leaves it exposed.
+      expect(hidden).toBe(true);
     }
   });
 });
 
+describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
+  // The hero paints the type colour full-strength and puts the name straight onto it, while the
+  // type badges sit on a translucent scrim over the same colour. Two surfaces, two decisions.
+  // The design system computes both; this checks the screen composes the right one for each.
+  test.each(charizard.types)('the %s badge clears AA on the hero scrim', async type => {
+    const scrimHex = compositeWhite(HERO_SCRIM_ALPHA, colourForType(type));
+    const foreground = textOnHeroScrimClass(type) === 'text-white' ? colours.white : colours.typeInk;
+    expectColorContrast(foreground, scrimHex, 'normalText');
+  });
+});
+
 describe('WCAG 1.4.1 Use of Color — the stat rows', () => {
-  test('each stat is readable as a number, not only as a coloured bar', async () => {
+  test('each stat is readable as its own number, not only as a coloured bar', async () => {
     const { getAllByRole } = await renderWithTheme(view());
     const bars = getAllByRole('progressbar');
     expect(bars.length).toBe(charizard.stats.length);
-    for (const bar of bars) {
-      expect(bar.props.accessibilityValue?.text).toEqual(expect.any(String));
-    }
+    // The value itself, not merely "a string": an empty text would satisfy expect.any(String)
+    // and this test is named for the number being readable.
+    bars.forEach((bar, index) => {
+      expect(bar.props.accessibilityValue?.text).toBe(String(charizard.stats[index].value));
+      expectNonColourCue(bar, String(charizard.stats[index].value));
+    });
   });
 });
+
+/** Composites white at `alpha` over `base`, the way the hero's scrim paints at runtime. */
+function compositeWhite(alpha: number, base: string): string {
+  const channel = (index: number) => parseInt(base.replace('#', '').substr(index * 2, 2), 16);
+  const mix = (index: number) => Math.round(alpha * 255 + (1 - alpha) * channel(index));
+  return `#${[0, 1, 2].map(i => mix(i).toString(16).padStart(2, '0')).join('')}`;
+}

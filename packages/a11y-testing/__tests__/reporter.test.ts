@@ -1,0 +1,126 @@
+// --- The reporter's own tests.
+//
+// The report is the artefact a team reads instead of the suite, so a fault here is a fault
+// nobody sees. Each case below is one the reporter previously got wrong: a denominator that
+// ignored its own not-applicable declarations, a criterion checked but silently dropped, two
+// titles run together, and a coverage sentence that disagreed with the number beside it.
+
+import { mkdtempSync, readFileSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
+const AccessibilityReporter = require('../reporter.js');
+const CRITERIA = require('../wcag-criteria.js');
+
+type Assertion = { ancestorTitles: string[]; title: string; status: string };
+
+function report(assertions: Assertion[], notApplicable?: Record<string, string>): string {
+  const rootDir = mkdtempSync(join(tmpdir(), 'a11y-reporter-'));
+  if (notApplicable) {
+    writeFileSync(
+      join(rootDir, 'a11y-report.config.js'),
+      `module.exports = ${JSON.stringify({ notApplicable })};`,
+    );
+  }
+  const reporter = new AccessibilityReporter({ rootDir }, { title: 'subject' });
+  reporter.onRunComplete({}, {
+    testResults: [{ testResults: assertions.map(a => ({ failureMessages: [], ...a })) }],
+  });
+  return readFileSync(join(rootDir, 'accessibility-report.md'), 'utf8');
+}
+
+const passing = (ancestor: string, title = 'a check') => ({
+  ancestorTitles: [ancestor],
+  title,
+  status: 'passed',
+});
+
+describe('coverage arithmetic', () => {
+  const automated = Object.values(CRITERIA).filter((c: any) => c.layer === 'automated').length;
+
+  test('the catalogue has the 15 criteria a Jest process can decide', () => {
+    expect(automated).toBe(15);
+  });
+
+  test('with no declarations the denominator is the whole automated set', () => {
+    expect(report([passing('WCAG 1.4.3 Contrast (Minimum)')])).toContain(
+      `**1 of ${automated}** WCAG 2.1 A + AA criteria`,
+    );
+  });
+
+  test('a declared criterion leaves the denominator and is named as excluded', () => {
+    const out = report([passing('WCAG 1.4.3 Contrast (Minimum)')], {
+      '1.3.5': 'No text inputs.',
+    });
+    expect(out).toContain(`**1 of ${automated - 1}**`);
+    expect(out).toContain('after 1 declared not applicable here');
+    expect(out).toContain('| 1.3.5 Identify Input Purpose | AA | n/a |');
+  });
+
+  // The fault: a suite declaring a criterion that was never counted still said "after 2
+  // declared not applicable" while removing one, so the sentence and the fraction disagreed.
+  test('a declaration outside the automated set changes no number and says so', () => {
+    const out = report([passing('WCAG 1.4.3 Contrast (Minimum)')], {
+      '1.3.5': 'No text inputs.',
+      '3.3.4': 'No data-submission flows.',
+    });
+    expect(out).toContain(`**1 of ${automated - 1}**`);
+    expect(out).toContain('after 1 declared not applicable here');
+    expect(out).toContain('(never counted here)');
+  });
+
+  test('an untested criterion reads 0 rather than being drawn like an n/a', () => {
+    expect(report([passing('WCAG 1.4.3 Contrast (Minimum)')])).toContain(
+      '| 1.1.1 Non-text Content | A | 0 |',
+    );
+  });
+});
+
+describe('what lands in which bucket', () => {
+  test('a failure is a violation, under its criterion name and level', () => {
+    const out = report([
+      { ancestorTitles: ['WCAG 4.1.2 Name, Role, Value'], title: 'the button', status: 'failed' },
+    ]);
+    expect(out).toContain('## Violations (1)');
+    expect(out).toContain('### WCAG 4.1.2 Name, Role, Value (A)');
+  });
+
+  test('a title marked (known is tracked rather than counted as a violation', () => {
+    const out = report([
+      passing('WCAG 1.4.3 Contrast (Minimum)', 'secondary text (known: 2.75:1)'),
+    ]);
+    expect(out).toContain('## Violations (0)');
+    expect(out).toContain('## Known findings (1)');
+  });
+
+  // The 44pt bar is SC 2.5.5, which is Level AAA and outside the A + AA set the fraction is
+  // measured against. Dropping it silently hid checks that ran; counting it inflated the score.
+  test('a criterion outside the counted set is reported without moving the number', () => {
+    const out = report([passing('WCAG 2.5.5 Target Size', 'the Add button')]);
+    expect(out).toContain('## Checked beyond the counted scope');
+    expect(out).toContain('**WCAG 2.5.5**');
+    expect(out).toContain('1 check');
+    expect(out).toContain('**0 of 15**');
+  });
+});
+
+describe('finding lines', () => {
+  test('the criterion name the heading already carries is not repeated, and titles are separated', () => {
+    const out = report([
+      passing('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', 'on white (known)'),
+    ]);
+    expect(out).toContain('**WCAG 1.4.3 Contrast (Minimum)** — body text on light surfaces · on white (known)');
+  });
+
+  test('an assertion naming no criterion is ignored rather than mis-filed', () => {
+    expect(report([passing('a plain unit test', 'does a thing')])).toContain('**0 of 15**');
+  });
+});
+
+describe('the three-layer note', () => {
+  test('every report says what it does not cover', () => {
+    const out = report([passing('WCAG 1.4.3 Contrast (Minimum)')]);
+    expect(out).toContain('## What this report does not cover');
+    expect(out).toContain('necessary, not sufficient');
+  });
+});

@@ -1,77 +1,184 @@
-// --- The List remote checked against the same bar as everything else.
+// --- The Pokédex remote checked against the same bar as everything else.
 //
-// The design system's own suite already proved the tokens and the components. What is left is
-// what only this team can check: the screens they compose out of them. Nothing in this file
-// re-tests a card's label format — that is settled at the source — it tests that the rows this
-// screen builds from real data are labelled at all, and that the states a user can land in are
-// reachable by a screen reader.
+// The design system's own suite proves the tokens and the components. What is left is what only
+// this team can check: the screens they compose out of them. So this file renders the real
+// PokedexScreen through the real navigator and the real store, rather than mounting a design
+// system component and calling it a screen. An earlier version did the latter, which meant it
+// re-tested a card's label format that was already settled at the source and never once
+// exercised anything this app owns.
+//
+// Nothing here re-checks what packages/ui already proves. These tests are about composition:
+// that rows built from the app's own query data carry labels, that the states a user can land
+// in are reachable, and that the party counter announces itself.
 
 import React from 'react';
-import { PokemonCard, ErrorState } from '@pokedex/ui';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { baseApi, partyStateReady, rootReducer } from '@pokedex/contracts';
 import {
   createThemedRender,
   expectAccessibilityProps,
   expectMinTouchTarget,
+  expectScreenReaderAnnouncement,
 } from '@pokedex/a11y-testing';
+
+import ListStack from '../src/ListStack';
+
+// A slice of what the list endpoint returns. The screen maps over it, so these rows reach the
+// accessibility tree the same way live data would.
+const rows = [
+  { id: 1, name: 'Bulbasaur', spriteUri: 'sprite://1' },
+  { id: 25, name: 'Pikachu', spriteUri: 'sprite://25' },
+];
+
+type ListState = {
+  data?: typeof rows;
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: () => void;
+};
+
+const defaultListState: ListState = {
+  data: rows,
+  isLoading: false,
+  isError: false,
+  isFetching: false,
+  refetch: jest.fn(),
+};
+
+// The factory is hoisted above every binding in this file, so it cannot close over an ordinary
+// variable. Jest allows one prefixed with `mock`, on the understanding that it is assigned
+// before the mocked module is first required — which beforeEach does.
+let mockListState: ListState = defaultListState;
+
+jest.mock('../src/listApi', () => ({
+  useGetPokemonListQuery: () => mockListState,
+}));
+
+jest.mock('../src/typesApi', () => ({
+  useGetPokemonTypesQuery: () => ({
+    data: { 1: ['Grass', 'Poison'], 25: ['Electric'] },
+    isFetching: false,
+  }),
+}));
+
+jest.useFakeTimers();
+
+const metrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, left: 0, right: 0, bottom: 34 },
+};
 
 const renderWithTheme = createThemedRender(require('@pokedex/ui/tailwind.preset.js'));
 
-// A slice of what the list endpoint returns, in the shape the screen maps over.
-const rows = [
-  { id: 1, name: 'Bulbasaur', types: ['Grass', 'Poison'], spriteUri: 'sprite://1' },
-  { id: 25, name: 'Pikachu', types: ['Electric'], spriteUri: 'sprite://25' },
-];
+/** The nearest ancestor that declares a size: what a finger actually lands on. */
+function buttonContaining(node: { parent: unknown } | null) {
+  let current = node as { parent: unknown; props?: { style?: unknown } } | null;
+  while (current) {
+    const style = current.props?.style;
+    if (style && !Array.isArray(style) && typeof style === 'object' && 'minHeight' in style) {
+      return current;
+    }
+    current = current.parent as typeof current;
+  }
+  throw new Error('No ancestor of that text declares a size.');
+}
+
+function setListState(state: Partial<ListState>) {
+  mockListState = { ...defaultListState, ...state };
+}
+
+// The party slice belongs to the other remote, so this app only ever sees it injected. It is
+// injected once, because rootReducer.inject ignores a second registration at the same path, and
+// the members it reports come from here — the shape post 8 established: inject, then surface it
+// with the marker the host dispatches.
+let injectedParty: unknown[] = [];
+rootReducer.inject({ reducerPath: 'party', reducer: () => ({ members: injectedParty }) });
+
+async function renderScreen({ party = [] as unknown[] } = {}) {
+  injectedParty = party;
+  const store = configureStore({
+    reducer: rootReducer,
+    middleware: gdm => gdm().concat(baseApi.middleware),
+  });
+  store.dispatch(partyStateReady());
+  const result = await renderWithTheme(
+    <Provider store={store}>
+      <SafeAreaProvider initialMetrics={metrics}>
+        <NavigationContainer>
+          <ListStack />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </Provider>,
+  );
+  return result;
+}
+
+beforeEach(() => setListState({}));
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+});
 
 describe('WCAG 4.1.2 Name, Role, Value — the Pokédex rows', () => {
-  test.each(rows)('the $name row is a button that names itself', async row => {
-    const { getByRole } = await renderWithTheme(
-      <PokemonCard
-        id={row.id}
-        name={row.name}
-        types={row.types}
-        spriteUri={row.spriteUri}
-        onPress={() => {}}
-      />,
-    );
-    expectAccessibilityProps(getByRole('button'), {
+  test.each(rows)('the $name row the screen builds is a button that names itself', async row => {
+    const { getByLabelText } = await renderScreen();
+    expectAccessibilityProps(getByLabelText(new RegExp(`^${row.name}, number `)), {
       role: 'button',
-      label: new RegExp(`^${row.name}, number `),
     });
+  });
+
+  test('every row the screen renders is reachable as a button', async () => {
+    const { getAllByRole } = await renderScreen();
+    const labels = getAllByRole('button').map(b => b.props.accessibilityLabel);
+    for (const row of rows) {
+      expect(labels.some((l: string) => l?.startsWith(`${row.name}, number `))).toBe(true);
+    }
+  });
+});
+
+describe('WCAG 4.1.3 Status Messages — the states this screen can land in', () => {
+  test('a failed load announces itself and is not just a picture of an error', async () => {
+    setListState({ isError: true, data: undefined });
+    const { getByRole } = await renderScreen();
+    expectScreenReaderAnnouncement(getByRole('alert'), { politeness: 'assertive' });
+  });
+
+  test('a loading screen announces politely rather than interrupting', async () => {
+    setListState({ isLoading: true, data: undefined });
+    const { getByText } = await renderScreen();
+    // The caption is the announceable content; the spinner conveys nothing on its own.
+    expect(getByText(/Loading/i)).toBeTruthy();
+  });
+
+  // The party count is the one thing on this screen that changes without the user moving focus,
+  // which is exactly what SC 4.1.3 is about.
+  test('the party counter is a live region, so a change is announced', async () => {
+    const { getByLabelText } = await renderScreen({ party: [{ uid: 'a' }, { uid: 'b' }] });
+    expectScreenReaderAnnouncement(getByLabelText(/party/i), { politeness: 'polite' });
+  });
+
+  test('the counter names the count in words rather than leaving it to the digits', async () => {
+    const { getByLabelText } = await renderScreen({ party: [{ uid: 'a' }, { uid: 'b' }] });
+    expect(getByLabelText(/2 of 6/i)).toBeTruthy();
   });
 });
 
 describe('WCAG 2.5.5 Target Size — the error state', () => {
   // The retry is the only way out of a failed load, so it is the one control on this screen
   // that must never be hard to hit.
-  test('the retry button clears the 44pt bar', async () => {
-    const { getByRole } = await renderWithTheme(
-      <ErrorState message="Couldn't reach PokéAPI." onRetry={() => {}} retryLabel="Try again" />,
-    );
-    // This passes because the design system declares the height on ErrorState's button, not
+  test('the retry button clears the 44pt bar on both axes', async () => {
+    setListState({ isError: true, data: undefined });
+    const { getByText } = await renderScreen();
+    // Named rather than picked by role: the header's theme toggle is a button too, and a query
+    // that would break the day a second control appears is a query that tests the fixture.
+    // This passes because the design system declares the size on ErrorState's button, not
     // because this app did anything. One package release, every remote's retry covered.
     // The check is on the declared size; what the control finally occupies after layout and
     // clipping is the native audit layer's job.
-    expectMinTouchTarget(getByRole('button'));
-  });
-
-  test('the retry button says what it does', async () => {
-    const { getByText } = await renderWithTheme(
-      <ErrorState message="Couldn't reach PokéAPI." onRetry={() => {}} retryLabel="Try again" />,
-    );
-    expect(getByText('Try again')).toBeTruthy();
-  });
-});
-
-describe('WCAG 4.1.3 Status Messages — the party counter', () => {
-  // The header reads "My Party 3/6". A sighted user watches the number change; a screen-reader
-  // user is told nothing, because the header is static text with no live region.
-  //
-  // This is the honest example of what the automated layer cannot fix by itself: the check below
-  // records the gap rather than pretending the screen announces something it does not. Closing it
-  // is a product decision about how chatty the tab should be, and it belongs in the same package
-  // discussion as the counter itself.
-  it.failing('the party count change is announced (known: the header has no live region)', () => {
-    const header = { props: { children: 'My Party 3/6' } };
-    expect(header.props).toHaveProperty('accessibilityLiveRegion');
+    expectMinTouchTarget(buttonContaining(getByText('Try again')));
   });
 });

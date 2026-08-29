@@ -17,7 +17,10 @@ export function LoadingState({ caption, variant = 'light' }: LoadingStateProps) 
   const spinnerClass = variant === 'dark' ? 'text-white' : 'text-blue dark:text-white';
   const captionClass = variant === 'dark' ? 'text-lightGrey' : 'text-darkGrey dark:text-lightGrey';
   return (
-    <Center className="flex-1">
+    // Loading is a status message too, but a polite one: it should not interrupt whatever the
+    // screen reader is already saying. A spinner conveys nothing on its own, so the caption is
+    // what actually gets announced.
+    <Center className="flex-1" accessible accessibilityLiveRegion="polite">
       <Spinner size="large" className={spinnerClass} />
       {caption ? (
         <Text size="sm" className={`mt-3 ${captionClass}`}>

@@ -1,6 +1,11 @@
 import React from 'react';
 
-import { badgeDarkClassForType, bgClassForType, textOnTypeClass } from '../tokens/typeColours';
+import {
+  badgeDarkClassForType,
+  bgClassForType,
+  textOnHeroScrimClass,
+  textOnTypeClass,
+} from '../tokens/typeColours';
 
 import { Box } from './ui/box';
 import { Text } from './ui/text';
@@ -25,14 +30,16 @@ export function TypeBadge({ type, size = 'sm', surface = 'card' }: TypeBadgeProp
   // On a card the pill dims to a tonal wash in dark mode; the hero variant never does, because
   // the hero surface itself stays the type colour in both schemes.
   //
-  // Both variants take their text colour from the same per-type decision. The hero's scrim is
-  // translucent, so what sits behind it is still the type colour: a white pill over a pale type
-  // needs black text, and over a dark one (fighting, ghost, dragon) it needs white. Hard-coding
-  // either way fails half the palette.
+  // The two variants take their text colour from two different decisions, because they sit on
+  // two different surfaces. The scrim is translucent but it is not transparent: 30% white over
+  // the fill is measurably lighter than the fill, so the foreground computed for the solid
+  // colour is the wrong one for the four types whose fill is dark enough to take white.
   const bg =
     surface === 'hero' ? 'bg-white/30' : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
   const fg =
-    surface === 'hero' ? textOnTypeClass(type) : `${textOnTypeClass(type)} dark:text-white/90`;
+    surface === 'hero'
+      ? textOnHeroScrimClass(type)
+      : `${textOnTypeClass(type)} dark:text-white/90`;
   const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
   const textSize = size === 'md' ? 'sm' : 'xs';
   // The card-sized badge drops bold for a medium weight: at this scale bold fills the pill

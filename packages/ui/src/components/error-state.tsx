@@ -27,7 +27,12 @@ export function ErrorState({
   const titleClass = variant === 'dark' ? 'text-white' : 'text-red dark:text-white';
   const bodyClass = variant === 'dark' ? 'text-lightGrey' : 'text-darkGrey dark:text-lightGrey';
   return (
-    <Center className="flex-1 px-6">
+    // A failed load is a status message (SC 4.1.3): it appears without moving focus, so a
+    // screen reader has to be told about it or it is silent. `alert` announces on both
+    // platforms without a live region, which iOS has no equivalent for.
+    // `accessible` is what makes the region one element to a screen reader, and what makes the
+    // role queryable at all: a role on a view nobody has marked accessible is inert.
+    <Center className="flex-1 px-6" accessible accessibilityRole="alert">
       <Heading size="lg" className={`mb-2 ${titleClass}`}>
         {title}
       </Heading>
@@ -37,14 +42,16 @@ export function ErrorState({
         </Text>
       ) : null}
       {onRetry ? (
-        // The retry is the only way out of a failed load, so its tappable height is declared
-        // here rather than left to the size variant. A variant is a visual decision; the minimum
+        // The retry is the only way out of a failed load, so its tappable size is declared here
+        // rather than left to the size variant. A variant is a visual decision; the minimum
         // target is a commitment, and a declared one is the only kind a suite can verify.
+        // Both axes are declared: the button is far wider than 44 in every layout it appears in,
+        // but a width nobody states is a width nobody has measured.
         <Button
           action="primary"
           size="md"
           onPress={onRetry}
-          style={{ minHeight: 44 }}>
+          style={{ minWidth: 44, minHeight: 44 }}>
           <ButtonText>{retryLabel}</ButtonText>
         </Button>
       ) : null}

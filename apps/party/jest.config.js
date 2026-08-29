@@ -1,6 +1,6 @@
 // The shared accessibility bar arrives as a preset. It extends the React Native preset, so the
-// suites this app already had keep running, and its allowlist is widened rather than replaced —
-// this app also pulls in React Navigation and the Redux stack.
+// suites this app already had keep running, and its allowlist is widened rather than replaced.
+// This app also pulls in React Navigation and the Redux stack.
 const preset = require('@pokedex/a11y-testing/jest-preset');
 
 module.exports = {
@@ -10,6 +10,9 @@ module.exports = {
   moduleNameMapper: {
     ...preset.moduleNameMapper,
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+    // PartyStack imports ./styles, which imports global.css so the standalone build registers
+    // them; Jest has no CSS loader, so it gets a stub. The Pokédex app maps the same thing.
+    '\\.css$': '<rootDir>/__mocks__/styleMock.js',
   },
   // @gluestack-ui/utils ships .jsx files, and the base preset's transform pattern covers
   // (js|ts|tsx) only, so they would reach Jest untransformed and throw on their import

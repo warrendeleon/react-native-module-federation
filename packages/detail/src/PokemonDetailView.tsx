@@ -127,7 +127,7 @@ export default function PokemonDetailView({
   const dexNumber = `#${String(pokemon.id).padStart(3, '0')}`;
   const topInset = insets.top;
   // The hero is painted in the type's own colour, and that colour runs from pale (grass, fairy)
-  // to nearly black (fighting, dark). Its text therefore cannot be a fixed colour: the design
+  // to nearly black (fighting, dark). Its text cannot be a fixed colour: the design
   // system already decided per type, once, from perceived luminance, so the hero asks the token
   // rather than assuming. Hard-coded black put "Mankey" at 1.7:1 on the fighting hero.
   const onHero = textOnTypeClass(primary);
@@ -245,10 +245,12 @@ export default function PokemonDetailView({
                     : bgClassForType(primary)
                 }`}
                 // The 44pt bar is declared here rather than inherited from the size variant.
-                // A variant is a visual decision that can change; the minimum tappable height of
+                // A variant is a visual decision that can change; the minimum tappable size of
                 // the screen's one primary action is a commitment, and the accessibility suite
-                // can only verify what the control actually declares.
-                style={{ alignSelf: 'stretch', minHeight: 44 }}
+                // can only verify what the control actually declares. `alignSelf: 'stretch'`
+                // makes the button far wider than 44, but stretch is a layout instruction, not
+                // a measurement, so the minimum is stated on both axes.
+                style={{ alignSelf: 'stretch', minWidth: 44, minHeight: 44 }}
                 accessibilityRole="button">
                 <ButtonText
                   className={addDisabled ? 'text-midGrey' : textOnTypeClass(primary)}>

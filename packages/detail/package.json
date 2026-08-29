@@ -1,6 +1,6 @@
 {
   "name": "@pokedex/detail",
-  "version": "4.0.3",
+  "version": "4.0.5",
   "description": "The Pokémon detail view as a versioned component: presentational, data in as props, writes out as optional callbacks. Both tab remotes install it and feed it from their own containers.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,14 +29,16 @@
     "react-native-safe-area-context": ">=5"
   },
   "devDependencies": {
-    "@pokedex/a11y-testing": "^1.0.7",
+    "@pokedex/a11y-testing": "^1.0.8",
     "@pokedex/contracts": "^3.2.1",
-    "@pokedex/ui": "^1.0.3",
+    "@pokedex/ui": "^1.0.5",
     "@react-native/babel-preset": "0.85.3",
     "@react-native/jest-preset": "0.85.3",
     "@tailwindcss/container-queries": "^0.1.1",
     "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^29.5.14",
     "@types/react": "^19.2.0",
+    "@types/react-test-renderer": "^19.1.0",
     "jest": "^29.7.0",
     "nativewind": "^4.2.6",
     "react": "19.2.3",

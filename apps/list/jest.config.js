@@ -1,6 +1,6 @@
 // The shared accessibility bar arrives as a preset. It extends the React Native preset, so the
-// suites this app already had keep running, and its allowlist is widened rather than replaced —
-// this app also pulls in React Navigation and the Redux stack.
+// suites this app already had keep running, and its allowlist is widened rather than replaced.
+// This app also pulls in React Navigation and the Redux stack.
 const preset = require('@pokedex/a11y-testing/jest-preset');
 
 module.exports = {
@@ -13,7 +13,7 @@ module.exports = {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     // The double-tap test imports the party app's REAL slice; pinning contracts to this
     // app's copy keeps that file injecting into the same rootReducer instance the test's
-    // store was built from — the singleton, simulated in Jest.
+    // store was built from: the singleton, simulated in Jest.
     '^@pokedex/contracts$': '<rootDir>/node_modules/@pokedex/contracts',
     // The real party slice is imported from a sibling app, so Node would otherwise resolve
     // its Redux Toolkit import through apps/party/node_modules. Keep this suite independent

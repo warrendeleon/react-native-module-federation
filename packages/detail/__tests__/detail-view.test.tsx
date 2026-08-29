@@ -44,7 +44,9 @@ function texts(tree: ReactTestRenderer.ReactTestRenderer) {
 test('the loading state shows the spinner and none of the data', async () => {
   const tree = await render({ loading: true, error: false, onRetry: jest.fn() });
   // The spinner is an ActivityIndicator under the hood; its presence is the state.
-  const spinners = tree.root.findAll(n => n.type === 'ActivityIndicator' || n.props.accessibilityRole === 'progressbar');
+  const spinners = tree.root.findAll(
+    n => String(n.type) === 'ActivityIndicator' || n.props.accessibilityRole === 'progressbar',
+  );
   expect(spinners.length).toBeGreaterThan(0);
   expect(texts(tree)).not.toContain('Bulbasaur');
   await act(async () => tree.unmount());

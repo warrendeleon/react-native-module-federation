@@ -113,7 +113,15 @@ export default function PokedexScreen() {
         }
         contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + 8 }]}
         ListHeaderComponent={
-          <Box className="flex-row items-center justify-between px-1.5 py-2.5">
+          // The count changes when the user adds a member from a screen away, without focus
+          // moving here. A sighted user sees the number tick; a screen-reader user is told
+          // nothing unless this is a live region (SC 4.1.3). The label spells the ratio out,
+          // because "3/6" is read as "three slash six" or as a date, depending on the reader.
+          <Box
+            className="flex-row items-center justify-between px-1.5 py-2.5"
+            accessible
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={`My Party, ${partyCount} of ${MAX_PARTY}`}>
             <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
               My Party
             </Text>

@@ -42,30 +42,36 @@ export function colourForType(type) {
 }
 
 // --- Pre-baked text-on-type colour class, so nothing runs a contrast calculation per render.
-// Every entry is the higher-contrast of black and white, computed from WCAG relative luminance
-// rather than judged by eye — the two differ more often than they look like they should. water
-// (#3A86FF) and psychic (#E75A7C) both read as "dark, saturated" and both take black: white
-// gives 3.48:1 and 3.41:1, under the 4.5:1 a badge's small text needs, where black clears 6:1.
-// Change a hex above and this map has to be recomputed with it. ---
+// Every entry is the higher-contrast of typeInk and white, computed from WCAG relative luminance
+// rather than judged by eye: the two differ more often than they look like they should. water
+// (#3A86FF) and psychic (#E75A7C) both read as "dark, saturated" and both take ink; white gives
+// 3.48:1 and 3.41:1, under the 4.5:1 a badge's small text needs, where ink clears 6:1.
+//
+// The class is `text-typeInk`, not `text-black`. This preset defines a `black` neutral of
+// #2E3138 for near-black surfaces, which shadows Tailwind's default, so `text-black` would have
+// painted #2E3138 and dropped water to 3.74:1 and psychic to 3.81:1 — both failing, both green
+// in any test that assumed the class meant #000000.
+//
+// Change a hex above and both this map and TYPE_TEXT_ON_SCRIM have to be recomputed with it. ---
 const TYPE_TEXT_ON_BG = {
-  normal: 'text-black',
-  fire: 'text-black',
-  water: 'text-black',
-  electric: 'text-black',
-  grass: 'text-black',
-  ice: 'text-black',
+  normal: 'text-typeInk',
+  fire: 'text-typeInk',
+  water: 'text-typeInk',
+  electric: 'text-typeInk',
+  grass: 'text-typeInk',
+  ice: 'text-typeInk',
   fighting: 'text-white',
-  poison: 'text-black',
-  ground: 'text-black',
-  flying: 'text-black',
-  psychic: 'text-black',
-  bug: 'text-black',
+  poison: 'text-typeInk',
+  ground: 'text-typeInk',
+  flying: 'text-typeInk',
+  psychic: 'text-typeInk',
+  bug: 'text-typeInk',
   rock: 'text-white',
   ghost: 'text-white',
   dragon: 'text-white',
   dark: 'text-white',
   steel: 'text-white',
-  fairy: 'text-black'
+  fairy: 'text-typeInk'
 };
 const KNOWN = new Set(TYPE_NAMES);
 function normaliseType(type) {
@@ -177,10 +183,49 @@ export function tintBgClassForType(type) {
   return TYPE_TINT_CLASS[normaliseType(type)];
 }
 
-/** Foreground text class chosen for contrast against bgClassForType: 'text-white' or 'text-black'. */
+/** Foreground text class chosen for contrast against bgClassForType. */
 export function textOnTypeClass(type) {
   return TYPE_TEXT_ON_BG[normaliseType(type)];
 }
+
+// --- The same decision for the hero badge, whose surface is not the type colour.
+//
+// TypeBadge's hero variant lays a 30% white scrim over the hero so the pill reads against a
+// background that is already the type colour. That scrim lightens what sits behind the text, so
+// the foreground chosen for the solid fill is the wrong one for four types: rock, ghost, dragon
+// and steel take white on the fill and would land at 3.17:1, 3.14:1, 3.39:1 and 2.71:1 on the
+// scrim. Computed against the composite (0.3 white over the fill) instead, every type clears
+// 4.5:1, the lowest being fighting at 5.45:1.
+//
+// Recompute this map alongside TYPE_TEXT_ON_BG whenever a type hex or the scrim alpha moves. ---
+const TYPE_TEXT_ON_SCRIM = {
+  normal: 'text-typeInk',
+  fire: 'text-typeInk',
+  water: 'text-typeInk',
+  electric: 'text-typeInk',
+  grass: 'text-typeInk',
+  ice: 'text-typeInk',
+  fighting: 'text-white',
+  poison: 'text-typeInk',
+  ground: 'text-typeInk',
+  flying: 'text-typeInk',
+  psychic: 'text-typeInk',
+  bug: 'text-typeInk',
+  rock: 'text-typeInk',
+  ghost: 'text-typeInk',
+  dragon: 'text-typeInk',
+  dark: 'text-white',
+  steel: 'text-typeInk',
+  fairy: 'text-typeInk'
+};
+
+/** Foreground text class for a badge sitting on the hero's translucent scrim. */
+export function textOnHeroScrimClass(type) {
+  return TYPE_TEXT_ON_SCRIM[normaliseType(type)];
+}
+
+/** The scrim alpha TypeBadge's hero variant paints, exported so tests composite the same value. */
+export const HERO_SCRIM_ALPHA = 0.3;
 
 /** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
 export function borderClassForType(type) {

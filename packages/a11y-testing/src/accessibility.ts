@@ -135,9 +135,14 @@ function measurableSize(element: TestElement): { width?: number; height?: number
 /**
  * Asserts a control declares at least `minimum` points in both axes.
  *
- * Throws rather than passing when nothing measurable is present. A silent pass here is worse
- * than a failure: it reports a control as accessible precisely when the test could not see it.
- * Controls sized by their content declare a hitSlop instead — assert that with expectMinHitSlop.
+ * Throws rather than passing when an axis has nothing measurable behind it. A silent pass is
+ * worse than a failure: it reports a control as accessible precisely when the test could not
+ * see it. That applies per axis, not just to a control with no declaration at all. An earlier
+ * version substituted the bar for an undeclared axis, so a control declaring only a height
+ * passed on a width nobody had measured.
+ *
+ * A control sized by its content declares a hitSlop instead, and a hitSlop is measured rather
+ * than merely counted: a `hitSlop: 0` extends nothing.
  */
 export function expectMinTouchTarget(
   element: TestElement,
@@ -145,6 +150,7 @@ export function expectMinTouchTarget(
 ): void {
   const { width, height } = measurableSize(element);
   const hitSlop = element?.props?.hitSlop;
+
   if (width === undefined && height === undefined && hitSlop === undefined) {
     throw new Error(
       'Element has no measurable size and no hitSlop; cannot verify the ' +
@@ -152,19 +158,32 @@ export function expectMinTouchTarget(
         'or assert on a parent that has one.',
     );
   }
-  expect({
-    width: width ?? minimum,
-    height: height ?? minimum,
-    minimum,
-  }).toEqual(
-    expect.objectContaining({
-      width: expect.any(Number),
-      height: expect.any(Number),
+
+  // A hitSlop is the whole declaration when there is no size behind it, so measure it rather
+  // than treating its presence as a pass.
+  if (width === undefined && height === undefined) {
+    expectMinHitSlop(element, minimum);
+    return;
+  }
+
+  for (const [axis, value] of [
+    ['width', width],
+    ['height', height],
+  ] as const) {
+    if (value === undefined) {
+      throw new Error(
+        `Element declares no ${axis}; cannot verify the ${minimum}pt touch target on that axis. ` +
+          `Declare a ${axis} (or a minWidth/minHeight), add a hitSlop, or assert on a parent ` +
+          'that has one.',
+      );
+    }
+    expect({ axis, points: value, minimum }).toEqual({
+      axis,
+      points: expect.any(Number),
       minimum,
-    }),
-  );
-  expect(width ?? minimum).toBeGreaterThanOrEqual(minimum);
-  expect(height ?? minimum).toBeGreaterThanOrEqual(minimum);
+    });
+    expect(value).toBeGreaterThanOrEqual(minimum);
+  }
 }
 
 /** Asserts a content-sized control extends its pressable area to the bar with hitSlop. */
@@ -248,7 +267,7 @@ export function expectScreenReaderAnnouncement(
 }
 
 /**
- * Asserts information is not carried by colour alone (SC 1.4.1) — the element, or something
+ * Asserts information is not carried by colour alone (SC 1.4.1): the element, or something
  * inside it, must also say it in words.
  */
 export function expectNonColourCue(

@@ -8,7 +8,13 @@
 // remote has to repeat.
 
 import React from 'react';
-import { createThemedRender, expectAccessibilityProps, expectNonColourCue } from '@pokedex/a11y-testing';
+import {
+  createThemedRender,
+  expectAccessibilityProps,
+  expectMinTouchTarget,
+  expectNonColourCue,
+  expectScreenReaderAnnouncement,
+} from '@pokedex/a11y-testing';
 
 import { ErrorState } from '../error-state';
 import { LoadingState } from '../loading-state';
@@ -75,6 +81,28 @@ describe('WCAG 1.4.1 Use of Color — StatBar', () => {
 });
 
 describe('WCAG 4.1.3 Status Messages — ErrorState', () => {
+  // A failed load appears without moving focus, which is the whole of SC 4.1.3. Checking that
+  // the retry is a button and the message is on screen is a 4.1.2 and a 1.4.1 check wearing a
+  // 4.1.3 title, and it credited this criterion in the report for years' worth of runs without
+  // ever reading a live region or an alert role.
+  test('the error region announces itself assertively', async () => {
+    const { getByRole } = await renderWithTheme(
+      <ErrorState message="The network dropped." onRetry={() => {}} />,
+    );
+    expectScreenReaderAnnouncement(getByRole('alert'), { politeness: 'assertive' });
+  });
+
+  test('the announcement carries the message, not just the fact that something failed', async () => {
+    const { getByRole, getByText } = await renderWithTheme(
+      <ErrorState title="Something went wrong" message="The network dropped." onRetry={() => {}} />,
+    );
+    expect(getByRole('alert')).toBeTruthy();
+    expect(getByText('Something went wrong')).toBeTruthy();
+    expect(getByText('The network dropped.')).toBeTruthy();
+  });
+});
+
+describe('WCAG 4.1.2 Name, Role, Value — ErrorState', () => {
   test('the retry affordance is a labelled button', async () => {
     const { getByRole, getByText } = await renderWithTheme(
       <ErrorState message="The network dropped." onRetry={() => {}} />,
@@ -85,19 +113,40 @@ describe('WCAG 4.1.3 Status Messages — ErrorState', () => {
     expect(getByRole('button')).toBeTruthy();
     expect(getByText('Retry')).toBeTruthy();
   });
+});
 
-  test('the error names what went wrong rather than relying on colour', async () => {
-    const { getByText } = await renderWithTheme(
-      <ErrorState title="Something went wrong" message="The network dropped." onRetry={() => {}} />,
+describe('WCAG 2.5.5 Target Size — ErrorState', () => {
+  test('the retry declares at least 44pt on both axes', async () => {
+    const { getByRole } = await renderWithTheme(
+      <ErrorState message="The network dropped." onRetry={() => {}} />,
     );
-    expect(getByText('Something went wrong')).toBeTruthy();
-    expect(getByText('The network dropped.')).toBeTruthy();
+    expectMinTouchTarget(getByRole('button'));
   });
 });
 
 describe('WCAG 4.1.3 Status Messages — LoadingState', () => {
-  test('a loading state that shows a caption says so in words', async () => {
+  // Polite, not assertive: a loading state should not cut across whatever the screen reader is
+  // already saying. The spinner conveys nothing on its own, so the caption is the announcement.
+  test('a loading state announces politely', async () => {
+    const { getByText } = await renderWithTheme(<LoadingState caption="Loading Pokémon…" />);
+    const caption = getByText('Loading Pokémon…');
+    expectScreenReaderAnnouncement(liveRegionAround(caption), { politeness: 'polite' });
+  });
+
+  test('the caption says what is loading rather than leaving the spinner to say it', async () => {
     const { getByText } = await renderWithTheme(<LoadingState caption="Loading Pokémon…" />);
     expect(getByText('Loading Pokémon…')).toBeTruthy();
   });
 });
+
+/** The nearest ancestor that declares a live region: what a screen reader actually watches. */
+function liveRegionAround(node: unknown) {
+  let current = node as { parent: unknown; props?: Record<string, unknown> } | null;
+  while (current) {
+    if (current.props?.accessibilityLiveRegion || current.props?.accessibilityRole === 'alert') {
+      return current;
+    }
+    current = current.parent as typeof current;
+  }
+  throw new Error('Nothing around that text declares a live region.');
+}
