@@ -13,8 +13,8 @@ everywhere, so it stays out of every Module Federation shared map.
 
 | Export | What it does |
 |---|---|
-| `jest-preset.js` | Extends `@react-native/jest-preset`, adds `nativewind/babel` to the transform and the interop's `toHaveStyle` matcher. Without it `className` is an inert prop in tests and every colour assertion reads `undefined`. |
-| `createThemedRender(preset)` | Binds a Tailwind preset once and returns an async render that resolves classes to real styles. |
+| `jest-preset.js` | Extends `@react-native/jest-preset`, adds `nativewind/babel` to the transform and the interop's `toHaveStyle` matcher. Without it `className` is an inert prop for classes written in a test's own JSX, and a colour assertion on one reads `undefined`. |
+| `createThemedRender(preset)` | Binds a Tailwind preset once and returns an async render. Classes written in the test's own JSX resolve to real styles; a class a component picks inside its own render does not, because `nativewind/test` only compiles the tree handed to `render`. Assert the class a component chose, not the colour. |
 | `expectColorContrast` | WCAG 1.4.3 / 1.4.11 against the current relative-luminance definition. |
 | `expectMinTouchTarget`, `expectMinHitSlop` | The project's 44pt bar on declared sizes, both axes, throwing where nothing is declared. |
 | `expectAccessibilityProps` | Name, role, and the half teams forget: state. |

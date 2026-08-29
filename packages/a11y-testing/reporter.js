@@ -69,10 +69,16 @@ class AccessibilityReporter {
         const ancestors = assertion.ancestorTitles ?? [];
         const joined = [...ancestors, assertion.title].join(' ');
         if (ancestors.some(a => PROJECT_BAR_IN_TITLE.test(a))) {
-          projectBars.push({
-            title: [...ancestors.map(a => a.replace(PROJECT_BAR_IN_TITLE, '').replace(/^[\s—:-]+/, '').trim()).filter(Boolean), assertion.title].join(' · '),
-            failed: assertion.status === 'failed',
-          });
+          const title = [...ancestors.map(a => a.replace(PROJECT_BAR_IN_TITLE, '').replace(/^[\s—:-]+/, '').trim()).filter(Boolean), assertion.title].join(' · ');
+          // A bar the project set is still a check that can fail or not run, and this branch used
+          // to flatten all three states into the same bullet: it recorded `failed` and never read
+          // it, and it returned before both the skipped guard and the anything-failing guard
+          // below. A red bar and a green one printed identically. So status is decided here too.
+          if (assertion.status === 'pending' || assertion.status === 'todo') {
+            skipped.push(joined);
+            continue;
+          }
+          projectBars.push({ title, failed: assertion.status === 'failed' });
           continue;
         }
         const match = joined.match(CRITERION_IN_TITLE);
@@ -262,7 +268,7 @@ class AccessibilityReporter {
       );
       lines.push('');
       for (const bar of projectBars) {
-        lines.push(`- ${bar.title}`);
+        lines.push(bar.failed ? `- **FAILING** — ${bar.title}` : `- ${bar.title}`);
       }
       lines.push('');
     }

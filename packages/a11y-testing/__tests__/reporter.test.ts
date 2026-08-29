@@ -140,6 +140,34 @@ describe('project bars', () => {
     expect(out).toContain('## Known findings (0)');
   });
 
+  // The fault: this branch recorded the assertion's status and never rendered it, and returned
+  // before both the skipped guard and the anything-failing guard, so a bar that failed and a bar
+  // that passed printed as the same bullet.
+  test('a failing Project bar is marked, not printed as an ordinary bar', () => {
+    const out = report([
+      {
+        ancestorTitles: ['Project bar — pairs held above what the criteria require'],
+        title: 'disabled label',
+        status: 'failed',
+      },
+    ]);
+    expect(out).toContain('## Project bars');
+    expect(out).toContain('- **FAILING** — pairs held above what the criteria require · disabled label');
+  });
+
+  test('a skipped Project bar goes to Skipped rather than reading as a bar that held', () => {
+    const out = report([
+      {
+        ancestorTitles: ['Project bar — pairs held above what the criteria require'],
+        title: 'disabled label',
+        status: 'pending',
+      },
+    ]);
+    expect(out).toContain('## Skipped');
+    expect(out).toContain('disabled label');
+    expect(out).not.toContain('## Project bars');
+  });
+
   test('no Project bar describe means no section', () => {
     expect(report([passing('WCAG 1.4.3 Contrast (Minimum)')])).not.toContain('## Project bars');
   });
