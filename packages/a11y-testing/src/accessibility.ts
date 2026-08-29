@@ -113,8 +113,9 @@ export function expectColorContrast(
  *
  * This is Apple's recommended default control size, adopted here as the bar. It is not a WCAG AA
  * requirement: SC 2.5.5 Target Size sits at Level AAA, and WCAG 2.2's AA criterion (2.5.8 Target
- * Size (Minimum)) asks for 24x24 with five exceptions. Android's guidance is 48dp. Forty-four is
- * a project decision that clears all of them.
+ * Size (Minimum)) asks for 24x24 with five exceptions, which 44 clears comfortably. It does not
+ * clear everything: Android's guidance asks for at least 48dp. Forty-four is a project decision
+ * that takes Apple's number on both platforms.
  */
 export const MIN_TOUCH_TARGET = 44;
 

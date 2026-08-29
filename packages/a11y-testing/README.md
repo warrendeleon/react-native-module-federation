@@ -70,4 +70,5 @@ and TalkBack pass. A clean automated run is necessary, not sufficient.
 
 44pt is Apple's recommended default control size, adopted here as the project's bar. It is **not**
 a WCAG AA requirement: SC 2.5.5 Target Size is Level AAA, and WCAG 2.2's AA criterion (2.5.8) asks
-for 24×24 with exceptions. Android's guidance is 48dp. Forty-four clears all of them.
+for 24×24 with exceptions, which 44 clears comfortably. Android's guidance asks for at least
+48dp, so this bar takes Apple's number on both platforms rather than the larger of the two.
