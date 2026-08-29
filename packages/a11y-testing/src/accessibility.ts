@@ -126,9 +126,16 @@ function measurableSize(element: TestElement): { width?: number; height?: number
   const style = flattenStyle(element?.props?.style);
   const points = (...candidates: unknown[]): number | undefined =>
     candidates.find((value): value is number => typeof value === 'number');
+  // A control declaring both a width and a minWidth lays out at the larger of the two, so the
+  // larger is what a finger meets. Reading `width` first reported a false failure on
+  // { width: 4, minWidth: 44 }.
+  const larger = (...candidates: unknown[]) => {
+    const numbers = candidates.filter((v): v is number => typeof v === 'number');
+    return numbers.length > 0 ? Math.max(...numbers) : undefined;
+  };
   return {
-    width: points(style.width, style.minWidth),
-    height: points(style.height, style.minHeight),
+    width: larger(style.width, style.minWidth),
+    height: larger(style.height, style.minHeight),
   };
 }
 
@@ -177,20 +184,28 @@ export function expectMinTouchTarget(
           'that has one.',
       );
     }
-    expect({ axis, points: value, minimum }).toEqual({
+    // The pair and both numbers go in the assertion so a failure prints which axis and by how
+    // much, rather than "expected 38.5 to be >= 44" with no idea which side it measured.
+    expect({ axis, points: value, minimum, clears: value >= minimum }).toEqual({
       axis,
-      points: expect.any(Number),
+      points: value,
       minimum,
+      clears: true,
     });
-    expect(value).toBeGreaterThanOrEqual(minimum);
   }
 }
 
 /** Asserts a content-sized control extends its pressable area to the bar with hitSlop. */
 export function expectMinHitSlop(element: TestElement, minimum: number = MIN_TOUCH_TARGET): void {
   const hitSlop = element?.props?.hitSlop;
-  if (hitSlop === undefined) {
+  if (hitSlop === undefined || hitSlop === null) {
     throw new Error('Element declares no hitSlop; nothing to verify.');
+  }
+  if (typeof hitSlop !== 'number' && typeof hitSlop !== 'object') {
+    throw new Error(
+      `Cannot read a hitSlop of "${String(hitSlop)}". React Native takes a number or an object ` +
+        'with top/bottom/left/right.',
+    );
   }
   const slop =
     typeof hitSlop === 'number'
@@ -260,10 +275,11 @@ export function expectScreenReaderAnnouncement(
   const live = (props.accessibilityLiveRegion ?? props['aria-live']) as string | undefined;
   const role = (props.accessibilityRole ?? props.role) as string | undefined;
   // An alert role announces on both platforms without a live region; iOS has no live-region
-  // equivalent, so either signal counts.
-  expect({ live: live ?? (role === 'alert' ? 'assertive' : undefined) }).toEqual({
-    live: role === 'alert' ? 'assertive' : politeness,
-  });
+  // equivalent, so either signal counts. An alert is assertive by definition, so a caller who
+  // asks for 'polite' and gets an alert has a real disagreement and should hear about it: an
+  // earlier version compared the role against itself and passed whatever was asked for.
+  const announced = live ?? (role === 'alert' ? 'assertive' : undefined);
+  expect({ announcedAs: announced }).toEqual({ announcedAs: politeness });
 }
 
 /**
@@ -295,4 +311,24 @@ export function expectNonColourCue(
   } else {
     expect(joined).toContain(cue);
   }
+}
+
+// --- Tracked findings ---
+
+/**
+ * Parks a real, unfixed finding so it stays visible without turning the suite red.
+ *
+ * Jest reports an `it.failing` whose body still fails as `passed`, and gives no other signal, so
+ * the reporter can only tell a tracked finding from an ordinary pass by a marker in the title.
+ * That makes the marker load-bearing and a typo in it expensive: the finding silently becomes a
+ * pass and drops out of the report. This wrapper writes the marker, so there is nothing to
+ * mistype and no convention to remember.
+ *
+ *   knownFinding('secondary text on the detail sheet', '2.60:1, AA needs 4.5:1', () => { ... });
+ */
+export function knownFinding(what: string, measured: string, body: () => void): void {
+  (test as unknown as { failing: (name: string, fn: () => void) => void }).failing(
+    `${what} (known: ${measured})`,
+    body,
+  );
 }

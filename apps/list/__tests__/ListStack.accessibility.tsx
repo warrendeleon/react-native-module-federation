@@ -74,6 +74,18 @@ const metrics = {
 
 const renderWithTheme = createThemedRender(require('@pokedex/ui/tailwind.preset.js'));
 
+/** The nearest ancestor that declares a live region: what a screen reader actually watches. */
+function liveRegionAround(node: unknown) {
+  let current = node as { parent: unknown; props?: Record<string, unknown> } | null;
+  while (current) {
+    if (current.props?.accessibilityLiveRegion || current.props?.accessibilityRole === 'alert') {
+      return current;
+    }
+    current = current.parent as typeof current;
+  }
+  throw new Error('Nothing around that text declares a live region.');
+}
+
 /** The nearest ancestor that declares a size: what a finger actually lands on. */
 function buttonContaining(node: { parent: unknown } | null) {
   let current = node as { parent: unknown; props?: { style?: unknown } } | null;
@@ -150,20 +162,33 @@ describe('WCAG 4.1.3 Status Messages — the states this screen can land in', ()
   test('a loading screen announces politely rather than interrupting', async () => {
     setListState({ isLoading: true, data: undefined });
     const { getByText } = await renderScreen();
-    // The caption is the announceable content; the spinner conveys nothing on its own.
-    expect(getByText(/Loading/i)).toBeTruthy();
+    // The caption is the announceable content; the spinner conveys nothing on its own. Asserting
+    // only that the text is on screen would pass with the live region removed, which is the one
+    // thing this test is named for.
+    const caption = getByText(/Loading/i);
+    expectScreenReaderAnnouncement(liveRegionAround(caption), { politeness: 'polite' });
   });
 
   // The party count is the one thing on this screen that changes without the user moving focus,
   // which is exactly what SC 4.1.3 is about.
   test('the party counter is a live region, so a change is announced', async () => {
     const { getByLabelText } = await renderScreen({ party: [{ uid: 'a' }, { uid: 'b' }] });
-    expectScreenReaderAnnouncement(getByLabelText(/party/i), { politeness: 'polite' });
+    const counter = getByLabelText(/party/i);
+    expectScreenReaderAnnouncement(counter, { politeness: 'polite' });
+    // Without `accessible` the header is a container of two text nodes rather than one element
+    // the platform can announce, and the live region has nothing to attach to.
+    expect(counter.props.accessible).toBe(true);
   });
 
-  test('the counter names the count in words rather than leaving it to the digits', async () => {
-    const { getByLabelText } = await renderScreen({ party: [{ uid: 'a' }, { uid: 'b' }] });
-    expect(getByLabelText(/2 of 6/i)).toBeTruthy();
+  // Two party sizes, because one fixture cannot tell a spoken count from a constant: an earlier
+  // version asserted "2 of 6" against a two-member party and passed with the number hard-coded.
+  test.each([
+    [[{ uid: 'a' }, { uid: 'b' }], /2 of 6/i],
+    [[{ uid: 'a' }], /1 of 6/i],
+    [[], /0 of 6/i],
+  ])('the counter speaks the count it is showing', async (party, expected) => {
+    const { getByLabelText } = await renderScreen({ party });
+    expect(getByLabelText(expected)).toBeTruthy();
   });
 });
 

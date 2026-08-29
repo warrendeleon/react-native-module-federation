@@ -227,6 +227,15 @@ export function textOnHeroScrimClass(type) {
 /** The scrim alpha TypeBadge's hero variant paints, exported so tests composite the same value. */
 export const HERO_SCRIM_ALPHA = 0.3;
 
+/**
+ * The class that paints it. Tailwind only generates a class it sees written out, so this is a
+ * literal rather than a template built from the alpha above — but it lives here, beside the
+ * number the contrast map was computed against, and TypeBadge imports it rather than spelling
+ * `bg-white/30` again. Two copies of the same 0.3 in two files is how the component and the
+ * map drift apart without any test noticing.
+ */
+export const HERO_SCRIM_CLASS = 'bg-white/30';
+
 /** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
 export function borderClassForType(type) {
   return TYPE_BORDER_CLASS[normaliseType(type)];

@@ -1,7 +1,7 @@
 "use strict";
 
 import React from 'react';
-import { badgeDarkClassForType, bgClassForType, textOnHeroScrimClass, textOnTypeClass } from "../tokens/typeColours.js";
+import { HERO_SCRIM_CLASS, badgeDarkClassForType, bgClassForType, textOnHeroScrimClass, textOnTypeClass } from "../tokens/typeColours.js";
 import { Box } from "./ui/box/index.js";
 import { Text } from "./ui/text/index.js";
 
@@ -22,7 +22,7 @@ export function TypeBadge({
   // two different surfaces. The scrim is translucent but it is not transparent: 30% white over
   // the fill is measurably lighter than the fill, so the foreground computed for the solid
   // colour is the wrong one for the four types whose fill is dark enough to take white.
-  const bg = surface === 'hero' ? 'bg-white/30' : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
+  const bg = surface === 'hero' ? HERO_SCRIM_CLASS : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
   const fg = surface === 'hero' ? textOnHeroScrimClass(type) : `${textOnTypeClass(type)} dark:text-white/90`;
   const padding = size === 'md' ? 'px-3 py-1.5' : size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
   const textSize = size === 'md' ? 'sm' : 'xs';

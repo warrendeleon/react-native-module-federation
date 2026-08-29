@@ -129,8 +129,12 @@ describe('WCAG 4.1.3 Status Messages — LoadingState', () => {
   // already saying. The spinner conveys nothing on its own, so the caption is the announcement.
   test('a loading state announces politely', async () => {
     const { getByText } = await renderWithTheme(<LoadingState caption="Loading Pokémon…" />);
-    const caption = getByText('Loading Pokémon…');
-    expectScreenReaderAnnouncement(liveRegionAround(caption), { politeness: 'polite' });
+    const region = liveRegionAround(getByText('Loading Pokémon…'));
+    expectScreenReaderAnnouncement(region, { politeness: 'polite' });
+    // A live region on a view nobody has marked accessible is inert: the platform has no single
+    // element to announce. Checking the region without checking this passed a mutation that
+    // removed the prop.
+    expect(region.props?.accessible).toBe(true);
   });
 
   test('the caption says what is loading rather than leaving the spinner to say it', async () => {

@@ -27,23 +27,28 @@
 import { colours } from '../colours';
 import {
   HERO_SCRIM_ALPHA,
+  HERO_SCRIM_CLASS,
   TYPE_NAMES,
+  bgClassForType,
   colourForType,
   textOnHeroScrimClass,
   textOnTypeClass,
 } from '../typeColours';
-import { expectColorContrast } from '@pokedex/a11y-testing';
+import { expectColorContrast, knownFinding } from '@pokedex/a11y-testing';
 
 const preset = require('../../../tailwind.preset.js');
-const presetColours: Record<string, string> = preset.theme.extend.colors;
+// The preset's colour scale is flat tokens plus one nested `type` scale, so it is typed as the
+// union rather than cast at each lookup.
+const presetColours: Record<string, string | Record<string, string>> = preset.theme.extend.colors;
 
-/** Resolves a foreground class to the hex the preset gives it. Throws on an unknown token. */
-function hexForTextClass(className: string): string {
-  const token = className.replace(/^text-/, '');
-  const hex = presetColours[token];
+/** Resolves a class to the hex the preset gives it. Throws on an unknown token. */
+function hexForClass(className: string): string {
+  const token = className.replace(/^(text|bg)-/, '');
+  const scale = presetColours.type as Record<string, string>;
+  const hex = token.startsWith('type-') ? scale[token.slice('type-'.length)] : presetColours[token];
   if (typeof hex !== 'string') {
     throw new Error(
-      `No preset colour for "${className}". The matrix resolves foregrounds from ` +
+      `No preset colour for "${className}". The matrix resolves both sides of every pair from ` +
         'tailwind.preset.js so a renamed or shadowed token fails the suite instead of passing it.',
     );
   }
@@ -62,7 +67,27 @@ describe('WCAG 1.4.3 Contrast (Minimum) — type colours on the solid fill', () 
   // The design system picks the foreground per type. That single decision is what lets a remote
   // render a badge for any of the eighteen types without thinking about contrast.
   test.each(TYPE_NAMES)('%s badge text clears AA on its type fill', (type: string) => {
-    expectColorContrast(hexForTextClass(textOnTypeClass(type)), colourForType(type), 'normalText');
+    expectColorContrast(
+      hexForClass(textOnTypeClass(type)),
+      hexForClass(bgClassForType(type)),
+      'normalText',
+    );
+  });
+});
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the preset and the token modules agree', () => {
+  // Both halves of every pair are resolved from the preset above, because the preset is what
+  // paints. The token modules exist for runtime code that needs a hex directly, and their own
+  // comments say to keep the two in sync. This is what makes that a check rather than a wish:
+  // without it, a colour changed in one file and not the other is invisible to every pair here.
+  test.each(TYPE_NAMES)('%s resolves to the same hex in both', (type: string) => {
+    expect(hexForClass(bgClassForType(type))).toBe(colourForType(type));
+  });
+
+  test('every named colour token matches the preset', () => {
+    for (const [name, hex] of Object.entries(colours)) {
+      expect({ [name]: presetColours[name] }).toEqual({ [name]: hex });
+    }
   });
 });
 
@@ -71,8 +96,8 @@ describe('WCAG 1.4.3 Contrast (Minimum) — type colours under the hero scrim', 
   // lighter surface than the fill. Checking the fill alone passed rock, ghost, dragon and steel
   // at 3.17, 3.14, 3.39 and 2.71 on the surface they are actually drawn on.
   test.each(TYPE_NAMES)('%s badge text clears AA on the hero scrim', (type: string) => {
-    const scrim = composite(colours.white, HERO_SCRIM_ALPHA, colourForType(type));
-    expectColorContrast(hexForTextClass(textOnHeroScrimClass(type)), scrim, 'normalText');
+    const scrim = composite(hexForClass('bg-white'), HERO_SCRIM_ALPHA, hexForClass(bgClassForType(type)));
+    expectColorContrast(hexForClass(textOnHeroScrimClass(type)), scrim, 'normalText');
   });
 });
 
@@ -97,28 +122,40 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
     expectColorContrast(colours.darkGrey, colours.lightGreen);
   });
 
-  // Secondary text is the token that does not clear the bar, and it ships in five places: the
-  // two section headings and the disabled button label in the detail view, the empty slot's
-  // caption, and the card's number line. Those five sit on four different surfaces, so the
-  // failure is recorded once per surface rather than once per token.
+  // Secondary text is the token that does not clear the bar. It ships in four places on three
+  // surfaces: two section headings on the detail sheet, the card's number line inside its grey
+  // pill, and the disabled Add button's label. The off-white and off-grey pairs are ordinary
+  // failures. The disabled label is not: WCAG 1.4.3's Incidental exception says text "that is
+  // part of an inactive user interface component ... has no contrast requirement", so holding it
+  // to 4.5:1 is this project's own choice and is filed below rather than here, where it would
+  // read as a criterion failure it is not.
   //
-  // It stays visible here rather than being quietly excluded. Fixing it is a palette decision,
-  // not a test decision: darkening midGrey past roughly #6E6E85 clears AA on all four, and it
-  // changes every secondary line in every remote at once, which is precisely the kind of change
-  // that belongs to the package that owns the token rather than to whichever app noticed first.
-  it.failing('secondary text on white (known: midGrey is 2.75:1, AA needs 4.5:1)', () => {
-    expectColorContrast(colours.midGrey, colours.white);
-  });
-
-  it.failing('secondary text on the off-white background (known: 2.60:1)', () => {
+  // Fixing the token is a palette decision, not a test decision: darkening past roughly #5F5F6D
+  // clears AA on every surface it is drawn on, and changes every secondary line in every remote
+  // at once, which is the kind of change that belongs to the package that owns the token rather
+  // than to whichever app noticed first.
+  knownFinding('secondary text on the detail sheet', 'midGrey is 2.60:1, AA needs 4.5:1', () => {
     expectColorContrast(colours.midGrey, colours.offWhite);
   });
 
-  it.failing("secondary text on the card's grey pill (known: 2.46:1)", () => {
+  knownFinding("secondary text on the card's grey pill", '2.46:1', () => {
     expectColorContrast(colours.midGrey, colours.offGrey);
   });
 
-  it.failing('disabled button label on the disabled fill (known: 2.02:1)', () => {
+  // The empty slot's caption is text-midGrey/70, a different value from the token: composited
+  // over the app background it is 1.88:1. A pair the design system composes and the matrix was
+  // not measuring, which is the fault this file exists to prevent.
+  knownFinding("the empty slot's caption at 70%", '1.88:1', () => {
+    expectColorContrast(composite(colours.midGrey, 0.7, colours.offWhite), colours.offWhite);
+  });
+});
+
+describe('Project bar — pairs held above what the criteria require', () => {
+  // Not a 1.4.3 failure. The label sits inside a disabled control, which the Incidental
+  // exception exempts outright. It is tracked because this project would rather a disabled
+  // control still be readable, and an exempt pair recorded as a criterion failure is the same
+  // mis-citation the touch-target bar is careful to avoid.
+  knownFinding('disabled button label on its fill', '2.02:1, exempt under 1.4.3 Incidental', () => {
     expectColorContrast(colours.midGrey, colours.lightGrey);
   });
 });
@@ -152,5 +189,14 @@ describe('WCAG 1.4.11 Non-text Contrast — status colours', () => {
 
   test('brand purple as a filled control on white', () => {
     expectColorContrast(colours.white, colours.purple, 'normalText');
+  });
+});
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the scrim class and its alpha agree', () => {
+  // The component paints a class; the contrast map is computed from a number. Nothing else ties
+  // them together, so a badge changed to bg-white/5 would leave every check here green while the
+  // real surface moved four types below AA.
+  test('the class TypeBadge paints encodes the alpha the map was computed against', () => {
+    expect(HERO_SCRIM_CLASS).toBe(`bg-white/${Math.round(HERO_SCRIM_ALPHA * 100)}`);
   });
 });

@@ -22,6 +22,12 @@ const CRITERIA = require('./wcag-criteria.js');
 
 const CRITERION_IN_TITLE = /WCAG (\d+\.\d+\.\d+)/;
 
+// A suite can also hold a bar that is not a WCAG criterion at all: a threshold the project has
+// chosen, or a pair the guidelines exempt but the team would rather keep readable. Naming the
+// describe "Project bar — ..." files it separately, so it is tracked without being reported as
+// a criterion result and without moving a coverage number it was never part of.
+const PROJECT_BAR_IN_TITLE = /^Project bar\b/;
+
 class AccessibilityReporter {
   constructor(globalConfig, options = {}) {
     this._globalConfig = globalConfig;
@@ -36,30 +42,69 @@ class AccessibilityReporter {
       return {};
     }
     const config = require(configPath);
-    return config.notApplicable ?? {};
+    const declared = config.notApplicable ?? {};
+    // A reason is what makes a not-applicable declaration reviewable. An empty one still moved
+    // the denominator and printed a bare bullet, so it is refused rather than accepted quietly.
+    for (const [id, reason] of Object.entries(declared)) {
+      if (typeof reason !== 'string' || reason.trim() === '') {
+        throw new Error(
+          `a11y-report.config.js declares ${id} not applicable with no reason. Give one: an ` +
+            'unexplained exclusion is how a coverage number starts lying.',
+        );
+      }
+    }
+    return declared;
   }
 
   onRunComplete(_contexts, results) {
     const overrides = this._loadOverrides();
     const byCriterion = new Map();
 
+    const projectBars = [];
+    const skipped = [];
+    const unattributed = [];
+
     for (const suite of results.testResults) {
       for (const assertion of suite.testResults) {
         const ancestors = assertion.ancestorTitles ?? [];
-        const match = [...ancestors, assertion.title].join(' ').match(CRITERION_IN_TITLE);
+        const joined = [...ancestors, assertion.title].join(' ');
+        if (ancestors.some(a => PROJECT_BAR_IN_TITLE.test(a))) {
+          projectBars.push({
+            title: [...ancestors.map(a => a.replace(PROJECT_BAR_IN_TITLE, '').replace(/^[\s—:-]+/, '').trim()).filter(Boolean), assertion.title].join(' · '),
+            failed: assertion.status === 'failed',
+          });
+          continue;
+        }
+        const match = joined.match(CRITERION_IN_TITLE);
         if (!match) {
+          // A failure with no criterion in its title would otherwise disappear, and a red run
+          // could print "Violations (0)". Anything failing gets said out loud, named or not.
+          if (assertion.status === 'failed') {
+            unattributed.push([...ancestors, assertion.title].join(' · '));
+          }
           continue;
         }
         const criterion = match[1];
         const entry = byCriterion.get(criterion) ?? { passed: [], failed: [], known: [] };
-        // A test parked with it.failing is a finding that is tracked, not a silent gap: Jest
-        // reports it as passing while it still fails, so it lands in its own bucket.
-        const bucket =
-          assertion.status === 'failed'
-            ? entry.failed
-            : /\(known/i.test(assertion.title)
-              ? entry.known
-              : entry.passed;
+        // A test parked with it.failing is a finding that is tracked, not a silent gap. Jest
+        // reports one as `passed` while its body still fails, and gives no other signal, so the
+        // marker in the title is all there is to file on. That makes the marker load-bearing:
+        // drop it by accident and a live violation reads as an ordinary pass. So a missing
+        // marker is an error rather than a silent reclassification, and the run says which
+        // title to fix.
+        let bucket;
+        if (assertion.status === 'failed') {
+          bucket = entry.failed;
+        } else if (/\(known/i.test(assertion.title)) {
+          bucket = entry.known;
+        } else if (assertion.status === 'pending' || assertion.status === 'todo') {
+          // A skipped check is not a passing one. Counting it would report coverage for a
+          // criterion nothing exercised.
+          skipped.push(joined);
+          continue;
+        } else {
+          bucket = entry.passed;
+        }
         // Every line already sits under its criterion's own heading, so the describe's
         // "WCAG 1.4.3 Contrast (Minimum)" is stripped down to whatever it says after that: the
         // subject the block covers. What survives joins the test name with a separator, because
@@ -103,6 +148,34 @@ class AccessibilityReporter {
         (excluded > 0 ? `, after ${excluded} declared not applicable here.` : '.'),
     );
     lines.push('');
+
+    if (unattributed.length > 0) {
+      lines.push('## Failures outside any criterion');
+      lines.push('');
+      lines.push(
+        'These failed under a describe that names no WCAG criterion, so they belong to no ' +
+          'section above. A run is not clean while this list has entries.',
+      );
+      lines.push('');
+      for (const title of unattributed) {
+        lines.push(`- ${title}`);
+      }
+      lines.push('');
+    }
+
+    if (skipped.length > 0) {
+      lines.push('## Skipped');
+      lines.push('');
+      lines.push(
+        'These did not run, so they prove nothing and are counted nowhere. A skipped check that ' +
+          'still credited its criterion is a coverage number describing work nobody did.',
+      );
+      lines.push('');
+      for (const title of skipped) {
+        lines.push(`- ${title}`);
+      }
+      lines.push('');
+    }
 
     const violations = [...byCriterion.entries()].filter(([, e]) => e.failed.length > 0);
     lines.push(`## Violations (${violations.length})`);
@@ -170,6 +243,21 @@ class AccessibilityReporter {
         const name = meta ? `${meta.name} (${meta.level})` : 'not in the A + AA catalogue';
         const total = entry.passed.length + entry.failed.length + entry.known.length;
         lines.push(`- **WCAG ${id}** ${name} — ${total} check${total === 1 ? '' : 's'}`);
+      }
+      lines.push('');
+    }
+
+    if (projectBars.length > 0) {
+      lines.push('## Project bars');
+      lines.push('');
+      lines.push(
+        'Thresholds this project chose rather than criteria the guidelines set. They are tracked ' +
+          'here and counted nowhere, because reporting a project decision as a criterion result ' +
+          'is how a coverage number stops meaning anything.',
+      );
+      lines.push('');
+      for (const bar of projectBars) {
+        lines.push(`- ${bar.title}`);
       }
       lines.push('');
     }

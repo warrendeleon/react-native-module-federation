@@ -11,7 +11,13 @@ import React from 'react';
 import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { PokemonDetail } from '@pokedex/contracts';
-import { HERO_SCRIM_ALPHA, colourForType, colours, textOnHeroScrimClass } from '@pokedex/ui';
+import {
+  HERO_SCRIM_ALPHA,
+  colourForType,
+  colours,
+  textOnHeroScrimClass,
+  textOnTypeClass,
+} from '@pokedex/ui';
 import {
   createThemedRender,
   expectAccessibilityProps,
@@ -36,7 +42,10 @@ const charizard: PokemonDetail = {
   id: 6,
   name: 'Charizard',
   spriteUri: 'sprite://6',
-  types: ['Fire', 'Flying'],
+  // Rock and ghost are two of the four types whose foreground *changes* between the solid fill
+  // and the hero scrim. A fixture of Fire and Flying takes ink on both surfaces and scores above
+  // 11:1 either way, so it cannot tell a correct hero badge from one using the fill's decision.
+  types: ['Rock', 'Ghost'],
   heightM: 1.7,
   weightKg: 90.5,
   abilities: ['Blaze'],
@@ -128,8 +137,25 @@ describe('WCAG 1.1.1 Non-text Content — the sprite', () => {
 describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
   // The hero paints the type colour full-strength and puts the name straight onto it, while the
   // type badges sit on a translucent scrim over the same colour. Two surfaces, two decisions.
-  // The design system computes both; this checks the screen composes the right one for each.
-  test.each(charizard.types)('the %s badge clears AA on the hero scrim', async type => {
+  // packages/ui already proves both decisions are right; what only this package can check is
+  // that the screen composes the hero one, so this renders and reads the badge rather than
+  // recomputing a number the design system's own matrix already asserts.
+  test.each(charizard.types)('the %s badge on the hero uses the scrim decision', async type => {
+    const { getByText } = await renderWithTheme(view());
+    // The class, not the resolved colour. `nativewind/test` compiles only the class strings on
+    // the tree handed to `render`, so a class a child component chooses never resolves here —
+    // reading `style.color` would give undefined for both the right answer and the wrong one.
+    // The class string is the decision, and it is what changes if the hero variant is dropped.
+    const className = String(getByText(type).props.className);
+    expect(className).toContain(textOnHeroScrimClass(type));
+    if (textOnHeroScrimClass(type) !== textOnTypeClass(type)) {
+      // For these types the two surfaces disagree, so this also catches a badge rendered with
+      // the solid fill's decision.
+      expect(className).not.toContain(textOnTypeClass(type));
+    }
+  });
+
+  test.each(charizard.types)('the %s badge clears AA on the surface it is drawn on', type => {
     const scrimHex = compositeWhite(HERO_SCRIM_ALPHA, colourForType(type));
     const foreground = textOnHeroScrimClass(type) === 'text-white' ? colours.white : colours.typeInk;
     expectColorContrast(foreground, scrimHex, 'normalText');

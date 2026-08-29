@@ -124,3 +124,48 @@ describe('the three-layer note', () => {
     expect(out).toContain('necessary, not sufficient');
   });
 });
+
+describe('project bars', () => {
+  // A threshold the project chose is not a criterion result, and reporting it as one is how a
+  // coverage number stops meaning anything.
+  test('a Project bar describe is tracked in its own section and moves no number', () => {
+    const out = report([
+      passing('WCAG 1.4.3 Contrast (Minimum)'),
+      passing('Project bar — pairs held above what the criteria require', 'disabled label (known)'),
+    ]);
+    expect(out).toContain('## Project bars');
+    expect(out).toContain('pairs held above what the criteria require · disabled label (known)');
+    expect(out).toContain('**1 of 15**');
+    // It must not leak into the criterion buckets.
+    expect(out).toContain('## Known findings (0)');
+  });
+
+  test('no Project bar describe means no section', () => {
+    expect(report([passing('WCAG 1.4.3 Contrast (Minimum)')])).not.toContain('## Project bars');
+  });
+});
+
+describe('nothing failing is dropped', () => {
+  test('a failure under a describe naming no criterion is still reported', () => {
+    const out = report([
+      { ancestorTitles: ['a plain describe'], title: 'a broken thing', status: 'failed' },
+    ]);
+    expect(out).toContain('## Failures outside any criterion');
+    expect(out).toContain('a plain describe · a broken thing');
+  });
+
+  test('a skipped check does not credit its criterion', () => {
+    const out = report([
+      { ancestorTitles: ['WCAG 1.4.1 Use of Color'], title: 'a check', status: 'pending' },
+    ]);
+    expect(out).toContain('## Skipped');
+    expect(out).toContain('**0 of 15**');
+    expect(out).toContain('| 1.4.1 Use of Color | A | 0 |');
+  });
+
+  test('a not-applicable declaration with no reason is refused', () => {
+    expect(() => report([passing('WCAG 1.4.3 Contrast (Minimum)')], { '1.3.5': '  ' })).toThrow(
+      /no reason/,
+    );
+  });
+});

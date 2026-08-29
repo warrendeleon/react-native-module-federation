@@ -15,6 +15,7 @@ import {
   expectNonColourCue,
   expectScreenReaderAnnouncement,
   flattenStyle,
+  knownFinding,
   relativeLuminance,
 } from '../src/accessibility';
 
@@ -23,6 +24,15 @@ describe('relativeLuminance and calculateContrastRatio', () => {
     expect(relativeLuminance('#000000')).toBe(0);
     expect(relativeLuminance('#FFFFFF')).toBe(1);
     expect(calculateContrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 5);
+  });
+
+  // Every other fixture here is a grey, where the three channel coefficients are
+  // interchangeable. These are not: swapping green and blue changes both numbers, so the
+  // 0.2126 / 0.7152 / 0.0722 weighting is pinned rather than assumed.
+  test('the channel coefficients are the ones the spec gives', () => {
+    expect(relativeLuminance('#00FF00')).toBeCloseTo(0.7152, 6);
+    expect(relativeLuminance('#0000FF')).toBeCloseTo(0.0722, 6);
+    expect(relativeLuminance('#FF0000')).toBeCloseTo(0.2126, 6);
   });
 
   test('order does not matter', () => {
@@ -67,10 +77,19 @@ describe('flattenStyle', () => {
 describe('expectMinTouchTarget', () => {
   const target = (props: Record<string, unknown>) => () => expectMinTouchTarget({ props });
 
-  test('the bar is 44 and both axes have to clear it', () => {
+  test('the bar is 44 and both axes have to clear it, exactly at the boundary', () => {
     expect(MIN_TOUCH_TARGET).toBe(44);
     expect(target({ style: { minWidth: 44, minHeight: 44 } })).not.toThrow();
+    // 43 and 44 are the two values that matter. Without them, loosening the comparison to
+    // accept 35 survives every other case in this file.
+    expect(target({ style: { minWidth: 44, minHeight: 43 } })).toThrow();
+    expect(target({ style: { minWidth: 43, minHeight: 44 } })).toThrow();
     expect(target({ style: { width: 44, height: 10 } })).toThrow();
+  });
+
+  test('the larger of a size and its minimum is what a finger meets', () => {
+    // React Native lays this out at 44, so reading `width` first reported a false failure.
+    expect(target({ style: { width: 4, minWidth: 44, height: 44 } })).not.toThrow();
   });
 
   // The regression this package exists to prevent: a check that reports green because it could
@@ -155,6 +174,15 @@ describe('expectAccessibilityProps', () => {
     ).not.toThrow();
   });
 
+  test('a falsey expected state is still checked', () => {
+    // `{disabled: false}` is a real expectation: a control that reports itself disabled when it
+    // is not is as wrong as one that stays silent. Only {disabled: true} was exercised, so a
+    // helper that skipped falsey values passed.
+    const enabled = { props: { accessibilityState: { disabled: false } } };
+    expect(() => expectAccessibilityProps(enabled, { state: { disabled: false } })).not.toThrow();
+    expect(() => expectAccessibilityProps(enabled, { state: { disabled: true } })).toThrow();
+  });
+
   test('a missing state fails rather than passing as undefined', () => {
     expect(() =>
       expectAccessibilityProps({ props: { accessibilityRole: 'button' } }, {
@@ -165,10 +193,14 @@ describe('expectAccessibilityProps', () => {
 });
 
 describe('expectScreenReaderAnnouncement', () => {
-  test('an alert role counts on both platforms', () => {
+  test('an alert role counts on both platforms, and is assertive by definition', () => {
+    const alert = { props: { accessibilityRole: 'alert' } };
     expect(() =>
-      expectScreenReaderAnnouncement({ props: { accessibilityRole: 'alert' } }),
+      expectScreenReaderAnnouncement(alert, { politeness: 'assertive' }),
     ).not.toThrow();
+    // A caller asking for polite and getting an alert has a real disagreement. An earlier
+    // version compared the role against itself and passed whatever was asked for.
+    expect(() => expectScreenReaderAnnouncement(alert, { politeness: 'polite' })).toThrow();
   });
 
   test('a live region is read at the politeness the caller asks for', () => {
@@ -195,5 +227,26 @@ describe('expectNonColourCue', () => {
 
   test('colour alone fails', () => {
     expect(() => expectNonColourCue({ props: { style: { color: 'red' } } }, '65')).toThrow();
+  });
+});
+
+describe('knownFinding', () => {
+  // The marker is what separates a tracked finding from an ordinary pass in the report, and a
+  // typo in it silently loses a real violation. The helper writes it, so there is nothing to
+  // mistype. Jest reports a still-failing it.failing as passed, which is why this test can only
+  // assert the title it produces, not the bucket it lands in — reporter.test.ts covers that.
+  test('writes the marker the reporter files on', () => {
+    const titles: string[] = [];
+    const original = (test as unknown as { failing: unknown }).failing;
+    (test as unknown as { failing: unknown }).failing = (name: string) => {
+      titles.push(name);
+    };
+    try {
+      knownFinding('secondary text on white', '2.75:1, AA needs 4.5:1', () => {});
+    } finally {
+      (test as unknown as { failing: unknown }).failing = original;
+    }
+    expect(titles).toEqual(['secondary text on white (known: 2.75:1, AA needs 4.5:1)']);
+    expect(titles[0]).toMatch(/\(known/i);
   });
 });

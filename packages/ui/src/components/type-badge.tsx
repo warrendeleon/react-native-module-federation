@@ -1,6 +1,7 @@
 import React from 'react';
 
 import {
+  HERO_SCRIM_CLASS,
   badgeDarkClassForType,
   bgClassForType,
   textOnHeroScrimClass,
@@ -35,7 +36,7 @@ export function TypeBadge({ type, size = 'sm', surface = 'card' }: TypeBadgeProp
   // the fill is measurably lighter than the fill, so the foreground computed for the solid
   // colour is the wrong one for the four types whose fill is dark enough to take white.
   const bg =
-    surface === 'hero' ? 'bg-white/30' : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
+    surface === 'hero' ? HERO_SCRIM_CLASS : `${bgClassForType(type)} ${badgeDarkClassForType(type)}`;
   const fg =
     surface === 'hero'
       ? textOnHeroScrimClass(type)

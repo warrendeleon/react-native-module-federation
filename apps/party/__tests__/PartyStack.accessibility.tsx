@@ -14,7 +14,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { addToParty, rootReducer } from '@pokedex/contracts';
-import { createThemedRender, expectAccessibilityProps } from '@pokedex/a11y-testing';
+import { act, createThemedRender, expectAccessibilityProps } from '@pokedex/a11y-testing';
 
 import PartyStack from '../src/PartyStack';
 
@@ -69,9 +69,40 @@ describe('WCAG 4.1.2 Name, Role, Value — a filled party slot', () => {
   // exists at all: a hidden control with no action behind it would be unreachable.
   test('removal is reachable as an action on the slot, not as a hidden button', async () => {
     const { getByLabelText } = await renderScreen(members);
-    expect(getByLabelText(/^Pikachu, number 025/).props.accessibilityActions).toEqual([
+    const slot = getByLabelText(/^Pikachu, number 025/);
+    expect(slot.props.accessibilityActions).toEqual([
       { name: 'remove', label: 'Remove from party' },
     ]);
+    // Advertising the action is half of it. A rotor entry with nothing behind it is worse than
+    // no entry, because it tells a screen-reader user the control exists and then does nothing.
+    expect(typeof slot.props.onAccessibilityAction).toBe('function');
+  });
+
+  test('the visible remove badge stays out of the accessibility tree', async () => {
+    const { getByLabelText } = await renderScreen(members);
+    // The ✕ is deliberately hidden so the rotor does not carry two stops per slot. If it came
+    // back into the tree the action above would be a duplicate, not a convenience.
+    const labels = getByLabelText(/^Pikachu, number 025/);
+    const removeStops: unknown[] = [];
+    const walk = (node: { props?: Record<string, unknown>; children?: unknown[] }) => {
+      const label = node?.props?.accessibilityLabel;
+      if (typeof label === 'string' && /remove/i.test(label)) {
+        removeStops.push(label);
+      }
+      (node?.children ?? []).forEach(child => walk(child as typeof node));
+    };
+    walk(labels as unknown as { props?: Record<string, unknown>; children?: unknown[] });
+    expect(removeStops).toEqual([]);
+  });
+
+  test('firing the action actually removes the member', async () => {
+    const { getByLabelText, queryByLabelText } = await renderScreen(members);
+    await act(async () => {
+      getByLabelText(/^Pikachu, number 025/).props.onAccessibilityAction({
+        nativeEvent: { actionName: 'remove' },
+      });
+    });
+    expect(queryByLabelText(/^Pikachu, number 025/)).toBeNull();
   });
 });
 
@@ -86,8 +117,11 @@ describe('WCAG 1.1.1 Non-text Content — the empty slots', () => {
   });
 
   test('an empty slot is not announced as a button', async () => {
-    const { queryByLabelText } = await renderScreen(members);
-    expect(queryByLabelText('Empty party slot 3')?.props.accessibilityRole).toBeUndefined();
+    const { getByLabelText } = await renderScreen(members);
+    // getBy, not queryBy with optional chaining: `queryByLabelText(...)?.props.role` is
+    // undefined both when the slot correctly claims no role and when the slot is missing
+    // entirely, so it passed for a regression that deleted it.
+    expect(getByLabelText('Empty party slot 3').props.accessibilityRole).toBeUndefined();
   });
 });
 
