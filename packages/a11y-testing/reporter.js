@@ -35,7 +35,6 @@ class AccessibilityReporter {
     if (!fs.existsSync(configPath)) {
       return {};
     }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const config = require(configPath);
     return config.notApplicable ?? {};
   }
@@ -46,8 +45,8 @@ class AccessibilityReporter {
 
     for (const suite of results.testResults) {
       for (const assertion of suite.testResults) {
-        const title = [...(assertion.ancestorTitles ?? []), assertion.title].join(' ');
-        const match = title.match(CRITERION_IN_TITLE);
+        const ancestors = assertion.ancestorTitles ?? [];
+        const match = [...ancestors, assertion.title].join(' ').match(CRITERION_IN_TITLE);
         if (!match) {
           continue;
         }
@@ -58,27 +57,47 @@ class AccessibilityReporter {
         const bucket =
           assertion.status === 'failed'
             ? entry.failed
-            : /\(known/i.test(title)
+            : /\(known/i.test(assertion.title)
               ? entry.known
               : entry.passed;
-        // The describe already names the criterion; repeating it in the line would read
-        // "WCAG 1.4.3 ... — WCAG 1.4.3 ...".
-        const withoutCriterion = title.replace(/^WCAG \d+\.\d+\.\d+\s*/, '').replace(/^—\s*/, '');
-        bucket.push({ title: withoutCriterion, messages: assertion.failureMessages ?? [] });
+        // Every line already sits under its criterion's own heading, so the describe's
+        // "WCAG 1.4.3 Contrast (Minimum)" is stripped down to whatever it says after that: the
+        // subject the block covers. What survives joins the test name with a separator, because
+        // "…on light surfaces secondary text on white" is two titles run together.
+        const context = ancestors
+          .map(ancestor =>
+            ancestor
+              .replace(CRITERION_IN_TITLE, '')
+              .replace(CRITERIA[criterion] ? CRITERIA[criterion].name : '', '')
+              .replace(/^[\s—:-]+/, '')
+              .trim(),
+          )
+          .filter(Boolean);
+        bucket.push({
+          title: [...context, assertion.title].join(' · '),
+          messages: assertion.failureMessages ?? [],
+        });
         byCriterion.set(criterion, entry);
       }
     }
 
     const automated = Object.entries(CRITERIA).filter(([, c]) => c.layer === 'automated');
-    const covered = automated.filter(([id]) => byCriterion.has(id));
     const notApplicable = Object.entries(overrides);
+    // A criterion this suite has declared inapplicable leaves the denominator. Counting it as an
+    // uncovered criterion would punish a package for not testing text inputs it does not ship,
+    // and a denominator nobody believes is a denominator nobody reads.
+    const inScope = automated.filter(([id]) => !(id in overrides));
+    const covered = inScope.filter(([id]) => byCriterion.has(id));
 
     const lines = [];
     lines.push(`# Accessibility report — ${this._title}`);
     lines.push('');
     lines.push(
-      `Automated coverage: **${covered.length} of ${automated.length}** WCAG 2.1 A + AA criteria ` +
-        'that a Jest suite can decide.',
+      `Automated coverage: **${covered.length} of ${inScope.length}** WCAG 2.1 A + AA criteria ` +
+        'that a Jest suite can decide' +
+        (notApplicable.length > 0
+          ? `, after ${notApplicable.length} declared not applicable here.`
+          : '.'),
     );
     lines.push('');
 
@@ -124,9 +143,33 @@ class AccessibilityReporter {
     for (const [id, meta] of automated) {
       const entry = byCriterion.get(id);
       const count = entry ? entry.passed.length + entry.failed.length + entry.known.length : 0;
-      lines.push(`| ${id} ${meta.name} | ${meta.level} | ${count || '—'} |`);
+      const cell = id in overrides ? 'n/a' : count || '0';
+      lines.push(`| ${id} ${meta.name} | ${meta.level} | ${cell} |`);
     }
     lines.push('');
+
+    // A describe can name a criterion the catalogue does not carry: the 44pt touch-target bar is
+    // SC 2.5.5, which is Level AAA and sits above the A + AA scope this report counts. Those
+    // checks ran and they are worth saying so, but they never move the coverage number.
+    const outsideCatalogue = [...byCriterion.entries()].filter(
+      ([id]) => !CRITERIA[id] || CRITERIA[id].layer !== 'automated',
+    );
+    if (outsideCatalogue.length > 0) {
+      lines.push('## Checked beyond the counted scope');
+      lines.push('');
+      lines.push(
+        'These ran and are reported, but they sit outside the WCAG 2.1 A + AA set the coverage ' +
+          'number is measured against, so they do not raise it.',
+      );
+      lines.push('');
+      for (const [id, entry] of outsideCatalogue) {
+        const meta = CRITERIA[id];
+        const name = meta ? `${meta.name} (${meta.level})` : 'not in the A + AA catalogue';
+        const total = entry.passed.length + entry.failed.length + entry.known.length;
+        lines.push(`- **WCAG ${id}** ${name} — ${total} check${total === 1 ? '' : 's'}`);
+      }
+      lines.push('');
+    }
 
     if (notApplicable.length > 0) {
       lines.push('## Not applicable here');
@@ -143,8 +186,8 @@ class AccessibilityReporter {
     lines.push(
       'These numbers describe one of three layers. The suite checks token pairs, declared sizes ' +
         'and the name/role/state a control exposes. It does not check contrast as drawn, the real ' +
-        'focus traversal order, or hit regions after clipping — those need a device audit ' +
-        '(`performAccessibilityAudit` on iOS, the Accessibility Test Framework on Android). ' +
+        'focus traversal order, or hit regions after clipping. Those need a device audit: ' +
+        '`performAccessibilityAudit` on iOS, the Accessibility Test Framework on Android. ' +
         'Whether a label actually reads well stays a manual VoiceOver and TalkBack pass. A clean ' +
         'automated run is necessary, not sufficient.',
     );

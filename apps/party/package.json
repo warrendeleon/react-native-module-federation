@@ -14,7 +14,6 @@
   "dependencies": {
     "@gluestack-ui/core": "^3.0.25",
     "@gluestack-ui/utils": "^3.0.21",
-    "@pokedex/a11y-testing": "^1.0.3",
     "@pokedex/contracts": "^3.2.2",
     "@pokedex/detail": "^4.0.3",
     "@pokedex/ui": "^1.0.3",
@@ -41,6 +40,7 @@
     "@callstack/repack-plugin-nativewind": "5.2.5",
     "@callstack/repack-plugin-reanimated": "^5.2.5",
     "@module-federation/enhanced": "^2.9.0",
+    "@pokedex/a11y-testing": "^1.0.5",
     "@react-native-community/cli": "^20.2.0",
     "@react-native-community/cli-platform-android": "^20.2.0",
     "@react-native-community/cli-platform-ios": "^20.2.0",

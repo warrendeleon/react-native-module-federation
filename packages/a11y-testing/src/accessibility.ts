@@ -118,14 +118,16 @@ export function expectColorContrast(
  */
 export const MIN_TOUCH_TARGET = 44;
 
+// A declared size is `width`/`height`, or the `minWidth`/`minHeight` a control uses when its
+// content decides the rest. Percentage and 'auto' values are not a number of points, so they
+// read as no declaration at all rather than as a size this helper could compare against 44.
 function measurableSize(element: TestElement): { width?: number; height?: number } {
   const style = flattenStyle(element?.props?.style);
-  const width = (style.width ?? style.minWidth ?? style.height) as number | undefined;
-  const height = (style.height ?? style.minHeight) as number | undefined;
+  const points = (...candidates: unknown[]): number | undefined =>
+    candidates.find((value): value is number => typeof value === 'number');
   return {
-    width: typeof style.width === 'number' ? style.width : (style.minWidth as number | undefined),
-    height:
-      typeof style.height === 'number' ? style.height : (style.minHeight as number | undefined),
+    width: points(style.width, style.minWidth),
+    height: points(style.height, style.minHeight),
   };
 }
 
