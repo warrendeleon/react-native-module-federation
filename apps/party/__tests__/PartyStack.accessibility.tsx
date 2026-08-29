@@ -56,6 +56,18 @@ afterEach(() => {
   jest.runOnlyPendingTimers();
 });
 
+/** The pressable that owns a piece of text: what a screen reader would actually land on. */
+function pressableAround(node: unknown): { props: Record<string, unknown> } {
+  let current = node as { parent: unknown; props?: Record<string, unknown> } | null;
+  while (current) {
+    if (current.props && typeof current.props.onPress === 'function') {
+      return { props: current.props };
+    }
+    current = current.parent as typeof current;
+  }
+  throw new Error('No pressable ancestor of that text.');
+}
+
 describe('WCAG 4.1.2 Name, Role, Value — a filled party slot', () => {
   test('a member slot the screen renders is a button that names its Pokémon', async () => {
     const { getByLabelText } = await renderScreen(members);
@@ -79,20 +91,30 @@ describe('WCAG 4.1.2 Name, Role, Value — a filled party slot', () => {
   });
 
   test('the visible remove badge stays out of the accessibility tree', async () => {
-    const { getByLabelText } = await renderScreen(members);
+    const { getAllByText, queryByText } = await renderScreen(members);
     // The ✕ is deliberately hidden so the rotor does not carry two stops per slot. If it came
     // back into the tree the action above would be a duplicate, not a convenience.
-    const labels = getByLabelText(/^Pikachu, number 025/);
-    const removeStops: unknown[] = [];
-    const walk = (node: { props?: Record<string, unknown>; children?: unknown[] }) => {
-      const label = node?.props?.accessibilityLabel;
-      if (typeof label === 'string' && /remove/i.test(label)) {
-        removeStops.push(label);
-      }
-      (node?.children ?? []).forEach(child => walk(child as typeof node));
-    };
-    walk(labels as unknown as { props?: Record<string, unknown>; children?: unknown[] });
-    expect(removeStops).toEqual([]);
+    //
+    // This asserts the badge's own props. An earlier version walked the slot looking for a
+    // descendant whose accessibilityLabel matched /remove/i, which the badge has never carried:
+    // it is hidden, not labelled. So the search found nothing whether the hiding props were
+    // there or not, and stripping all three of them left the test green — a check measuring
+    // something adjacent to what it names, which is the fault this whole suite exists to catch.
+    // The behavioural half: the library's default queries model what a screen reader reaches,
+    // so a ✕ that is genuinely hidden is simply not found.
+    expect(queryByText('✕')).toBeNull();
+
+    // And the declarative half, on the element itself, because "not found" alone would also be
+    // satisfied by a badge that had stopped rendering. Both platforms, not one: iOS reads
+    // accessibilityElementsHidden and Android reads importantForAccessibility, so either one
+    // alone leaves the badge exposed on the other.
+    const badges = getAllByText('✕', { includeHiddenElements: true }).map(pressableAround);
+    expect(badges).toHaveLength(members.length);
+    for (const badge of badges) {
+      expect(badge.props.accessible).toBe(false);
+      expect(badge.props.accessibilityElementsHidden).toBe(true);
+      expect(badge.props.importantForAccessibility).toBe('no-hide-descendants');
+    }
   });
 
   test('firing the action actually removes the member', async () => {

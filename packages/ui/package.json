@@ -57,7 +57,7 @@
   "devDependencies": {
     "@gluestack-ui/core": "^3.0.21",
     "@gluestack-ui/utils": "^3.0.21",
-    "@pokedex/a11y-testing": "^1.0.12",
+    "@pokedex/a11y-testing": "^1.0.13",
     "@react-native/babel-preset": "^0.85.3",
     "@react-native/jest-preset": "0.85.3",
     "@tailwindcss/container-queries": "^0.1.1",

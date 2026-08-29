@@ -163,6 +163,24 @@ describe('nothing failing is dropped', () => {
     expect(out).toContain('| 1.4.1 Use of Color | A | 0 |');
   });
 
+  // The fault: the marker was tested before the status, so a knownFinding that was skipped read
+  // as a tracked finding. It credited its criterion, raised the coverage fraction and stayed out
+  // of the Skipped list, which is the one thing a skipped check must never do.
+  test('a skipped check carrying the known marker is still skipped', () => {
+    const out = report([
+      {
+        ancestorTitles: ['WCAG 1.4.3 Contrast (Minimum)'],
+        title: 'secondary text (known: 2.60:1)',
+        status: 'pending',
+      },
+    ]);
+    expect(out).toContain('## Skipped');
+    expect(out).toContain('secondary text (known: 2.60:1)');
+    expect(out).toContain('## Known findings (0)');
+    expect(out).toContain('**0 of 15**');
+    expect(out).toContain('| 1.4.3 Contrast (Minimum) | AA | 0 |');
+  });
+
   test('a not-applicable declaration with no reason is refused', () => {
     expect(() => report([passing('WCAG 1.4.3 Contrast (Minimum)')], { '1.3.5': '  ' })).toThrow(
       /no reason/,

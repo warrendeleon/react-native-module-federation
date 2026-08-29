@@ -53,7 +53,9 @@ the run by criterion on its own.
 nativewind.dev has no testing section. They power NativeWind's own suite. (`nativewind/babel`,
 which the preset also adds, *is* documented: it is step 3 of NativeWind's installation guide.)
 The versions this is proven against are nativewind 4.2.6, css-interop 0.2.6 and RNTL 13.3.3, and
-every peer range is bounded to the major it has been exercised on. RNTL is held below 14, whose
+the peer ranges that matter — the styling stack and RNTL — are bounded to the major each has been
+exercised on. React, React Native and the jest preset are left open, since this package makes no
+claim about them beyond what its consumers already pin. RNTL is held below 14, whose
 async rewrite this render path has not been tried; the styling packages are on caret ranges, so a
 minor release arrives without a change here while a major one has to be looked at first. An
 open-ended range would let NativeWind 5 in unannounced, which for two entry points nobody

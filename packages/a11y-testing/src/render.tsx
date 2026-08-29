@@ -10,15 +10,22 @@
 //
 //   const render = createThemedRender(require('@pokedex/ui/tailwind.preset.js'));
 //
-// The render is async — nativewind/test compiles CSS before mounting — so tests await it. ---
+// The render is async: nativewind/test compiles CSS before mounting, so tests await it.
+//
+// There is no dark-theme option here, and the omission is deliberate. An earlier version took a
+// `colorScheme: 'dark'` and passed `className: 'dark'` down to the render, which reads plausibly
+// and does nothing: `className` belongs to renderCurrentTest, not to render, and an unknown key
+// is forwarded to RNTL and ignored. Wrapping the tree in a `dark` class does not resolve the
+// variants either. So `bg-white dark:bg-navy` came back as #ffffff whichever way it was asked,
+// and any dark-theme assertion written against it would have been measuring light tokens while
+// passing. That is the exact fault this package exists to catch, so the option is gone rather
+// than documented. Dark rendering belongs to the device layer until something here can prove it. ---
 
 import { render as renderWithNativeWind } from 'nativewind/test';
 
 export type TailwindPreset = Record<string, unknown>;
 
 export type ThemedRenderOptions = {
-  /** 'light' (default) or 'dark'; drives which theme's tokens resolve. */
-  colorScheme?: 'light' | 'dark';
   /** Extra Tailwind config merged over the preset, for a one-off token in a single test. */
   config?: Record<string, unknown>;
 };
@@ -35,17 +42,15 @@ export type ThemedRenderResult = Awaited<ReturnType<NativeWindRender>>;
 export function createThemedRender(preset: TailwindPreset) {
   return function renderWithTheme(
     component: React.ReactElement,
-    { colorScheme = 'light', config }: ThemedRenderOptions = {},
+    { config }: ThemedRenderOptions = {},
   ): Promise<ThemedRenderResult> {
     return renderWithNativeWind(component, {
       config: {
         ...(preset as object),
         ...(config ?? {}),
-        // NativeWind reads the scheme from the config's darkMode strategy plus the rendered
-        // class list; 'class' keeps it deterministic in a test process with no OS appearance.
+        // 'class' keeps the dark strategy deterministic in a test process with no OS appearance.
         darkMode: 'class',
       } as never,
-      ...(colorScheme === 'dark' ? { className: 'dark' } : {}),
     } as never);
   };
 }

@@ -92,16 +92,21 @@ class AccessibilityReporter {
         // drop it by accident and a live violation reads as an ordinary pass. So a missing
         // marker is an error rather than a silent reclassification, and the run says which
         // title to fix.
+        // Order matters here, and it was wrong once. A skipped check is not a passing one and
+        // not a tracked finding either: whatever its title says, nothing ran. Testing the marker
+        // first filed a skipped-and-marked test as a known finding, which credited its criterion
+        // in the coverage fraction and kept it out of the Skipped list. So status is decided
+        // before the title is read.
         let bucket;
-        if (assertion.status === 'failed') {
-          bucket = entry.failed;
-        } else if (/\(known/i.test(assertion.title)) {
-          bucket = entry.known;
-        } else if (assertion.status === 'pending' || assertion.status === 'todo') {
+        if (assertion.status === 'pending' || assertion.status === 'todo') {
           // A skipped check is not a passing one. Counting it would report coverage for a
           // criterion nothing exercised.
           skipped.push(joined);
           continue;
+        } else if (assertion.status === 'failed') {
+          bucket = entry.failed;
+        } else if (/\(known/i.test(assertion.title)) {
+          bucket = entry.known;
         } else {
           bucket = entry.passed;
         }

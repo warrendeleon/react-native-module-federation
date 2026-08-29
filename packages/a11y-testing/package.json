@@ -1,7 +1,7 @@
 {
   "name": "@pokedex/a11y-testing",
-  "version": "1.0.12",
-  "description": "The shared accessibility bar for the federation: a Jest preset that renders NativeWind classes to real styles, WCAG assertion helpers for contrast, touch targets, screen-reader state and non-colour cues, and a reporter that turns a suite run into one accessibility report. Installed as a devDependency by every package and every remote, so independently shipped teams cannot drift on what accessible means.",
+  "version": "1.0.13",
+  "description": "The shared accessibility bar for the federation: a Jest preset that renders NativeWind classes to real styles, WCAG assertion helpers for contrast, touch targets, screen-reader state and non-colour cues, and a reporter that turns a suite run into one accessibility report. Installed as a devDependency by the packages and remotes that run suites against it, so independently shipped teams cannot drift on what accessible means.",
   "source": "./src/index.ts",
   "main": "./lib/module/index.js",
   "module": "./lib/module/index.js",
