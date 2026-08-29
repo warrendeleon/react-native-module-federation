@@ -18,7 +18,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-09-tanstack-zustand` | [State stacks under federation](https://warrendeleon.com/blog/state-stacks-under-federation-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-state-stacks) | The same app rebuilt on TanStack Query and Zustand, a fork off the post-08 line rather than the next step on it, so this tag never folds into `main` |
 | `post-10-two-backends` | [Two backends, one client?](https://warrendeleon.com/blog/rtk-query-vs-apollo-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-rtk-query-apollo) | A GraphQL endpoint joins the REST one in the same api slice via queryFn; both provide the same tag, so the host's one Refresh press refetches both protocols |
 | `post-11-design-system` | [The design system as a federated singleton](https://warrendeleon.com/blog/federated-design-system-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-design-system) | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.2; one host toggle re-themes every bundle |
-| `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and the touch targets and status regions it found ship as ui 1.0.5 and detail 4.0.5, which the host takes too |
+| `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and the touch targets and status regions it found ship as ui 1.0.5 and detail 4.0.5, and the host takes the ui release alongside both remotes |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -55,7 +55,13 @@ The apps install four `@pokedex` packages from a local registry, so publish them
 ```sh
 npx verdaccio                                    # :4873, stays up
 npm adduser --registry http://localhost:4873     # any username, password and email
+npm config set @pokedex:registry http://localhost:4873/
 ```
+
+That third line matters more than it looks. npm reads project config from the directory holding
+`package.json`, so the `.npmrc` at this repo's root is invisible to every `( cd packages/… && npm
+install )` below it, and `npm adduser` writes an auth token rather than a scope mapping. Without
+the scope set for your user, each `@pokedex` install goes to the public registry and 404s.
 
 Publish in dependency order. Each package's own `npm install` resolves the `@pokedex` packages
 it depends on, so a package has to be on the registry before the one that needs it runs:

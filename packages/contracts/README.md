@@ -14,8 +14,10 @@ This package replaces the guess with one definition, installed by version. Two t
 - **Module shapes.** The type of each exposed module, so an ambient declaration points at a
   definition both sides installed.
 
-It holds types only, so every import is `import type` and nothing survives into a bundle. There is no
-runtime dependency to share across the federation.
+It began as types only. Since post 6 it also carries runtime: `baseApi`, the RTK Query instance
+every app shares, and the Zod schemas that parse PokéAPI at the boundary. That is why it is a
+Module Federation singleton rather than a build-time convenience, and why it does reach the
+bundle: the host and every remote have to import the same object, not merely the same shape.
 
 ```sh
 npm install

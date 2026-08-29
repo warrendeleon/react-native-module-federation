@@ -4,6 +4,9 @@
 const preset = require('@pokedex/a11y-testing/jest-preset');
 
 module.exports = {
+  // dist/ holds the compiled copy of everything tsc emits. Without this, `npm test` after a
+  // build runs each suite twice: once from source and once from the transpiled duplicate.
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   preset: '@pokedex/a11y-testing',
   moduleNameMapper: {
     ...preset.moduleNameMapper,

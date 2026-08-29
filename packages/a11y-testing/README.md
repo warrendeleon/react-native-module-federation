@@ -52,10 +52,12 @@ the run by criterion on its own.
 **`nativewind/test` and `react-native-css-interop/test` are real, shipped and undocumented.**
 nativewind.dev has no testing section. They power NativeWind's own suite. (`nativewind/babel`,
 which the preset also adds, *is* documented: it is step 3 of NativeWind's installation guide.)
-The versions this is proven against are nativewind 4.2.6, css-interop 0.2.6 and RNTL 13.3.3.
-RNTL is held below 14, whose async rewrite this render path has not been exercised against; the
-two styling packages are carried on caret ranges rather than exact pins, so a minor release
-arrives without a change here and the pairing is re-checked when NativeWind moves.
+The versions this is proven against are nativewind 4.2.6, css-interop 0.2.6 and RNTL 13.3.3, and
+every peer range is bounded to the major it has been exercised on. RNTL is held below 14, whose
+async rewrite this render path has not been tried; the styling packages are on caret ranges, so a
+minor release arrives without a change here while a major one has to be looked at first. An
+open-ended range would let NativeWind 5 in unannounced, which for two entry points nobody
+documents is the one thing worth guarding against.
 
 **Class-derived sizes do not survive the test renderer.** `nativewind/test` compiles the class
 strings present on the element tree handed to `render`, so a class a component's variant builds

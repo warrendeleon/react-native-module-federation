@@ -4,7 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "jsx": "react-native",
-    "lib": ["ES2020", "DOM"],
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,8 +16,18 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["react-native", "nativewind/types", "jest"]
+    "types": [
+      "react-native",
+      "nativewind/types",
+      "jest"
+    ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["lib", "node_modules"]
+  "include": [
+    "src/**/*",
+    "__tests__/**/*"
+  ],
+  "exclude": [
+    "lib",
+    "node_modules"
+  ]
 }
