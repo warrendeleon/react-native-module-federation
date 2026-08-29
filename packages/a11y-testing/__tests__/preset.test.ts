@@ -16,8 +16,10 @@ describe('the preset keeps the styling stack in the transform', () => {
     const transform = preset.transform['^.+\\.(js|jsx|ts|tsx)$'];
     expect(transform).toBeDefined();
     const presets = (transform[1] as { presets: string[] }).presets;
-    // Without this, className never becomes style: every class-derived assertion in every
-    // consumer reads undefined and passes on nothing.
+    // Without this, a class written in a test's own JSX never becomes style in this package's
+    // own suites. It is not what makes a consumer's class assertions work: there Jest loads the
+    // design system's built lib/, whose JSX is already compiled, so no className resolves either
+    // way. The guard is here because dropping the entry is silent, not because it reaches every consumer.
     expect(presets).toContain('nativewind/babel');
   });
 

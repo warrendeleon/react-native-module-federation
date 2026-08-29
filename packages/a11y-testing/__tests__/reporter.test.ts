@@ -155,6 +155,29 @@ describe('project bars', () => {
     expect(out).toContain('- **FAILING** — pairs held above what the criteria require · disabled label');
   });
 
+  // The fault: this branch decided status but never read the (known marker the criterion path
+  // reads, so a bar parked with knownFinding — which is test.failing, reported by Jest as passed
+  // — printed as a bar that held. It is the only Project bar this repo ships.
+  test('a Project bar parked as a known finding does not read as a bar that held', () => {
+    const out = report([
+      {
+        ancestorTitles: ['Project bar — pairs held above what the criteria require'],
+        title: 'disabled label (known: 2.02:1)',
+        status: 'passed',
+      },
+    ]);
+    expect(out).toContain('- **not held** — pairs held above what the criteria require · disabled label (known: 2.02:1)');
+  });
+
+  test('a Project bar that really holds carries no marker', () => {
+    const out = report([
+      passing('Project bar — pairs held above what the criteria require', 'contrast on the fill'),
+    ]);
+    expect(out).toContain('- pairs held above what the criteria require · contrast on the fill');
+    expect(out).not.toContain('not held');
+    expect(out).not.toContain('FAILING');
+  });
+
   test('a skipped Project bar goes to Skipped rather than reading as a bar that held', () => {
     const out = report([
       {

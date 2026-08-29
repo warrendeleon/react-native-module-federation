@@ -143,7 +143,12 @@ describe('WCAG 1.1.1 Non-text Content — the empty slots', () => {
     // getBy, not queryBy with optional chaining: `queryByLabelText(...)?.props.role` is
     // undefined both when the slot correctly claims no role and when the slot is missing
     // entirely, so it passed for a regression that deleted it.
-    expect(getByLabelText('Empty party slot 3').props.accessibilityRole).toBeUndefined();
+    //
+    // Both spellings, because React Native accepts either and the platform reads either. An
+    // earlier version asserted only `accessibilityRole`, so adding `role="button"` to the slot
+    // left this green while a screen reader announced it as a button.
+    const slot = getByLabelText('Empty party slot 3');
+    expect(slot.props.accessibilityRole ?? slot.props.role).toBeUndefined();
   });
 });
 

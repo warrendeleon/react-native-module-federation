@@ -78,7 +78,15 @@ class AccessibilityReporter {
             skipped.push(joined);
             continue;
           }
-          projectBars.push({ title, failed: assertion.status === 'failed' });
+          // The marker read, which the criterion path below has always had and this branch did
+          // not. A bar parked with knownFinding is `test.failing`, which Jest reports as passed,
+          // so reading `status` alone called a bar that is failing on purpose a bar that held —
+          // and the one Project bar this repo ships is exactly that.
+          projectBars.push({
+            title,
+            failed: assertion.status === 'failed',
+            known: /\(known/i.test(assertion.title),
+          });
           continue;
         }
         const match = joined.match(CRITERION_IN_TITLE);
@@ -95,9 +103,9 @@ class AccessibilityReporter {
         // A test parked with it.failing is a finding that is tracked, not a silent gap. Jest
         // reports one as `passed` while its body still fails, and gives no other signal, so the
         // marker in the title is all there is to file on. That makes the marker load-bearing:
-        // drop it by accident and a live violation reads as an ordinary pass. So a missing
-        // marker is an error rather than a silent reclassification, and the run says which
-        // title to fix.
+        // drop it and a live violation reads here as an ordinary pass, and nothing in this file
+        // can tell. Nothing errors and nothing names the title. What removes the risk is the
+        // `knownFinding` helper writing the marker, so there is no string left to mistype.
         // Order matters here, and it was wrong once. A skipped check is not a passing one and
         // not a tracked finding either: whatever its title says, nothing ran. Testing the marker
         // first filed a skipped-and-marked test as a known finding, which credited its criterion
@@ -268,7 +276,8 @@ class AccessibilityReporter {
       );
       lines.push('');
       for (const bar of projectBars) {
-        lines.push(bar.failed ? `- **FAILING** — ${bar.title}` : `- ${bar.title}`);
+        const state = bar.failed ? '**FAILING** — ' : bar.known ? '**not held** — ' : '';
+        lines.push(`- ${state}${bar.title}`);
       }
       lines.push('');
     }

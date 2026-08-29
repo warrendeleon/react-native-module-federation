@@ -1,12 +1,17 @@
 // --- The NativeWind-aware render.
 //
-// A plain RNTL render leaves className inert: the tree mounts, but every colour and size the
-// design system expresses as a class resolves to nothing, so a contrast or touch-target
-// assertion reads undefined and passes vacuously. `render` from nativewind/test compiles the
-// Tailwind config for the test tree instead, so `bg-type-fire` becomes a real hex.
+// A plain RNTL render leaves className inert. `render` from nativewind/test compiles the Tailwind
+// config for the test tree instead, so a class written in the test's own JSX becomes a real hex.
 //
-// Consumers bind this to the design system's own preset, which is what makes a token assertion
-// in a remote's suite mean the same thing as the same assertion in the design system's suite:
+// Two limits, both measured rather than assumed. `nativewind/test` compiles only the class strings
+// on the tree handed to `render`, so a class a component picks inside its own render never
+// compiles. And in a consumer, Jest resolves `@pokedex/ui` through `main` to bob's build, whose
+// JSX is already compiled, so nothing routes className through the styling runtime at all: the
+// same `<Box className="bg-type-fire" />` resolves to a hex in packages/ui and to `{}` in
+// apps/list. Assert the class a component chose, not the colour it painted. The colour belongs to
+// the token matrix in the package that owns the tokens, and to the device layer after that.
+//
+// Consumers bind this to the design system's own preset:
 //
 //   const render = createThemedRender(require('@pokedex/ui/tailwind.preset.js'));
 //

@@ -40,7 +40,7 @@
     "@callstack/repack-plugin-nativewind": "5.2.5",
     "@callstack/repack-plugin-reanimated": "^5.2.5",
     "@module-federation/enhanced": "^2.9.0",
-    "@pokedex/a11y-testing": "^1.0.14",
+    "@pokedex/a11y-testing": "^1.0.15",
     "@react-native-community/cli": "^20.2.0",
     "@react-native-community/cli-platform-android": "^20.2.0",
     "@react-native-community/cli-platform-ios": "^20.2.0",
