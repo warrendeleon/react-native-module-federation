@@ -88,6 +88,11 @@ class AccessibilityReporter {
     // and a denominator nobody believes is a denominator nobody reads.
     const inScope = automated.filter(([id]) => !(id in overrides));
     const covered = inScope.filter(([id]) => byCriterion.has(id));
+    // Only a declaration against a criterion the report actually counts changes the denominator.
+    // A suite may also declare one that was never in the automated set; saying "after 2 declared
+    // not applicable" while removing one is the kind of arithmetic that makes a reader stop
+    // trusting the number.
+    const excluded = automated.length - inScope.length;
 
     const lines = [];
     lines.push(`# Accessibility report — ${this._title}`);
@@ -95,9 +100,7 @@ class AccessibilityReporter {
     lines.push(
       `Automated coverage: **${covered.length} of ${inScope.length}** WCAG 2.1 A + AA criteria ` +
         'that a Jest suite can decide' +
-        (notApplicable.length > 0
-          ? `, after ${notApplicable.length} declared not applicable here.`
-          : '.'),
+        (excluded > 0 ? `, after ${excluded} declared not applicable here.` : '.'),
     );
     lines.push('');
 
@@ -176,7 +179,10 @@ class AccessibilityReporter {
       lines.push('');
       for (const [id, reason] of notApplicable) {
         const meta = CRITERIA[id] ?? { name: 'Unknown criterion' };
-        lines.push(`- **${id} ${meta.name}** — ${reason}`);
+        // A criterion outside the automated set was never in the denominator, so say so rather
+        // than let it read as one this suite chose not to test.
+        const counted = automated.some(([automatedId]) => automatedId === id);
+        lines.push(`- **${id} ${meta.name}** — ${reason}${counted ? '' : ' (never counted here)'}`);
       }
       lines.push('');
     }
