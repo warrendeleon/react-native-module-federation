@@ -193,8 +193,10 @@ describe('WCAG 4.1.3 Status Messages — the states this screen can land in', ()
 });
 
 describe('WCAG 2.5.5 Target Size — the error state', () => {
-  // The retry is the only way out of a failed load, so it is the one control on this screen
-  // that must never be hard to hit.
+  // The retry is the way back from a failed load, so it is the one control on this screen that
+  // must never be hard to hit. What it recovers depends on what failed: a data request retries
+  // cleanly, while a remote that never answered also needs the federation runtime's cached
+  // manifest failure cleared, which the resilience post later in the series builds.
   test('the retry button clears the 44pt bar on both axes', async () => {
     setListState({ isError: true, data: undefined });
     const { getByText } = await renderScreen();

@@ -42,7 +42,7 @@ export function ErrorState({
         </Text>
       ) : null}
       {onRetry ? (
-        // The retry is the only way out of a failed load, so its tappable size is declared here
+        // The retry is the way back from a failed load, so its tappable size is declared here
         // rather than left to the size variant. A variant is a visual decision; the minimum
         // target is a commitment, and a declared one is the only kind a suite can verify.
         // Both axes are declared: the button is far wider than 44 in every layout it appears in,
