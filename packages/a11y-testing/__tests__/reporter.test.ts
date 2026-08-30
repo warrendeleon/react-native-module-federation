@@ -197,6 +197,42 @@ describe('project bars', () => {
 });
 
 describe('nothing failing is dropped', () => {
+  // The third branch was the last to get the status-then-marker handling the other two have: a
+  // skip and a tracked finding under a describe naming no criterion were both discarded.
+  test('a tracked finding under no criterion is reported rather than dropped', () => {
+    const out = report([
+      passing('The onboarding sheet', 'header on tint (known: 2.10:1)'),
+    ]);
+    expect(out).toContain('## Failures outside any criterion');
+    expect(out).toContain('The onboarding sheet · header on tint (known: 2.10:1)');
+  });
+
+  test('a skipped check under no criterion reaches Skipped', () => {
+    const out = report([
+      { ancestorTitles: ['The onboarding sheet'], title: 'a check nobody ran', status: 'pending' },
+    ]);
+    expect(out).toContain('## Skipped');
+    expect(out).toContain('a check nobody ran');
+  });
+
+  // A suite that throws on import contributes no assertions, so the counts below it are counts
+  // of a run the reporter could not see.
+  test('a suite that never executed is named, not silently omitted', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'a11y-reporter-'));
+    const reporter = new AccessibilityReporter({ rootDir }, { title: 'subject' });
+    reporter.onRunComplete({}, {
+      testResults: [
+        { testFilePath: '/x/components.accessibility.tsx', testExecError: new Error('boom'),
+          testResults: [] },
+        { testResults: [{ failureMessages: [], ...passing('WCAG 1.4.3 Contrast (Minimum)') }] },
+      ],
+    });
+    const out = readFileSync(join(rootDir, 'accessibility-report.md'), 'utf8');
+    expect(out).toContain('## Suites that did not run');
+    expect(out).toContain('/x/components.accessibility.tsx');
+    expect(out).toContain('this run was not clean');
+  });
+
   test('a failure under a describe naming no criterion is still reported', () => {
     const out = report([
       { ancestorTitles: ['a plain describe'], title: 'a broken thing', status: 'failed' },

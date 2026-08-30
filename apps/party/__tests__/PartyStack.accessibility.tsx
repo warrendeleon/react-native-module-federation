@@ -149,6 +149,11 @@ describe('WCAG 1.1.1 Non-text Content — the empty slots', () => {
     // left this green while a screen reader announced it as a button.
     const slot = getByLabelText('Empty party slot 3');
     expect(slot.props.accessibilityRole ?? slot.props.role).toBeUndefined();
+    // And `accessible`, without which the label is inert on iOS and a screen reader walks
+    // the decorative pokeball and numeral instead. getByLabelText matches the prop either
+    // way, so nothing here could see it going missing. The same guard is asserted for the
+    // live region and the party counter; this was the one instance with no cover.
+    expect(slot.props.accessible).toBe(true);
   });
 });
 

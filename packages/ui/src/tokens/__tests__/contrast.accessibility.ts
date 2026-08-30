@@ -130,6 +130,10 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
   // to 4.5:1 is this project's own choice and is filed below rather than here, where it would
   // read as a criterion failure it is not.
   //
+  // These are the light surfaces. The same token composes two more in dark mode, measured in
+  // their own describe below; both were missing from this file until the seventh audit found
+  // them, and both fail.
+  //
   // Fixing the token is a palette decision, not a test decision, and there is no single darker
   // value that does it. Past roughly #5F5F6D the token clears AA on the three light surfaces
   // (5.92:1, 5.60:1, 4.60:1), but the detail sheet is dark:bg-navy and those headings carry no
@@ -151,6 +155,20 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
   // not measuring, which is the fault this file exists to prevent.
   knownFinding("the empty slot's caption at 70%", '1.88:1', () => {
     expectColorContrast(composite(colours.midGrey, 0.7, colours.offWhite), colours.offWhite);
+  });
+});
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the same secondary token in dark mode', () => {
+  // Both remotes mount ThemeToggle in their header, so every surface here is one a user reaches.
+  // Neither of these carried a `dark:` override, and the enumeration above counted light
+  // surfaces only, so the design system composed two pairs the matrix had never measured — the
+  // exact rule this file opens with, applied to its own blind spot rather than to a component's.
+  knownFinding("the card's number line on the dark pill", '3.44:1', () => {
+    expectColorContrast(colours.midGrey, composite(colours.white, 0.1, colours.black));
+  });
+
+  knownFinding("the empty slot's caption at 70% on navy", '3.82:1', () => {
+    expectColorContrast(composite(colours.midGrey, 0.7, colours.navy), colours.navy);
   });
 });
 

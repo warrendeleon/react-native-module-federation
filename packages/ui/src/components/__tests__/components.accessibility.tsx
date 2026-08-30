@@ -70,13 +70,28 @@ describe('WCAG 1.4.1 Use of Color — StatBar', () => {
   // because a bar length and a hue are not information a screen reader can convey.
   test('the magnitude is carried as text, not only as a coloured bar', async () => {
     const { getByRole } = await renderWithTheme(
-      <StatBar label="Speed" value={65} max={255} colourType="fire" />,
+      <StatBar label="Speed" value={65} colourType="fire" />,
     );
     const bar = getByRole('progressbar');
+    // The shipped default, not a value this fixture supplied. An earlier version passed
+    // max={255} and then asserted 255, so it compared a constant against itself: a component
+    // that ignored the prop entirely survived it, while every stat row in the app announces
+    // against 160.
     expect(bar.props.accessibilityValue).toEqual(
-      expect.objectContaining({ min: 0, max: 255, now: 65, text: '65' }),
+      expect.objectContaining({ min: 0, max: 160, now: 65, text: '65' }),
     );
     expectNonColourCue(bar, '65');
+  });
+
+  // And the override, so the prop is exercised as well as the default. A value above the
+  // ceiling is clamped for `now` while the spoken text keeps the real number.
+  test('an overridden ceiling is announced, and a value above it is clamped', async () => {
+    const { getByRole } = await renderWithTheme(
+      <StatBar label="Speed" value={200} max={255} colourType="fire" />,
+    );
+    expect(getByRole('progressbar').props.accessibilityValue).toEqual(
+      expect.objectContaining({ min: 0, max: 255, now: 200, text: '200' }),
+    );
   });
 });
 

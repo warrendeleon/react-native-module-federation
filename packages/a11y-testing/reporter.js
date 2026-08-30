@@ -63,6 +63,13 @@ class AccessibilityReporter {
     const projectBars = [];
     const skipped = [];
     const unattributed = [];
+    // A suite that threw on import contributes no assertions, so every check it holds simply
+    // vanishes from the counts below and the report prints "Violations (0)" for a red run. The
+    // report is what a team reads instead of the suite, so a run it cannot see is a run it has
+    // to say it cannot see.
+    const didNotRun = results.testResults
+      .filter(s => s.testExecError || (s.failureMessage && s.testResults.length === 0))
+      .map(s => s.testFilePath ?? 'a suite with no path');
 
     for (const suite of results.testResults) {
       for (const assertion of suite.testResults) {
@@ -91,9 +98,14 @@ class AccessibilityReporter {
         }
         const match = joined.match(CRITERION_IN_TITLE);
         if (!match) {
-          // A failure with no criterion in its title would otherwise disappear, and a red run
-          // could print "Violations (0)". Anything failing gets said out loud, named or not.
-          if (assertion.status === 'failed') {
+          // The third branch, and the last of the three to get this. A failure with no criterion
+          // in its title would otherwise disappear and a red run could print "Violations (0)";
+          // so would a check that did not run, and so would a tracked finding parked under a
+          // describe that names no criterion. Anything failing, skipped or knowingly failing
+          // gets said out loud, named or not.
+          if (assertion.status === 'pending' || assertion.status === 'todo') {
+            skipped.push(joined);
+          } else if (assertion.status === 'failed' || /\(known/i.test(assertion.title)) {
             unattributed.push([...ancestors, assertion.title].join(' · '));
           }
           continue;
@@ -167,6 +179,20 @@ class AccessibilityReporter {
         (excluded > 0 ? `, after ${excluded} declared not applicable here.` : '.'),
     );
     lines.push('');
+
+    if (didNotRun.length > 0) {
+      lines.push('## Suites that did not run');
+      lines.push('');
+      lines.push(
+        'These threw before any check could report, so nothing below counts them. Every number ' +
+          'in this report describes the suites that ran, and this run was not clean.',
+      );
+      lines.push('');
+      for (const path of didNotRun) {
+        lines.push(`- ${path}`);
+      }
+      lines.push('');
+    }
 
     if (unattributed.length > 0) {
       lines.push('## Failures outside any criterion');

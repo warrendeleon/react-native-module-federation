@@ -29,7 +29,7 @@
     "react-native-safe-area-context": ">=5"
   },
   "devDependencies": {
-    "@pokedex/a11y-testing": "^1.0.15",
+    "@pokedex/a11y-testing": "^1.0.16",
     "@pokedex/contracts": "^3.2.1",
     "@pokedex/ui": "^1.0.7",
     "@react-native/babel-preset": "0.85.3",
