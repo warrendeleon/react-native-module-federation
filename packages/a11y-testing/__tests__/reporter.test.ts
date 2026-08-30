@@ -85,6 +85,32 @@ describe('what lands in which bucket', () => {
     expect(out).toContain('### WCAG 4.1.2 Name, Role, Value (A)');
   });
 
+  // Both headings count checks, and each needs a case that tells a check count from a criterion
+  // count. With one failure under one criterion the two are the same number, which is what the
+  // only earlier case used: reverting either heading to the criterion count left all 65 tests
+  // green while a real run printed "Violations (2)" above five bullets.
+  test('Violations counts failed checks, not the criteria they fall under', () => {
+    const out = report([
+      { ancestorTitles: ['WCAG 4.1.2 Name, Role, Value'], title: 'the button', status: 'failed' },
+      { ancestorTitles: ['WCAG 4.1.2 Name, Role, Value'], title: 'the card', status: 'failed' },
+      { ancestorTitles: ['WCAG 4.1.2 Name, Role, Value'], title: 'the toggle', status: 'failed' },
+      { ancestorTitles: ['WCAG 1.4.3 Contrast (Minimum)'], title: 'the label', status: 'failed' },
+      { ancestorTitles: ['WCAG 1.4.3 Contrast (Minimum)'], title: 'the caption', status: 'failed' },
+    ]);
+    expect(out).toContain('## Violations (5)');
+    expect(out).not.toContain('## Violations (2)');
+  });
+
+  test('Known findings counts tracked checks, not the criteria they fall under', () => {
+    const out = report([
+      passing('WCAG 1.4.3 Contrast (Minimum)', 'the sheet (known: 2.60:1)'),
+      passing('WCAG 1.4.3 Contrast (Minimum)', 'the pill (known: 2.46:1)'),
+      passing('WCAG 1.4.3 Contrast (Minimum)', 'the caption (known: 1.88:1)'),
+    ]);
+    expect(out).toContain('## Known findings (3)');
+    expect(out).not.toContain('## Known findings (1)');
+  });
+
   test('a title marked (known is tracked rather than counted as a violation', () => {
     const out = report([
       passing('WCAG 1.4.3 Contrast (Minimum)', 'secondary text (known: 2.75:1)'),
@@ -231,6 +257,24 @@ describe('nothing failing is dropped', () => {
     expect(out).toContain('## Suites that did not run');
     expect(out).toContain('/x/components.accessibility.tsx');
     expect(out).toContain('this run was not clean');
+  });
+
+  // The other half of the same filter. Jest reports a suite that fails to resolve a module with a
+  // failureMessage and no testExecError, so a version reading only testExecError missed it — and
+  // that is the shape the article's own styleMock and transformIgnorePatterns traps produce.
+  test('a suite that failed to run with no exec error is named too', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'a11y-reporter-'));
+    const reporter = new AccessibilityReporter({ rootDir }, { title: 'subject' });
+    reporter.onRunComplete({}, {
+      testResults: [
+        { testFilePath: '/x/contrast.accessibility.ts',
+          failureMessage: 'Could not locate module ../global.css', testResults: [] },
+        { testResults: [{ failureMessages: [], ...passing('WCAG 1.4.3 Contrast (Minimum)') }] },
+      ],
+    });
+    const out = readFileSync(join(rootDir, 'accessibility-report.md'), 'utf8');
+    expect(out).toContain('## Suites that did not run');
+    expect(out).toContain('/x/contrast.accessibility.ts');
   });
 
   test('a failure under a describe naming no criterion is still reported', () => {

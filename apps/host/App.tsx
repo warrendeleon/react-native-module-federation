@@ -233,7 +233,10 @@ export default function App() {
             <Tab.Navigator
               screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: colours.blue,
+                // The focused tab's label is 10pt, so it needs the readable blue rather than
+                // the brand fill: colours.blue measures 3.48:1 on the light bar and 3.74:1 on the
+                // dark one, both under 4.5:1.
+                tabBarActiveTintColor: mode === 'dark' ? colours.blueTextDark : colours.blueText,
                 tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
               }}>
               <Tab.Screen

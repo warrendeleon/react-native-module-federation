@@ -100,7 +100,12 @@ function PokemonCardInner({
             accessible={false}
             importantForAccessibility="no-hide-descendants"
             accessibilityElementsHidden
-            hitSlop={10}
+            // h-6 is 1.5rem, and NativeWind's rem on React Native is 14, so the painted badge is
+            // 21pt. With hitSlop 10 the target was 41pt, under the 44 the rest of this package
+            // holds itself to. 12 takes it to 45. The badge is hidden from screen readers because
+            // removal is exposed as an accessibility action on the card; it is still a target for
+            // everyone else.
+            hitSlop={12}
             className="absolute right-1.5 top-1.5 z-10 h-6 w-6 items-center justify-center rounded-full bg-red active:opacity-70"
           >
             <Text size="xs" bold className="text-white">

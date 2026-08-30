@@ -7,12 +7,15 @@
 // The tests hand the view its props directly. That is the same seam the List and Party apps use
 // to feed it, so nothing here needs a store, a query client or a navigator.
 
+import { readFileSync } from 'node:fs';
+
 import React from 'react';
 import { Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { PokemonDetail } from '@pokedex/contracts';
 import {
   HERO_SCRIM_ALPHA,
+  TYPE_NAMES,
   colourForType,
   colours,
   textOnHeroScrimClass,
@@ -156,16 +159,39 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
     }
   });
 
-  // The dex number under the name. It muted itself to text-black/60 (or text-white/70 on the
-  // dark fills) until the eighth audit, one line below a comment explaining that the hero asks
-  // the token rather than assuming — and text-black resolves to #2E3138, the neutral the preset
-  // warns is not a foreground. It measured 2.21:1 on water and failed sixteen of the eighteen
-  // fills. No alpha clears all of them, so the line now asks the same token the name does.
-  test('the dex number takes the hero decision, at full strength', async () => {
-    const { getByText } = await renderWithTheme(view());
+  // The name and the dex number under it. The dex number muted itself to text-black/60 (or
+  // text-white/70 on the dark fills), one line below a comment explaining that the hero asks the
+  // token rather than assuming — and text-black resolves to #2E3138, the neutral the preset warns
+  // is not a foreground. It measured 2.21:1 on water and failed sixteen of the eighteen fills.
+  //
+  // Both are checked across every type, and each type asserts the *other* answer is absent. A
+  // single-fixture version of this test used Charizard, whose primary type is Rock and whose
+  // answer is text-white, so `toContain('text-white')` compared a constant against itself:
+  // hard-coding text-white on both elements left all fifteen checks green while twelve of the
+  // eighteen fills fell below AA on the dex number and ten below the large-text bar on the name.
+  const OTHER = { 'text-white': 'text-typeInk', 'text-typeInk': 'text-white' } as const;
+
+  // The name is checked from source, and that needs saying. Heading consumes its className and
+  // emits a style, but the class never compiles — nativewind/test compiles only the classes on the
+  // tree handed to render, and this one is chosen inside PokemonDetailView — so neither the class
+  // nor a resolved colour reaches the rendered output. Asserting on either would be the
+  // green-for-nothing this suite exists to catch. The dex number below is different: Text passes
+  // its className straight through, so that one is checked on the render.
+  const heroSource = readFileSync(require.resolve('../src/PokemonDetailView.tsx'), 'utf8');
+
+  test('the name takes its colour from the fill token, not a literal', () => {
+    expect(heroSource).toMatch(/<Heading size="2xl" className=\{onHero\}>/);
+    // A hard-coded foreground is what would come back, and it put twelve of the eighteen fills
+    // below the large-text bar when it was tried.
+    expect(heroSource).not.toMatch(/<Heading[^>]*className="[^"]*text-(white|typeInk|black)/);
+  });
+
+  test.each(TYPE_NAMES)('the %s hero paints its dex number the same way, at full strength', async type => {
+    const { getByText } = await renderWithTheme(view({ pokemon: { ...charizard, types: [type] } }));
     const dexNumber = `#${String(charizard.id).padStart(3, '0')}`;
     const className = String(getByText(dexNumber).props.className);
-    expect(className).toContain(textOnTypeClass(charizard.types[0]));
+    expect(className).toContain(textOnTypeClass(type));
+    expect(className).not.toContain(OTHER[textOnTypeClass(type)]);
     // An alpha suffix is what the muted variant looked like, and it is what would come back.
     expect(className).not.toMatch(/text-(black|white)\/\d+/);
   });

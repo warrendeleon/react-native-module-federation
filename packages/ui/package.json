@@ -1,7 +1,7 @@
 {
   "name": "@pokedex/ui",
-  "version": "1.0.7",
-  "description": "The Pokédex design system: gluestack-ui copy-in primitives, the colour tokens and the eleven composed components (ScreenContainer, PokemonCard, TypeBadge, LoadingState, ErrorState, InfoRow, StatBar, EmptySlot, BackPill, ThemeToggle, Toaster), shared across the federation as a host-provided singleton.",
+  "version": "1.0.8",
+  "description": "The Pok\u00e9dex design system: gluestack-ui copy-in primitives, the colour tokens and the eleven composed components (ScreenContainer, PokemonCard, TypeBadge, LoadingState, ErrorState, InfoRow, StatBar, EmptySlot, BackPill, ThemeToggle, Toaster), shared across the federation as a host-provided singleton.",
   "source": "./src/index.ts",
   "main": "./lib/module/index.js",
   "module": "./lib/module/index.js",

@@ -17,6 +17,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "types": [
+      "node",
       "react-native",
       "nativewind/types",
       "jest"

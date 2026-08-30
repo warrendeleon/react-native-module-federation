@@ -14,7 +14,12 @@ import { configureStore } from '@reduxjs/toolkit';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { addToParty, rootReducer } from '@pokedex/contracts';
-import { act, createThemedRender, expectAccessibilityProps } from '@pokedex/a11y-testing';
+import {
+  act,
+  createThemedRender,
+  expectAccessibilityProps,
+  expectScreenReaderAnnouncement,
+} from '@pokedex/a11y-testing';
 
 import PartyStack from '../src/PartyStack';
 
@@ -163,5 +168,25 @@ describe('WCAG 1.3.1 Info and Relationships — an empty party', () => {
     for (const n of [1, 2, 3, 4, 5, 6]) {
       expect(getByLabelText(`Empty party slot ${n}`)).toBeTruthy();
     }
+  });
+});
+
+describe('WCAG 1.3.1 Info and Relationships — the party counter', () => {
+  // The Pokédex's counter has carried a name, a grouping and a live region since post 8; this one
+  // had none of the three, and nothing here noticed. The colour repair reached both headers in the
+  // same round, two rounds before this did — a fix applied to the surface it was looking at.
+  test('the header is one named group, and the ratio is spoken as words', async () => {
+    const { getByLabelText } = await renderScreen([members[1]]);
+    expect(getByLabelText('Your team, 1 of 6')).toBeTruthy();
+  });
+
+  test('it announces without stealing focus when the party changes', async () => {
+    const { getByLabelText } = await renderScreen([members[1]]);
+    expectScreenReaderAnnouncement(getByLabelText('Your team, 1 of 6'), { politeness: 'polite' });
+  });
+
+  test('the count in the label is the real one, not a constant', async () => {
+    const { getByLabelText } = await renderScreen([]);
+    expect(getByLabelText('Your team, 0 of 6')).toBeTruthy();
   });
 });

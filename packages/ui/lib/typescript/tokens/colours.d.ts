@@ -1,5 +1,7 @@
 export declare const colours: {
     readonly blue: "#3A86FF";
+    readonly blueText: "#2065E0";
+    readonly blueTextDark: "#79AEFF";
     readonly purple: "#8338EC";
     readonly red: "#C92016";
     readonly pokemonGreen: "#9BE89B";

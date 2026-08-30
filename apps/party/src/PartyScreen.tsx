@@ -95,7 +95,15 @@ export default function PartyScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}>
-        <Box className="flex-row items-center justify-between">
+        {/* Grouped, named and live, the same as the Pokédex's counter. Ungrouped, a reader gets
+            "Your team" and "1/6" as two unrelated reads, and "1/6" is spoken as "one slash six"
+            or as a date depending on the reader. The colour repair reached this pill two rounds
+            before its name and grouping did, which is the shape this post is about. */}
+        <Box
+          className="flex-row items-center justify-between"
+          accessible
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Your team, ${members.length} of ${MAX_PARTY}`}>
           <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
             Your team
           </Text>

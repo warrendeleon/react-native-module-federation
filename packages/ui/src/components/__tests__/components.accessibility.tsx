@@ -202,3 +202,33 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the badge takes its surface from the
     expect(source).not.toMatch(/bg-white\/\d+/);
   });
 });
+
+describe('WCAG 2.5.5 Target Size — the controls that size themselves from a class', () => {
+  // Three controls take their painted size from a Tailwind class and extend it with hitSlop.
+  // expectMinTouchTarget cannot verify them here for the reason this file keeps running into:
+  // a class chosen inside a component never compiles in the test tree, so the helper reads a
+  // width of nothing. What can be checked is the declared hitSlop against the size the class
+  // resolves to, with NativeWind's rem of 14 written out rather than assumed.
+  const REM = 14;
+  const sized = (file: string) => readFileSync(require.resolve(`../${file}`), 'utf8');
+  const slopOf = (src: string) => Number(/hitSlop=\{(\d+)\}/.exec(src)?.[1]);
+  const remUnits = (src: string, cls: RegExp) => Number(cls.exec(src)?.[1]) / 4;
+
+  test("the card's remove badge reaches 44 with its hitSlop", () => {
+    const src = sized('pokemon-card.tsx');
+    const painted = remUnits(src, /\bh-(\d+) w-\d+ items-center justify-center rounded-full bg-red/) * REM;
+    expect(painted + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+  });
+
+  test('the back pill reaches 44 with its hitSlop', () => {
+    const src = sized('back-pill.tsx');
+    const painted = remUnits(src, /\bh-(\d+) w-\d+ items-center justify-center rounded-full border/) * REM;
+    expect(painted + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+  });
+
+  test('the theme toggle reaches 44 around its image', () => {
+    const src = sized('theme-toggle.tsx');
+    const painted = Number(/width:\s*(\d+)/.exec(src)?.[1] ?? /size=\{(\d+)\}/.exec(src)?.[1] ?? 22);
+    expect(painted + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+  });
+});

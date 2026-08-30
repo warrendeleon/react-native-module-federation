@@ -218,6 +218,19 @@ describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
   });
 });
 
+describe('WCAG 1.4.3 Contrast (Minimum) — the host tab bar', () => {
+  // The host's own chrome, which the matrix's contract covers and was not measuring. The focused
+  // tab's label takes tabBarActiveTintColor verbatim at 10pt, on the navigator's card: white in
+  // light, the near-black neutral in dark. colours.blue measured 3.48:1 and 3.74:1 there.
+  test('the focused tab label on the light bar', () => {
+    expectColorContrast(colours.blueText, colours.white);
+  });
+
+  test('the focused tab label on the dark bar', () => {
+    expectColorContrast(colours.blueTextDark, colours.black);
+  });
+});
+
 describe('WCAG 1.4.11 Non-text Contrast — status colours', () => {
   // Error text and destructive affordances carry meaning, so they clear the 3:1 bar for
   // non-text and the 4.5:1 bar where they are rendered as normal-size copy.
