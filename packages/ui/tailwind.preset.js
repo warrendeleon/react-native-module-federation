@@ -40,6 +40,12 @@ const colours = {
   // the water and psychic fills that is 3.74:1 and 3.81:1 — under the 4.5:1 small text needs.
   // typeInk keeps the badge foreground at the value the contrast maps were computed against.
   typeInk: '#000000',
+  // Real black again, and deliberately a second token rather than a reuse of typeInk. typeInk is
+  // a foreground: every one of its uses is a `text-` class, and the post's own experiment reverts
+  // it to prove the badge foregrounds move. A translucent scrim painted from the same token would
+  // be dragged along by that experiment, which is how the back pill ended up owned by a decision
+  // about badge text. `scrim` is the background half of the same "the neutral is not black" fact.
+  scrim: '#000000',
 };
 
 const typeColours = {

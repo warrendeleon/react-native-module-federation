@@ -29,6 +29,9 @@ export const colours = {
   black: '#2E3138',
   // --- Foreground ink for type-coloured surfaces. Real black, unlike the `black` neutral
   // above: see the note in tailwind.preset.js. ---
-  typeInk: '#000000'
+  typeInk: '#000000',
+  // The background half of the same fact: the preset's `black` is #2E3138, so a scrim that
+  // needs real black asks for it by name rather than borrowing the badge's foreground token.
+  scrim: '#000000'
 };
 //# sourceMappingURL=colours.js.map
