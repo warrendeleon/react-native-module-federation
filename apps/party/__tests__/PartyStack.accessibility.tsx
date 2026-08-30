@@ -8,6 +8,8 @@
 // What is specific here is a grid of six slots that are either a member or a gap, and a
 // per-slot removal that is deliberately not a separate stop in the accessibility tree.
 
+import { readFileSync } from 'node:fs';
+
 import React from 'react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -172,21 +174,55 @@ describe('WCAG 1.3.1 Info and Relationships — an empty party', () => {
 });
 
 describe('WCAG 1.3.1 Info and Relationships — the party counter', () => {
-  // The Pokédex's counter has carried a name, a grouping and a live region since post 8; this one
-  // had none of the three, and nothing here noticed. The colour repair reached both headers in the
-  // same round, two rounds before this did — a fix applied to the surface it was looking at.
+  // "Your team" and "1/6" are two separate reads unless something groups them, and a ratio is
+  // spoken as "one slash six" or as a date depending on the reader. The Pokédex's counter has
+  // carried the name and the grouping since post 8; this one had neither.
   test('the header is one named group, and the ratio is spoken as words', async () => {
     const { getByLabelText } = await renderScreen([members[1]]);
-    expect(getByLabelText('Your team, 1 of 6')).toBeTruthy();
-  });
-
-  test('it announces without stealing focus when the party changes', async () => {
-    const { getByLabelText } = await renderScreen([members[1]]);
-    expectScreenReaderAnnouncement(getByLabelText('Your team, 1 of 6'), { politeness: 'polite' });
+    expect(getByLabelText('Your team, 1 of 6').props.accessible).toBe(true);
   });
 
   test('the count in the label is the real one, not a constant', async () => {
     const { getByLabelText } = await renderScreen([]);
     expect(getByLabelText('Your team, 0 of 6')).toBeTruthy();
+  });
+});
+
+describe('WCAG 4.1.3 Status Messages — the party counter', () => {
+  // Filed here rather than under 1.3.1, where these checks first landed. The count changes when
+  // something is removed from a screen the user is not looking at, without focus moving, which is
+  // the whole of SC 4.1.3 — and the criterion a check is filed under is what the report credits.
+  // Filed wrongly, this remote's report read "4.1.3 Status Messages | AA | 0" while the check ran.
+  // The identical widget in the Pokédex is filed correctly; the two now agree.
+  test('it announces without stealing focus when the party changes', async () => {
+    const { getByLabelText } = await renderScreen([members[1]]);
+    expectScreenReaderAnnouncement(getByLabelText('Your team, 1 of 6'), { politeness: 'polite' });
+  });
+});
+
+describe('WCAG 2.5.5 Target Size — the design system this app actually installed', () => {
+  // @pokedex/ui's own suite proves its controls against its workspace source. This one proves the
+  // published package, because those are two different artefacts and they came apart once:
+  // @pokedex/ui@1.0.8 was published ten minutes before the commit that raised the card badge's
+  // hitSlop, so the registry shipped a 41pt target while the workspace guard read 45 and stayed
+  // green. A remote installs the tarball, not the repository, so the tarball is what this checks.
+  const REM = 14;
+  const installed = readFileSync(
+    require.resolve('@pokedex/ui/src/components/pokemon-card.tsx'),
+    'utf8',
+  );
+
+  const read = (pattern: RegExp, what: string): number => {
+    const found = pattern.exec(installed);
+    if (!found) {
+      throw new Error(`could not read ${what} from the installed @pokedex/ui`);
+    }
+    return Number(found[1]);
+  };
+
+  test("the installed card's remove badge reaches 44", () => {
+    const painted = (read(/\bh-(\d+) w-\d+ items-center justify-center rounded-full bg-red/, 'the size class') / 4) * REM;
+    const slop = read(/hitSlop=\{(\d+)\}/, 'the hitSlop');
+    expect(painted + slop * 2).toBeGreaterThanOrEqual(44);
   });
 });

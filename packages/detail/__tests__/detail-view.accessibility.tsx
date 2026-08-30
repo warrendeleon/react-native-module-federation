@@ -179,6 +179,16 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
   // its className straight through, so that one is checked on the render.
   const heroSource = readFileSync(require.resolve('../src/PokemonDetailView.tsx'), 'utf8');
 
+  // The screen draws the name three times: the hero heading, the ghost numeral's neighbour, and
+  // the compact bar's echo mid-scroll. Only one of the three should reach a screen reader. The
+  // sprite and the ghost numeral were both guarded; the compact bar was not, so removing its two
+  // hiding props left the suite green and a reader hearing the name twice on every scroll.
+  test('the compact title bar is a visual echo only', () => {
+    const bar = heroSource.slice(heroSource.indexOf('styles.compact') - 700, heroSource.indexOf('styles.compact'));
+    expect(bar).toMatch(/accessibilityElementsHidden/);
+    expect(bar).toMatch(/importantForAccessibility="no-hide-descendants"/);
+  });
+
   test('the name takes its colour from the fill token, not a literal', () => {
     expect(heroSource).toMatch(/<Heading size="2xl" className=\{onHero\}>/);
     // A hard-coded foreground is what would come back, and it put twelve of the eighteen fills

@@ -3,6 +3,7 @@ import { Image, type StyleProp, type ViewStyle } from 'react-native';
 import { useColorScheme } from 'nativewind';
 
 import { colours } from '../tokens/colours';
+import { BACK_PILL_SCRIM_CLASS } from '../tokens/typeColours';
 import { Pressable } from './ui/pressable';
 
 // --- The floating back control for full-bleed screens. A headerless route has no navigation
@@ -33,9 +34,11 @@ export function BackPill({ onPress, accessibilityLabel = 'Go back', style }: Bac
       className={
         dark
           ? // A dark scrim, not a light wash: the pill can sit over the pastel hero or the navy
-            // compact bar, and black/35 + a white glyph clears 3:1 on both. A white wash only
-            // managed it on the navy.
-            'h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/35 active:opacity-60'
+            // compact bar, and the scrim plus a white glyph clears 3:1 on both. A white wash only
+            // managed it on the navy. The scrim class comes from the token module rather than
+            // being spelled here, so the value the matrix composites and the value the pill
+            // paints cannot drift; see BACK_PILL_SCRIM_ALPHA for why it is typeInk and not black.
+            `h-9 w-9 items-center justify-center rounded-full border border-white/20 ${BACK_PILL_SCRIM_CLASS} active:opacity-60`
           : 'h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm shadow-black/20 active:opacity-60'
       }
       style={style}>

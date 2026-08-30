@@ -23,6 +23,18 @@ export declare const HERO_SCRIM_ALPHA = 0.3;
  * map drift apart without any test noticing.
  */
 export declare const HERO_SCRIM_CLASS = "bg-white/30";
+/**
+ * The floating back pill's dark scrim, in the same shape and for the same reason as the hero's.
+ *
+ * The alpha is the number the contrast map composites; the class is the literal Tailwind sees.
+ * It paints `typeInk`, not `black`: the preset's `black` is the #2E3138 near-black surface, and
+ * at 35% over the palest fills that put the white chevron at 2.81:1 on flying, 2.83 on ice and
+ * 2.84 on electric — under the 3:1 SC 1.4.11 asks of a control's own boundary. Real black at the
+ * same alpha clears every fill, worst case 3.48 on flying. The same token shadowing that the
+ * badge foreground hit, one layer down, on a background rather than a foreground.
+ */
+export declare const BACK_PILL_SCRIM_ALPHA = 0.35;
+export declare const BACK_PILL_SCRIM_CLASS = "bg-typeInk/35";
 /** Border class at full saturation (accent rules, quote cards): 'border-type-fire'. */
 export declare function borderClassForType(type: string): string;
 //# sourceMappingURL=typeColours.d.ts.map

@@ -29,9 +29,9 @@
     "react-native-safe-area-context": ">=5"
   },
   "devDependencies": {
-    "@pokedex/a11y-testing": "^1.0.17",
+    "@pokedex/a11y-testing": "^1.0.18",
     "@pokedex/contracts": "^3.2.1",
-    "@pokedex/ui": "^1.0.8",
+    "@pokedex/ui": "^1.0.10",
     "@react-native/babel-preset": "0.85.3",
     "@react-native/jest-preset": "0.85.3",
     "@tailwindcss/container-queries": "^0.1.1",

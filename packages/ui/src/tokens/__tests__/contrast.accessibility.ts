@@ -26,6 +26,8 @@
 
 import { colours } from '../colours';
 import {
+  BACK_PILL_SCRIM_ALPHA,
+  BACK_PILL_SCRIM_CLASS,
   HERO_SCRIM_ALPHA,
   HERO_SCRIM_CLASS,
   TYPE_NAMES,
@@ -218,6 +220,53 @@ describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
   });
 });
 
+describe('WCAG 1.4.11 Non-text Contrast — the floating back pill', () => {
+  // The chevron is the only thing identifying this control, and the pill is the only way off the
+  // detail screen, so its glyph is held to the 3:1 SC 1.4.11 asks of a control's own boundary.
+  // The dark variant floats a translucent scrim over whichever hero it lands on, so every fill is
+  // a surface it composes — the pair was measured nowhere until the tenth reading of this file.
+  // Both the token and the alpha are read out of the one class the pill paints, so there is a
+  // single source of truth. Writing `bg-typeInk` here as a second literal would have been the
+  // same two-constants fault the hero scrim's guard exists to catch: reverting the component to
+  // bg-black/35 would have left these eighteen measuring a colour the pill no longer paints.
+  const [, scrimToken, scrimPercent] = /^bg-([A-Za-z]+)\/(\d+)$/.exec(BACK_PILL_SCRIM_CLASS) ?? [];
+  const scrimInk = hexForClass(`bg-${scrimToken}`);
+  const scrimAlpha = Number(scrimPercent) / 100;
+
+  test('the class the pill paints is the one the map composites', () => {
+    expect(scrimInk).toBeDefined();
+    expect(scrimAlpha).toBe(BACK_PILL_SCRIM_ALPHA);
+  });
+
+  test.each(TYPE_NAMES)('the chevron on the %s hero, dark scheme', (type: string) => {
+    expectColorContrast(
+      colours.white,
+      composite(scrimInk, scrimAlpha, hexForClass(bgClassForType(type))),
+      'nonText',
+    );
+  });
+
+  test('the chevron on the navy compact bar, dark scheme', () => {
+    expectColorContrast(colours.white, composite(scrimInk, scrimAlpha, colours.navy), 'nonText');
+  });
+
+  // The light variant is opaque, so what is under it does not matter.
+  test('the chevron on the light pill', () => {
+    expectColorContrast(colours.darkGrey, colours.white, 'nonText');
+  });
+});
+
+describe('WCAG 1.4.3 Contrast (Minimum) — type badges in dark mode', () => {
+  // The card badge dims to a tonal wash in dark: bg-type-X/25 over the card's near-black, with
+  // text-white/90. Eighteen more pairs the design system composes; the matrix imported the light
+  // decision and the hero decision and never this one. All eighteen clear, which is exactly why
+  // nobody noticed it was unmeasured.
+  test.each(TYPE_NAMES)('%s badge text clears AA on its dark tonal wash', (type: string) => {
+    const wash = composite(hexForClass(bgClassForType(type)), 0.25, colours.black);
+    expectColorContrast(composite(colours.white, 0.9, wash), wash);
+  });
+});
+
 describe('WCAG 1.4.3 Contrast (Minimum) — the host tab bar', () => {
   // The host's own chrome, which the matrix's contract covers and was not measuring. The focused
   // tab's label takes tabBarActiveTintColor verbatim at 10pt, on the navigator's card: white in
@@ -228,6 +277,16 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the host tab bar', () => {
 
   test('the focused tab label on the dark bar', () => {
     expectColorContrast(colours.blueTextDark, colours.black);
+  });
+
+  // One tab is always unfocused, so this pair is always on screen. Left unset, react-navigation
+  // mixes the theme's text 50% into the bar and produces 3.27:1 on the light bar.
+  test('the unfocused tab label on the light bar', () => {
+    expectColorContrast(colours.darkGrey, colours.white);
+  });
+
+  test('the unfocused tab label on the dark bar', () => {
+    expectColorContrast(colours.lightGrey, colours.black);
   });
 });
 

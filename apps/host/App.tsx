@@ -233,10 +233,18 @@ export default function App() {
             <Tab.Navigator
               screenOptions={{
                 headerShown: false,
-                // The focused tab's label is 10pt, so it needs the readable blue rather than
-                // the brand fill: colours.blue measures 3.48:1 on the light bar and 3.74:1 on the
-                // dark one, both under 4.5:1.
+                // Both tab labels are 10pt, so both are held to 4.5:1 on the bar they sit on,
+                // and the bar is colors.card: white in light, the near-black neutral in dark.
+                //
+                // Active: colours.blue is a fill and a large-text colour — 3.48:1 on the light bar
+                // and 3.74:1 on the dark — so the readable pair is used instead.
+                //
+                // Inactive: react-navigation derives it as text mixed 50% into card when nothing
+                // is set, which is #8E8E8F on white, 3.27:1. One tab is always unfocused, so that
+                // pair is always on screen. It is stated here rather than inherited, and it is the
+                // same darkGrey/lightGrey pair every other secondary line in the federation uses.
                 tabBarActiveTintColor: mode === 'dark' ? colours.blueTextDark : colours.blueText,
+                tabBarInactiveTintColor: mode === 'dark' ? colours.lightGrey : colours.darkGrey,
                 tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
               }}>
               <Tab.Screen

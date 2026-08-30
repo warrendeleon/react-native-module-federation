@@ -112,6 +112,15 @@ class AccessibilityReporter {
         }
         const criterion = match[1];
         const entry = byCriterion.get(criterion) ?? { passed: [], failed: [], known: [] };
+        // The catalogue holds A and AA only, so a criterion outside it — SC 2.5.5 is the one this
+        // project checks — has no name to print. The describe title carries it, so it is kept
+        // here: a failing AAA check rendered "### WCAG 2.5.5 Unknown criterion (?)", which reads
+        // like a broken report rather than a check the coverage number deliberately excludes.
+        if (!entry.titleName) {
+          const named = ancestors.find(a => CRITERION_IN_TITLE.test(a));
+          const after = named && named.split(CRITERION_IN_TITLE)[2];
+          entry.titleName = (after ?? '').replace(/^[\s—:-]+/, '').split('—')[0].trim();
+        }
         // A test parked with it.failing is a finding that is tracked, not a silent gap. Jest
         // reports one as `passed` while its body still fails, and gives no other signal, so the
         // marker in the title is all there is to file on. That makes the marker load-bearing:
@@ -233,7 +242,7 @@ class AccessibilityReporter {
       lines.push('None.');
     } else {
       for (const [id, entry] of violations) {
-        const meta = CRITERIA[id] ?? { name: 'Unknown criterion', level: '?' };
+        const meta = CRITERIA[id] ?? { name: entry.titleName || 'not in the A + AA catalogue', level: 'outside A + AA' };
         lines.push(`### WCAG ${id} ${meta.name} (${meta.level})`);
         lines.push('');
         for (const failure of entry.failed) {
@@ -253,7 +262,7 @@ class AccessibilityReporter {
       lines.push('Tracked in the suite with `it.failing`, so they cannot be forgotten quietly.');
       lines.push('');
       for (const [id, entry] of known) {
-        const meta = CRITERIA[id] ?? { name: 'Unknown criterion', level: '?' };
+        const meta = CRITERIA[id] ?? { name: entry.titleName || 'not in the A + AA catalogue', level: 'outside A + AA' };
         for (const finding of entry.known) {
           lines.push(`- **WCAG ${id} ${meta.name}** — ${finding.title}`);
         }

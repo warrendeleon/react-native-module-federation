@@ -21,6 +21,7 @@ import {
 import { HERO_SCRIM_CLASS } from '../../tokens/typeColours';
 import { ErrorState } from '../error-state';
 import { LoadingState } from '../loading-state';
+import { EmptySlot } from '../empty-slot';
 import { PokemonCard } from '../pokemon-card';
 import { StatBar } from '../stat-bar';
 import { TypeBadge } from '../type-badge';
@@ -177,6 +178,127 @@ function liveRegionAround(node: unknown) {
   }
   throw new Error('Nothing around that text declares a live region.');
 }
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the badge takes its surface from the token module', () => {
+  // The matrix composites every hero badge against HERO_SCRIM_ALPHA, and the check beside it
+  // proves the constant and the class agree with each other. Both are exported from the same
+  // module, so neither notices if the component stops using them: changing the class written in
+  // type-badge.tsx to bg-white/5 left all ninety-three checks green while four types fell below
+  // AA on the real surface.
+  //
+  // This reads the component's source rather than its paint, which needs saying. The badge picks
+  // its surface class inside its own render, and nativewind/test only compiles the classes on the
+  // tree handed to render, so nothing downstream of that choice reaches the rendered output — the
+  // hero and card badges are byte-identical in this environment, style and all. Asserting on the
+  // render would be the same green-for-nothing this file exists to catch. What can be checked is
+  // that the decision still comes from the token module and not from a literal in the component.
+  const source = readFileSync(require.resolve('../type-badge.tsx'), 'utf8');
+
+  test('the hero surface comes from HERO_SCRIM_CLASS', () => {
+    expect(source).toContain('HERO_SCRIM_CLASS');
+    expect(source).toMatch(/surface === 'hero'\s*\?\s*HERO_SCRIM_CLASS/);
+  });
+
+  test('the badge writes no scrim literal of its own', () => {
+    expect(source).not.toMatch(/bg-white\/\d+/);
+  });
+
+  // Same shape for the floating back pill, whose dark scrim is the other translucent surface the
+  // matrix composites. It painted bg-black/35 — the near-black neutral, not real black — which put
+  // the white chevron under 3:1 on three of the eighteen heroes.
+  const pillSource = readFileSync(require.resolve('../back-pill.tsx'), 'utf8');
+
+  test('the back pill takes its dark scrim from BACK_PILL_SCRIM_CLASS', () => {
+    expect(pillSource).toContain('BACK_PILL_SCRIM_CLASS');
+    expect(pillSource).toMatch(/\$\{BACK_PILL_SCRIM_CLASS\}/);
+  });
+
+  test('the back pill writes no scrim literal of its own', () => {
+    expect(pillSource).not.toMatch(/bg-(black|white|typeInk)\/\d+/);
+  });
+});
+
+describe('WCAG 4.1.2 Name, Role, Value — the props only the apps were guarding', () => {
+  // These four props live in @pokedex/ui but were asserted only in apps/party, which resolves
+  // this package from the registry rather than the workspace. A regression in src was therefore
+  // invisible to every suite in the repo until someone republished.
+  test("the card's remove badge stays out of the accessibility tree", async () => {
+    const { getByRole } = await renderWithTheme(
+      <PokemonCard id={4} name="Charmander" types={['Fire']} spriteUri="sprite://4" onPress={() => {}} onRemove={() => {}} />,
+    );
+    const card = getByRole('button');
+    expect(card.props.accessibilityActions).toEqual([{ name: 'remove', label: 'Remove from party' }]);
+    const source = readFileSync(require.resolve('../pokemon-card.tsx'), 'utf8');
+    expect(source).toMatch(/accessible=\{false\}/);
+    expect(source).toMatch(/accessibilityElementsHidden/);
+    expect(source).toMatch(/importantForAccessibility="no-hide-descendants"/);
+  });
+
+  test('an empty slot is one named element, not a silent box', async () => {
+    const { getByLabelText } = await renderWithTheme(<EmptySlot number={3} />);
+    const slot = getByLabelText('Empty party slot 3');
+    expect(slot.props.accessible).toBe(true);
+  });
+});
+
+describe('WCAG 2.5.5 Target Size — the controls that size themselves from a class', () => {
+  // Three controls take their painted size from source and extend it with hitSlop.
+  // expectMinTouchTarget cannot verify them here for the reason this file keeps running into: a
+  // class chosen inside a component never compiles in the test tree, so the helper reads a width
+  // of nothing. What can be checked is the declared size against the declared hitSlop, with
+  // NativeWind's rem of 14 written out rather than assumed.
+  //
+  // Every read below throws when it misses. The first version of this block used `?? 22` for the
+  // theme toggle, and both of its patterns missed the real source, so it measured a literal
+  // written in the test: changing the component's default to 10 left it green. A guard that
+  // falls back to a constant is a guard that cannot fail.
+  const REM = 14;
+  const sized = (file: string) => readFileSync(require.resolve(`../${file}`), 'utf8');
+
+  const readOne = (src: string, pattern: RegExp, what: string): number => {
+    const found = pattern.exec(src);
+    if (!found) {
+      throw new Error(`could not read ${what} — the pattern no longer matches the component`);
+    }
+    return Number(found[1]);
+  };
+
+  const readAll = (src: string, pattern: RegExp, what: string): number[] => {
+    const found = [...src.matchAll(pattern)].map(m => Number(m[1]));
+    if (!found.length) {
+      throw new Error(`could not read ${what} — the pattern no longer matches the component`);
+    }
+    return found;
+  };
+
+  const slopOf = (src: string) => readOne(src, /hitSlop=\{(\d+)\}/, 'hitSlop');
+
+  test("the card's remove badge reaches 44 with its hitSlop", () => {
+    const src = sized('pokemon-card.tsx');
+    const painted = (readOne(src, /\bh-(\d+) w-\d+ items-center justify-center rounded-full bg-red/, "the badge's size class") / 4) * REM;
+    expect(painted + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+  });
+
+  test('the back pill reaches 44 with its hitSlop, in both schemes', () => {
+    const src = sized('back-pill.tsx');
+    // Both branches, not the first match: the light branch was shrinkable to h-4 with this
+    // check green, because a single exec reads only the dark one written above it.
+    const painted = readAll(src, /\bh-(\d+) w-\d+ items-center justify-center rounded-full border/g, "the pill's size classes");
+    expect(painted).toHaveLength(2);
+    for (const units of painted) {
+      expect((units / 4) * REM + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test('the theme toggle reaches 44 around its glyph', () => {
+    const src = sized('theme-toggle.tsx');
+    // The glyph is sized by a prop with a default, and the Image reads that prop, so both halves
+    // are checked: the default is the number that ships, and the style has to be using it.
+    const painted = readOne(src, /function ThemeToggle\(\{[^}]*size = (\d+)/, "the toggle's default glyph size");
+    expect(src).toMatch(/style=\{\{ width: size, height: size/);
+    expect(painted + slopOf(src) * 2).toBeGreaterThanOrEqual(44);
+  });
+});
 
 describe('WCAG 1.4.3 Contrast (Minimum) — the badge takes its surface from the token module', () => {
   // The matrix composites every hero badge against HERO_SCRIM_ALPHA, and the check beside it

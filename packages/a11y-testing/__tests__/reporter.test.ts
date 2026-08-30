@@ -277,6 +277,30 @@ describe('nothing failing is dropped', () => {
     expect(out).toContain('/x/contrast.accessibility.ts');
   });
 
+  test('a failing criterion outside the A + AA catalogue is named, not "Unknown"', () => {
+    const out = report([
+      { ancestorTitles: ['WCAG 2.5.5 Target Size — the Add action'], title: 'the button', status: 'failed' },
+    ]);
+    expect(out).toContain('### WCAG 2.5.5 Target Size (outside A + AA)');
+    expect(out).not.toContain('Unknown criterion');
+    expect(out).not.toContain('(?)');
+  });
+
+  test('a suite that failed to run with no exec error is not confused with an ordinary red suite', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'a11y-reporter-'));
+    const reporter = new AccessibilityReporter({ rootDir }, { title: 'subject' });
+    reporter.onRunComplete({}, {
+      testResults: [
+        // A suite that ran and failed: it has a failureMessage AND assertions. Dropping the
+        // length check would list this one as never having run.
+        { testFilePath: '/x/ran-and-failed.tsx', failureMessage: 'one test failed',
+          testResults: [{ failureMessages: ['boom'], ancestorTitles: ['WCAG 4.1.2 Name, Role, Value'], title: 'the button', status: 'failed' }] },
+      ],
+    });
+    const out = readFileSync(join(rootDir, 'accessibility-report.md'), 'utf8');
+    expect(out).not.toContain('## Suites that did not run');
+  });
+
   test('a failure under a describe naming no criterion is still reported', () => {
     const out = report([
       { ancestorTitles: ['a plain describe'], title: 'a broken thing', status: 'failed' },
