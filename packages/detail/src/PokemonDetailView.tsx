@@ -205,7 +205,7 @@ export default function PokemonDetailView({
             ) : null}
 
             <VStack space="sm">
-              <Text size="xs" bold className="uppercase tracking-widest text-midGrey">
+              <Text size="xs" bold className="uppercase tracking-widest text-darkGrey dark:text-lightGrey">
                 Info
               </Text>
               <Box className="rounded-2xl bg-white px-4 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">
@@ -216,7 +216,7 @@ export default function PokemonDetailView({
             </VStack>
 
             <VStack space="sm">
-              <Text size="xs" bold className="uppercase tracking-widest text-midGrey">
+              <Text size="xs" bold className="uppercase tracking-widest text-darkGrey dark:text-lightGrey">
                 Base Stats
               </Text>
               <Box className="rounded-2xl bg-white px-4 py-1.5 shadow-sm shadow-black/10 dark:border dark:border-white/10 dark:bg-black">

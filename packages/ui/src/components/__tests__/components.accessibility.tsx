@@ -218,6 +218,35 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the badge takes its surface from the
   });
 });
 
+describe('WCAG 1.4.3 Contrast (Minimum) — the components compose the secondary pair', () => {
+  // A matrix measures pairs; only the component can be asked whether it composes them. The
+  // twelfth round repaired secondary text to `text-darkGrey dark:text-lightGrey` and the token
+  // matrix went green — and stayed green when the card was reverted to `text-midGrey`, because a
+  // matrix never sees a class. A render assertion cannot close it either: `nativewind/test`
+  // compiles only the tree handed to `render`, so a class a component picks inside its own render
+  // never compiles, which is how an earlier round's scrim assertion came out vacuous. So the
+  // class is read from source, the way the host's tab tints are.
+  //
+  // This sits under 1.4.3 and not beside the target-size guards it was first written next to:
+  // filing a contrast check as a target-size one is the mis-citation this suite is careful about,
+  // and it inflated the 2.5.5 count from four checks to six before it was moved.
+  const secondaryClass = (file: string, what: string) => {
+    const src = readFileSync(require.resolve(`../${file}`), 'utf8');
+    const found = /className="[^"]*\btext-(\w+)(?:\/\d+)?\s+dark:text-(\w+)(?:\/\d+)?[^"]*"/.exec(src);
+    if (!found) {
+      throw new Error(`could not read ${what} — no themed secondary class in ${file}`);
+    }
+    return { light: found[1], dark: found[2] };
+  };
+
+  test.each([
+    ['pokemon-card.tsx', "the card's number line"],
+    ['empty-slot.tsx', "the empty slot's caption"],
+  ])('%s composes the secondary pair the matrix cleared', (file, what) => {
+    expect(secondaryClass(file, what)).toEqual({ light: 'darkGrey', dark: 'lightGrey' });
+  });
+});
+
 describe('WCAG 4.1.2 Name, Role, Value — the props only the apps were guarding', () => {
   // These four props live in @pokedex/ui but were asserted only in apps/party, which resolves
   // this package from the registry rather than the workspace. A regression in src was therefore

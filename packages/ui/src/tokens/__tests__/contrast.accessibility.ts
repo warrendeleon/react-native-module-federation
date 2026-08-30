@@ -133,39 +133,31 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
     expectColorContrast(colours.darkGrey, colours.lightGreen);
   });
 
-  // Secondary text is the token that does not clear the bar. It ships in four places on three
-  // surfaces: two section headings on the detail sheet, the card's number line inside its grey
-  // pill, and the disabled Add button's label. The off-white and off-grey pairs are ordinary
-  // failures. The disabled label is not: WCAG 1.4.3's Incidental exception says text "that is
-  // part of an inactive user interface component ... has no contrast requirement", so holding it
-  // to 4.5:1 is this project's own choice and is filed below rather than here, where it would
-  // read as a criterion failure it is not.
+  // Secondary text used to be the token that did not clear the bar. It painted `text-midGrey` in
+  // four places on three light surfaces and, once the seventh audit looked, on two dark ones too,
+  // and all five were parked on the reasoning that no single darker value fixes them. That was
+  // true and it was the wrong question: nothing here needs a single value. This design system is
+  // theme-aware and already carried `dark:text-lightGrey` in eight other places, so secondary
+  // text now takes `text-darkGrey dark:text-lightGrey` at every site and the empty slot's caption
+  // paints the token at full strength instead of at 70%. Worst pair of the six is 6.94:1.
   //
-  // These are the light surfaces. The same token composes two more in dark mode, measured in
-  // their own describe below; both were missing from this file until the seventh audit found
-  // them, and both fail.
-  //
-  // Fixing the token is a palette decision, not a test decision, and there is no single darker
-  // value that does it. Past roughly #5F5F6D the token clears AA on the three light surfaces
-  // (5.92:1, 5.60:1, 4.60:1), but the detail sheet is dark:bg-navy and those headings carry no
-  // dark override, so the navy pair below — comfortable at 6.48:1 today — drops to 2.84:1. The
-  // 70% caption would still sit at 3.09:1. It needs a second token for the dark surface and a
-  // different treatment for the caption, which changes every secondary line in every remote at
-  // once: the kind of change that belongs to the package that owns the token rather than to
-  // whichever app noticed first.
-  knownFinding('secondary text on the detail sheet', 'midGrey is 2.60:1, AA needs 4.5:1', () => {
-    expectColorContrast(colours.midGrey, colours.offWhite);
+  // What stays behind is the disabled Add label, which is exempt rather than parked: 1.4.3's
+  // Incidental clause says text "that is part of an inactive user interface component ... has no
+  // contrast requirement". It is filed under *Project bars* below, so a threshold this project
+  // chooses is never counted as a result against a criterion.
+  test('secondary text on the detail sheet', () => {
+    expectColorContrast(colours.darkGrey, colours.offWhite);
   });
 
-  knownFinding("secondary text on the card's grey pill", '2.46:1', () => {
-    expectColorContrast(colours.midGrey, colours.offGrey);
+  test("secondary text on the card's grey pill", () => {
+    expectColorContrast(colours.darkGrey, colours.offGrey);
   });
 
   // The empty slot's caption is text-midGrey/70, a different value from the token: composited
   // over the app background it is 1.88:1. A pair the design system composes and the matrix was
   // not measuring, which is the fault this file exists to prevent.
-  knownFinding("the empty slot's caption at 70%", '1.88:1', () => {
-    expectColorContrast(composite(colours.midGrey, 0.7, colours.offWhite), colours.offWhite);
+  test("the empty slot's caption", () => {
+    expectColorContrast(colours.darkGrey, colours.offWhite);
   });
 });
 
@@ -174,12 +166,12 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the same secondary token in dark mod
   // Neither of these carried a `dark:` override, and the enumeration above counted light
   // surfaces only, so the design system composed two pairs the matrix had never measured — the
   // exact rule this file opens with, applied to its own blind spot rather than to a component's.
-  knownFinding("the card's number line on the dark pill", '3.44:1', () => {
-    expectColorContrast(colours.midGrey, composite(colours.white, 0.1, colours.black));
+  test("the card's number line on the dark pill", () => {
+    expectColorContrast(colours.lightGrey, composite(colours.white, 0.1, colours.black));
   });
 
-  knownFinding("the empty slot's caption at 70% on navy", '3.82:1', () => {
-    expectColorContrast(composite(colours.midGrey, 0.7, colours.navy), colours.navy);
+  test("the empty slot's caption on navy", () => {
+    expectColorContrast(colours.lightGrey, colours.navy);
   });
 });
 
@@ -200,8 +192,11 @@ describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
     expectColorContrast(colours.white, colours.navy);
   });
 
+  // Secondary text on navy is `lightGrey` since the twelfth round; `midGrey` paints no text on
+  // any dark surface now, so measuring it here would be the inverse of this file's own rule — a
+  // pair nothing composes.
   test('secondary text on navy', () => {
-    expectColorContrast(colours.midGrey, colours.navy);
+    expectColorContrast(colours.lightGrey, colours.navy);
   });
 
   test('divider text on navy', () => {

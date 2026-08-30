@@ -32,7 +32,7 @@ export function EmptySlot({
         })]
       }), /*#__PURE__*/_jsx(Text, {
         size: "xs",
-        className: "mt-2 font-head text-midGrey/70",
+        className: "mt-2 font-head text-darkGrey dark:text-lightGrey",
         children: number
       })]
     })

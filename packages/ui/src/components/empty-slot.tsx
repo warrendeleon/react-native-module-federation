@@ -26,7 +26,7 @@ export function EmptySlot({ number }: EmptySlotProps) {
           <Box className="h-2 w-2 rounded-full bg-midGrey/35" />
         </Box>
       </Box>
-      <Text size="xs" className="mt-2 font-head text-midGrey/70">
+      <Text size="xs" className="mt-2 font-head text-darkGrey dark:text-lightGrey">
         {number}
       </Text>
     </Box>

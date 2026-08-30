@@ -183,6 +183,21 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
   // the compact bar's echo mid-scroll. Only one of the three should reach a screen reader. The
   // sprite and the ghost numeral were both guarded; the compact bar was not, so removing its two
   // hiding props left the suite green and a reader hearing the name twice on every scroll.
+  // The two section headings on the sheet painted `text-midGrey`: 2.60:1 in light, and no dark
+  // override at all. Both were parked as known findings for five rounds on the reasoning that no
+  // single darker value fixes every surface — true, and beside the point, because the design
+  // system is theme-aware and already carried `dark:text-lightGrey` elsewhere. They take the
+  // themed pair now. Read from source for the same reason as the hero fill above: the class is
+  // chosen inside this component, so `nativewind/test` never compiles it and a render assertion
+  // would pass on nothing.
+  test('the sheet headings take the themed secondary pair, not the parked token', () => {
+    const headings = [...heroSource.matchAll(/className="uppercase tracking-widest ([^"]+)"/g)].map(m => m[1]);
+    expect(headings).toHaveLength(2);
+    for (const cls of headings) {
+      expect(cls).toBe('text-darkGrey dark:text-lightGrey');
+    }
+  });
+
   test('the compact title bar is a visual echo only', () => {
     const bar = heroSource.slice(heroSource.indexOf('styles.compact') - 700, heroSource.indexOf('styles.compact'));
     expect(bar).toMatch(/accessibilityElementsHidden/);

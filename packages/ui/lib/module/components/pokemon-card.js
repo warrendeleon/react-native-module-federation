@@ -107,7 +107,7 @@ function PokemonCardInner({
           className: "mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10",
           children: /*#__PURE__*/_jsx(Text, {
             size: "xs",
-            className: "text-midGrey",
+            className: "text-darkGrey dark:text-lightGrey",
             children: idLabel
           })
         }), /*#__PURE__*/_jsx(Box, {

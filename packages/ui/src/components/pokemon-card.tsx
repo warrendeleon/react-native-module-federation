@@ -114,7 +114,7 @@ function PokemonCardInner({
           </Pressable>
         ) : null}
         <Box className="mb-1 self-start rounded-md bg-offGrey px-1.5 py-0.5 dark:bg-white/10">
-          <Text size="xs" className="text-midGrey">
+          <Text size="xs" className="text-darkGrey dark:text-lightGrey">
             {idLabel}
           </Text>
         </Box>
