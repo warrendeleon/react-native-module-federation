@@ -1,7 +1,7 @@
 {
   "name": "@pokedex/detail",
-  "version": "4.0.8",
-  "description": "The Pokémon detail view as a versioned component: presentational, data in as props, writes out as optional callbacks. Both tab remotes install it and feed it from their own containers.",
+  "version": "4.0.9",
+  "description": "The Pok\u00e9mon detail view as a versioned component: presentational, data in as props, writes out as optional callbacks. Both tab remotes install it and feed it from their own containers.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -29,7 +29,7 @@
     "react-native-safe-area-context": ">=5"
   },
   "devDependencies": {
-    "@pokedex/a11y-testing": "^1.0.16",
+    "@pokedex/a11y-testing": "^1.0.17",
     "@pokedex/contracts": "^3.2.1",
     "@pokedex/ui": "^1.0.7",
     "@react-native/babel-preset": "0.85.3",

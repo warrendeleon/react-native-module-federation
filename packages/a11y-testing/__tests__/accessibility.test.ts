@@ -217,12 +217,40 @@ describe('expectScreenReaderAnnouncement', () => {
 });
 
 describe('expectNonColourCue', () => {
-  test('finds the cue in a label, a value or the children', () => {
-    expect(() => expectNonColourCue({ props: { accessibilityLabel: 'Speed 65' } }, '65')).not.toThrow();
+  test('finds the cue in the rendered text', () => {
+    expect(() => expectNonColourCue({ props: { children: 'Speed 65' } }, /\d+/)).not.toThrow();
+    expect(() => expectNonColourCue({ props: { children: ['Speed ', 65] } }, '65')).not.toThrow();
+  });
+
+  test('finds the cue nested any depth down', () => {
+    const bar = {
+      props: {
+        children: [
+          { props: { children: 'Speed' } },
+          { props: { children: [{ props: { children: 65 } }] } },
+        ],
+      },
+    };
+    expect(() => expectNonColourCue(bar, '65')).not.toThrow();
+  });
+
+  test('screen-reader metadata alone fails: SC 1.4.1 is about what is visible', () => {
+    // Both of these passed before. A StatBar whose visible number was deleted kept its
+    // accessibilityValue, so the check that exists to catch exactly that stayed green.
+    expect(() => expectNonColourCue({ props: { accessibilityLabel: 'Speed 65' } }, '65')).toThrow();
     expect(() =>
       expectNonColourCue({ props: { accessibilityValue: { text: '65' } } }, '65'),
-    ).not.toThrow();
-    expect(() => expectNonColourCue({ props: { children: 'Speed 65' } }, /\d+/)).not.toThrow();
+    ).toThrow();
+  });
+
+  test('an emptied visible node fails even when the accessible value still carries it', () => {
+    const gutted = {
+      props: {
+        accessibilityValue: { text: '65' },
+        children: [{ props: { children: 'Speed' } }, { props: { children: null } }],
+      },
+    };
+    expect(() => expectNonColourCue(gutted, '65')).toThrow();
   });
 
   test('colour alone fails', () => {

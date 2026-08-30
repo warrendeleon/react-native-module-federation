@@ -156,6 +156,20 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the hero', () => {
     }
   });
 
+  // The dex number under the name. It muted itself to text-black/60 (or text-white/70 on the
+  // dark fills) until the eighth audit, one line below a comment explaining that the hero asks
+  // the token rather than assuming — and text-black resolves to #2E3138, the neutral the preset
+  // warns is not a foreground. It measured 2.21:1 on water and failed sixteen of the eighteen
+  // fills. No alpha clears all of them, so the line now asks the same token the name does.
+  test('the dex number takes the hero decision, at full strength', async () => {
+    const { getByText } = await renderWithTheme(view());
+    const dexNumber = `#${String(charizard.id).padStart(3, '0')}`;
+    const className = String(getByText(dexNumber).props.className);
+    expect(className).toContain(textOnTypeClass(charizard.types[0]));
+    // An alpha suffix is what the muted variant looked like, and it is what would come back.
+    expect(className).not.toMatch(/text-(black|white)\/\d+/);
+  });
+
   test.each(charizard.types)('the %s badge clears AA on the surface it is drawn on', type => {
     const scrimHex = compositeWhite(HERO_SCRIM_ALPHA, colourForType(type));
     const foreground = textOnHeroScrimClass(type) === 'text-white' ? colours.white : colours.typeInk;

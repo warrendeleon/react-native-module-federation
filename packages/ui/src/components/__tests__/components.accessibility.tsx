@@ -7,6 +7,8 @@
 // Every screen in every remote is built from these, so a check that passes here is a check no
 // remote has to repeat.
 
+import { readFileSync } from 'node:fs';
+
 import React from 'react';
 import {
   createThemedRender,
@@ -16,10 +18,12 @@ import {
   expectScreenReaderAnnouncement,
 } from '@pokedex/a11y-testing';
 
+import { HERO_SCRIM_CLASS } from '../../tokens/typeColours';
 import { ErrorState } from '../error-state';
 import { LoadingState } from '../loading-state';
 import { PokemonCard } from '../pokemon-card';
 import { StatBar } from '../stat-bar';
+import { TypeBadge } from '../type-badge';
 
 const renderWithTheme = createThemedRender(require('../../../tailwind.preset.js'));
 
@@ -85,12 +89,16 @@ describe('WCAG 1.4.1 Use of Color — StatBar', () => {
 
   // And the override, so the prop is exercised as well as the default. A value above the
   // ceiling is clamped for `now` while the spoken text keeps the real number.
+  //
+  // The value has to sit above the ceiling for the clamp to run at all. An earlier version
+  // passed value={200} max={255} under this exact title: the override was exercised, the clamp
+  // never was, and a component that dropped Math.min entirely would have passed.
   test('an overridden ceiling is announced, and a value above it is clamped', async () => {
     const { getByRole } = await renderWithTheme(
-      <StatBar label="Speed" value={200} max={255} colourType="fire" />,
+      <StatBar label="Speed" value={200} max={120} colourType="fire" />,
     );
     expect(getByRole('progressbar').props.accessibilityValue).toEqual(
-      expect.objectContaining({ min: 0, max: 255, now: 200, text: '200' }),
+      expect.objectContaining({ min: 0, max: 120, now: 120, text: '200' }),
     );
   });
 });
@@ -169,3 +177,28 @@ function liveRegionAround(node: unknown) {
   }
   throw new Error('Nothing around that text declares a live region.');
 }
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the badge takes its surface from the token module', () => {
+  // The matrix composites every hero badge against HERO_SCRIM_ALPHA, and the check beside it
+  // proves the constant and the class agree with each other. Both are exported from the same
+  // module, so neither notices if the component stops using them: changing the class written in
+  // type-badge.tsx to bg-white/5 left all ninety-three checks green while four types fell below
+  // AA on the real surface.
+  //
+  // This reads the component's source rather than its paint, which needs saying. The badge picks
+  // its surface class inside its own render, and nativewind/test only compiles the classes on the
+  // tree handed to render, so nothing downstream of that choice reaches the rendered output — the
+  // hero and card badges are byte-identical in this environment, style and all. Asserting on the
+  // render would be the same green-for-nothing this file exists to catch. What can be checked is
+  // that the decision still comes from the token module and not from a literal in the component.
+  const source = readFileSync(require.resolve('../type-badge.tsx'), 'utf8');
+
+  test('the hero surface comes from HERO_SCRIM_CLASS', () => {
+    expect(source).toContain('HERO_SCRIM_CLASS');
+    expect(source).toMatch(/surface === 'hero'\s*\?\s*HERO_SCRIM_CLASS/);
+  });
+
+  test('the badge writes no scrim literal of its own', () => {
+    expect(source).not.toMatch(/bg-white\/\d+/);
+  });
+});

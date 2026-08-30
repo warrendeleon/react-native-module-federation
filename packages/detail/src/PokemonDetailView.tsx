@@ -132,7 +132,10 @@ export default function PokemonDetailView({
   // rather than assuming. Hard-coded black put "Mankey" at 1.7:1 on the fighting hero.
   const onHero = textOnTypeClass(primary);
   const heroInk = onHero === 'text-white';
-  const heroMuted = heroInk ? 'text-white/70' : 'text-black/60';
+  // The dex number used to mute itself to text-black/60 or text-white/70. That invented a second
+  // answer one line under the comment above, and text-black resolves to #2E3138 here, the value
+  // the preset warns is not a foreground. It measured 2.21:1 on water and failed sixteen of the
+  // eighteen fills. No alpha clears all of them, so the line asks the same token the name does.
   const ghostInk = heroInk ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
 
   return (
@@ -167,7 +170,7 @@ export default function PokemonDetailView({
               <Heading size="2xl" className={onHero}>
                 {pokemon.name}
               </Heading>
-              <Text size="sm" className={`font-head ${heroMuted}`}>
+              <Text size="sm" className={`font-head ${onHero}`}>
                 {dexNumber}
               </Text>
             </VStack>

@@ -126,7 +126,9 @@ export default function PokedexScreen() {
               My Party
             </Text>
             <Box className="rounded-full bg-lightGreen px-2.5 py-0.5 dark:bg-white/10">
-              <Text size="xs" className="font-head text-darkGreen dark:text-pokemonGreen">
+              {/* darkGrey, not darkGreen: darkGreen is #A6D3A0, the grass fill, and on lightGreen
+                  it measures 1.53:1. darkGrey is the colour the label beside it already uses. */}
+              <Text size="xs" className="font-head text-darkGrey dark:text-pokemonGreen">
                 {partyCount}/{MAX_PARTY}
               </Text>
             </Box>

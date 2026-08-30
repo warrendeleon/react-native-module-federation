@@ -122,6 +122,15 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
     expectColorContrast(colours.darkGrey, colours.lightGreen);
   });
 
+  // The party counter's pill, in both remotes' headers. It painted text-darkGreen until the
+  // eighth audit: darkGreen is #A6D3A0, the same value as the grass fill, and on lightGreen it
+  // measured 1.53:1 at xs. The pair above was in this file all along and passing; the pill was
+  // simply composing a different one nobody had measured. It now uses the pair above, and the
+  // counter has no colour of its own left to get wrong.
+  test('the party counter on its pale green pill', () => {
+    expectColorContrast(colours.darkGrey, colours.lightGreen);
+  });
+
   // Secondary text is the token that does not clear the bar. It ships in four places on three
   // surfaces: two section headings on the detail sheet, the card's number line inside its grey
   // pill, and the disabled Add button's label. The off-white and off-grey pairs are ordinary
@@ -200,6 +209,13 @@ describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
   test('primary text on the near-black surface', () => {
     expectColorContrast(colours.white, colours.black);
   });
+
+  // The dark half of the party counter's pill: the pill drops to bg-white/10 over navy and the
+  // numeral to the brand green. This half was always comfortable, which is exactly why it was
+  // never measured — the light half beside it was at 1.53:1 for the same reason.
+  test('the party counter on its dark pill', () => {
+    expectColorContrast(colours.pokemonGreen, composite(colours.white, 0.1, colours.navy));
+  });
 });
 
 describe('WCAG 1.4.11 Non-text Contrast — status colours', () => {
@@ -217,7 +233,10 @@ describe('WCAG 1.4.11 Non-text Contrast — status colours', () => {
 describe('WCAG 1.4.3 Contrast (Minimum) — the scrim class and its alpha agree', () => {
   // The component paints a class; the contrast map is computed from a number. Nothing else ties
   // them together, so a badge changed to bg-white/5 would leave every check here green while the
-  // real surface moved four types below AA.
+  // real surface moved four types below AA. This check proves the two constants agree with each
+  // other; that the component still uses them rather than a literal is proved next door, in
+  // components.accessibility.tsx, because both constants are exported from the same module and
+  // neither of them notices the component walking away.
   test('the class TypeBadge paints encodes the alpha the map was computed against', () => {
     expect(HERO_SCRIM_CLASS).toBe(`bg-white/${Math.round(HERO_SCRIM_ALPHA * 100)}`);
   });

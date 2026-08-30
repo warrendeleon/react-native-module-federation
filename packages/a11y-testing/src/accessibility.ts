@@ -282,29 +282,43 @@ export function expectScreenReaderAnnouncement(
   expect({ announcedAs: announced }).toEqual({ announcedAs: politeness });
 }
 
+/** Every string and number rendered inside a node, in order. Descends the whole subtree. */
+function renderedText(node: unknown, out: string[] = []): string[] {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return out;
+  }
+  if (typeof node === 'string' || typeof node === 'number') {
+    out.push(String(node));
+    return out;
+  }
+  if (Array.isArray(node)) {
+    node.forEach(entry => renderedText(entry, out));
+    return out;
+  }
+  const props = (node as TestElement).props;
+  if (props && 'children' in props) {
+    renderedText(props.children, out);
+  }
+  return out;
+}
+
 /**
  * Asserts information is not carried by colour alone (SC 1.4.1): the element, or something
- * inside it, must also say it in words.
+ * inside it, must also say it in words a sighted reader can see.
+ *
+ * It reads rendered text, and only rendered text. An earlier version also accepted
+ * accessibilityLabel and accessibilityValue.text, and read them one level deep — so a bar whose
+ * visible number had been deleted still passed on the strength of its own accessibility value,
+ * which is the one reader SC 1.4.1 is not about. Screen-reader metadata is asserted by
+ * expectAccessibilityProps, next to this call rather than inside it.
  */
 export function expectNonColourCue(
   element: TestElement,
   cue: string | RegExp,
   { children }: { children?: TestElement[] } = {},
 ): void {
-  const texts: string[] = [];
-  const collect = (node: TestElement | undefined) => {
-    const props = node?.props ?? {};
-    for (const key of ['accessibilityLabel', 'aria-label', 'accessibilityValue', 'children']) {
-      const value = props[key];
-      if (typeof value === 'string') {
-        texts.push(value);
-      } else if (value && typeof value === 'object' && 'text' in (value as object)) {
-        texts.push(String((value as { text: unknown }).text));
-      }
-    }
-  };
-  collect(element);
-  (children ?? []).forEach(collect);
+  const texts = renderedText(element);
+  (children ?? []).forEach(child => renderedText(child, texts));
   const joined = texts.join(' ');
   if (cue instanceof RegExp) {
     expect(joined).toMatch(cue);

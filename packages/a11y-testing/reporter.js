@@ -223,7 +223,11 @@ class AccessibilityReporter {
     }
 
     const violations = [...byCriterion.entries()].filter(([, e]) => e.failed.length > 0);
-    lines.push(`## Violations (${violations.length})`);
+    // Failed checks, not criteria. The findings heading below counts checks, and an earlier
+    // version counted criteria here, so a run with five failures across two criteria printed
+    // "Violations (2)" above five bullets. Two headings, two denominators, one report.
+    const violationCount = violations.reduce((n, [, e]) => n + e.failed.length, 0);
+    lines.push(`## Violations (${violationCount})`);
     lines.push('');
     if (violations.length === 0) {
       lines.push('None.');
