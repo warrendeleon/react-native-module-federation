@@ -251,8 +251,6 @@ private fun QuickBattleScreen(
     return JSONObject().put("winnerUid", uid).toString()
   }
 
-  // The field is the Party tab's dark surface, warmed by the winner's type once there is one, so
-  // the result colours the whole screen and not just one card.
   // The field the party was on: offWhite in light, navy in dark, the same pair ScreenContainer
   // resolves for every federated screen.
   Box(Modifier.fillMaxSize().background(Theme.field(isDark))) {
@@ -472,8 +470,9 @@ private fun TypePill(type: String, isDark: Boolean) {
   )
 }
 
-// Purple, a token the app's chrome uses nowhere else, so a screenshot says on its own which side
-// of the boundary it was taken on.
+// No federated screen carries a badge, so the pill alone says which side of the boundary a
+// screenshot was taken on. Purple ties it to the handoff: the same token the Quick Battle
+// button wears on the party side.
 @Composable
 private fun NativeBadge() {
   Text(

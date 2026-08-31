@@ -118,8 +118,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // --- Jetpack Compose, for QuickBattleActivity. The BOM pins the whole family from one
-    // version, so the individual artefacts below carry none of their own. ---
+    // --- Jetpack Compose, for QuickBattleActivity. The BOM pins the Compose family from one
+    // version, so those artefacts carry none of their own; activity-compose sits outside the
+    // BOM and pins itself. ---
     def composeBom = platform("androidx.compose:compose-bom:2024.09.03")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")

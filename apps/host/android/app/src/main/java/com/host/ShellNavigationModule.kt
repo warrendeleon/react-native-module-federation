@@ -12,9 +12,9 @@ import com.host.specs.NativeShellNavigationModuleSpec
 // into com.host.specs; this class extends it, so the JavaScript `openNative` lands here.
 //
 // Android's shape makes the promise discipline structural rather than a matter of care. The screen
-// is an Activity started for result, so the platform delivers a result whatever ends it — the Done
-// button, the system back gesture, the task switcher. onActivityResult is the single place the
-// promise is settled, and there is no path back that skips it. ---
+// is an Activity started for result, so the platform delivers a result for every in-process exit —
+// the Done button, the system back gesture. onActivityResult is the single place the promise is
+// settled, and there is no path back that skips it. ---
 class ShellNavigationModule(reactContext: ReactApplicationContext) :
   NativeShellNavigationModuleSpec(reactContext) {
 

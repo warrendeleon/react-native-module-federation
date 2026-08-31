@@ -138,7 +138,7 @@ private enum Theme {
     "steel": 0x797270, "fairy": 0xD685AD,
   ]
 
-  /// The five types whose fill needs white ink; every other type reads better on real black.
+  /// The six types whose fill needs white ink; every other type reads better on real black.
   /// Pre-decided in typeColours.ts from relative luminance rather than judged by eye, and copied
   /// as a decision rather than recomputed, so the two sides cannot drift apart quietly.
   private static let whiteInkTypes: Set<String> = ["fighting", "rock", "ghost", "dragon", "dark", "steel"]
@@ -185,8 +185,9 @@ private extension Color {
 
 // MARK: - The badge
 
-/// Purple, a token the app's chrome uses nowhere else, so a screenshot says on its own which side
-/// of the boundary it was taken on. The federated screens carry no badge; the pill is the tell.
+/// No federated screen carries a badge, so the pill alone says which side of the boundary a
+/// screenshot was taken on. Purple ties it to the handoff: the same token the Quick Battle
+/// button wears on the party side.
 private struct NativeBadge: View {
   var body: some View {
     HStack(spacing: 6) {
@@ -370,10 +371,6 @@ private struct QuickBattleView: View {
 
   var body: some View {
     ZStack {
-      // The field is the Party tab's dark surface. Once there is a winner, its type lights the
-      // top of the screen where the cards are and fades out before the buttons: a glow behind
-      // the result rather than a wash over the whole sheet, which at any strength worth seeing
-      // turned the empty half of the screen into a pale slab.
       // The field the party was on: offWhite in light, navy in dark, the same pair
       // ScreenContainer resolves for every federated screen.
       Theme.field(isDark).ignoresSafeArea()
