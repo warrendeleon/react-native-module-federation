@@ -22,9 +22,15 @@ export const ROUTE_REGISTRY: Record<string, RouteEntry> = {
 // HOST has to serialise them, not because another app dispatches anything: the battle's outcome is
 // the party's own business and the party's own reducer handles it. ---
 
-/** RN -> native. The party hands over its members; the native screen shows and battles them. */
+/** RN -> native. The party hands over its members; the native screen shows and battles them.
+ *
+ *  The colour scheme travels with them because it has to. Every federated surface reads the one
+ *  styling runtime the host mounts, and a native screen is the one consumer that cannot subscribe
+ *  to it: there is no bundle to share and no provider to sit under. So the theme stops being
+ *  ambient at this boundary and becomes an argument, sent at the moment of the call. */
 export interface QuickBattleParams extends Record<string, unknown> {
   members: PartyMember[];
+  colourScheme: 'light' | 'dark';
 }
 
 /** Native -> RN. The uid, not the id: two copies of the same Pokémon are two contestants, and the

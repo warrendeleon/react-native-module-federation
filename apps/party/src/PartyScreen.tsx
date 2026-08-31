@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
+import { useColorScheme } from 'nativewind';
 import {
   MAX_PARTY,
   partyStateReady,
@@ -69,6 +70,7 @@ export default function PartyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
   const dispatch = useDispatch();
+  const { colorScheme } = useColorScheme();
   const members = useSelector((s: PartyOwnShape) => s.party?.members ?? EMPTY_MEMBERS);
   const lastBattleWinnerUid = useSelector(
     (s: PartyOwnShape) => s.party?.lastBattleWinnerUid ?? null,
@@ -111,7 +113,13 @@ export default function PartyScreen() {
     if (battleInFlight) return;
     setBattleInFlight(true);
     try {
-      const result = (await shellNavigate('QuickBattle', { members })) as QuickBattleResult | undefined;
+      // The theme is read at the moment of the call, from the same NativeWind observable every
+      // dark: class in the federation subscribes to. It is sent rather than observed because the
+      // native screen has no way to subscribe: a toggle while the battle is open will not reach it.
+      const result = (await shellNavigate('QuickBattle', {
+        members,
+        colourScheme: colorScheme === 'dark' ? 'dark' : 'light',
+      })) as QuickBattleResult | undefined;
       // No winner is a real outcome, not a failure: the screen can be closed without battling,
       // and the native side resolves with an empty object when it is.
       if (result?.winnerUid) {
@@ -120,7 +128,7 @@ export default function PartyScreen() {
     } finally {
       setBattleInFlight(false);
     }
-  }, [battleInFlight, dispatch, members]);
+  }, [battleInFlight, colorScheme, dispatch, members]);
 
   // The owner announces its own arrival. Importing ./partySlice above injected the reducer
   // as a side effect, so on the path where the boot import failed and this tab performed the
