@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { colorScheme as schemeStore } from 'nativewind';
+import { useColorScheme } from 'nativewind';
 import {
   MAX_PARTY,
   partyStateReady,
@@ -70,6 +70,7 @@ export default function PartyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
   const dispatch = useDispatch();
+  const { colorScheme } = useColorScheme();
   const members = useSelector((s: PartyOwnShape) => s.party?.members ?? EMPTY_MEMBERS);
   const lastBattleWinnerUid = useSelector(
     (s: PartyOwnShape) => s.party?.lastBattleWinnerUid ?? null,
@@ -113,13 +114,11 @@ export default function PartyScreen() {
     setBattleInFlight(true);
     try {
       // The theme is read at the moment of the call, from the same NativeWind observable every
-      // dark: class in the federation subscribes to. Read imperatively, not through
-      // useColorScheme: this screen has no reason to re-render when the scheme changes — every
-      // colour it draws is a dark: class the styling runtime already repaints on its own — and
-      // subscribing here re-rendered the whole six-slot grid on every toggle.
+      // dark: class in the federation subscribes to. It is sent rather than observed because the
+      // native screen has no way to subscribe: a toggle while the battle is open will not reach it.
       const result = (await shellNavigate('QuickBattle', {
         members,
-        colourScheme: schemeStore.get() === 'dark' ? 'dark' : 'light',
+        colourScheme: colorScheme === 'dark' ? 'dark' : 'light',
       })) as QuickBattleResult | undefined;
       // No winner is a real outcome, not a failure: the screen can be closed without battling,
       // and the native side resolves with an empty object when it is.
@@ -129,7 +128,7 @@ export default function PartyScreen() {
     } finally {
       setBattleInFlight(false);
     }
-  }, [battleInFlight, dispatch, members]);
+  }, [battleInFlight, colorScheme, dispatch, members]);
 
   // The owner announces its own arrival. Importing ./partySlice above injected the reducer
   // as a side effect, so on the path where the boot import failed and this tab performed the
@@ -178,7 +177,18 @@ export default function PartyScreen() {
         <Box className="flex-row flex-wrap">
           {slots.map((member, index) =>
             member ? (
-              <PartySlot key={member.uid} member={member} onOpen={openDetail} onRemoveMember={removeMember} />
+              // The key carries the colour scheme, and it has to. A theme change alters none of
+              // this slot's props, so the memo above finds them identical and skips the subtree;
+              // the card then keeps the style objects the styling runtime resolved for the old
+              // scheme and paints as an empty white rectangle. Keying by scheme makes a toggle a
+              // remount of six small cards, while the memo goes on doing its job within a theme.
+              // The Pokédex grid does not memoise its cards, which is why it never showed this.
+              <PartySlot
+                key={`${member.uid}:${colorScheme}`}
+                member={member}
+                onOpen={openDetail}
+                onRemoveMember={removeMember}
+              />
             ) : (
               <Box key={`empty-${index}`} className="w-1/2 p-1.5">
                 <EmptySlot number={index + 1} />
