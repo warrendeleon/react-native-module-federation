@@ -14,8 +14,9 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // The host's own native modules. Autolinking finds packages in node_modules; a module
+          // that lives in the app itself is added here, in the slot the template leaves for it.
+          add(HostNativePackage())
         },
     )
   }

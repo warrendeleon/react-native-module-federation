@@ -14,7 +14,7 @@
   "dependencies": {
     "@gluestack-ui/core": "^3.0.25",
     "@gluestack-ui/utils": "^3.0.21",
-    "@pokedex/contracts": "^3.2.2",
+    "@pokedex/contracts": "^3.3.0",
     "@pokedex/detail": "^4.0.12",
     "@pokedex/ui": "^1.0.13",
     "@react-native/new-app-screen": "0.85.3",

@@ -6,11 +6,23 @@ import { addToParty, MAX_PARTY, rootReducer, type PartyMember } from '@pokedex/c
 // host loads it as a federated module at boot, for the side effect at the bottom. ---
 export const partySlice = createSlice({
   name: 'party',
-  initialState: { members: [] as PartyMember[] },
+  initialState: { members: [] as PartyMember[], lastBattleWinnerUid: null as string | null },
   reducers: {
     // Private: nobody else dispatches remove, so it ships in no contract.
     remove(state, action: PayloadAction<string>) {
       state.members = state.members.filter(m => m.uid !== action.payload);
+      // A removed member cannot go on being the last winner; the banner would name a Pokémon
+      // that is no longer in the party.
+      if (state.lastBattleWinnerUid === action.payload) {
+        state.lastBattleWinnerUid = null;
+      }
+    },
+    // Also private, and deliberately so. The winner comes back from a native screen the HOST
+    // presented, but it lands in the party's own state and nothing outside this app dispatches
+    // it — so it appears in no contract. The handoff's params and result types are at the seam
+    // because the host has to serialise them, which is a different reason from crossing.
+    setLastBattleWinner(state, action: PayloadAction<string>) {
+      state.lastBattleWinnerUid = action.payload;
     },
   },
   extraReducers: builder => {
@@ -26,7 +38,7 @@ export const partySlice = createSlice({
   },
 });
 
-export const { remove } = partySlice.actions;
+export const { remove, setLastBattleWinner } = partySlice.actions;
 
 // Importing this module is what adds the reducer to the shared store. rootReducer is the same
 // object the host's configureStore wired in — that is why injection from a separately-built app

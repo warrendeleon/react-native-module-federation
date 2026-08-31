@@ -6,10 +6,18 @@ import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colours, ErrorState, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
-import { partyStateReady } from '@pokedex/contracts';
+import { partyStateReady, registerShellNavigateHandler } from '@pokedex/contracts';
 import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
+import { shellNavigateHandler } from './src/shell/shellNavigation';
+
+// The host fills the contract's navigation slot once, at module scope, before any remote can
+// render and call shellNavigate. Registering the handler touches no native code — the TurboModule
+// is not reached until a destination is actually navigated to — so this is safe at import in a way
+// that requiring the spec here would not be.
+
+registerShellNavigateHandler(shellNavigateHandler);
 
 // The host owns the shell: the Redux store, the SafeAreaProvider, the navigation container, and the
 // tab bar. What it mounts in each tab is no longer a screen but a whole stack, so navigation inside

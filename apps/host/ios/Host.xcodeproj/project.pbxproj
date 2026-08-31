@@ -10,14 +10,16 @@
 		0C80B921A6F3F58F76C31292 /* libPods-Host.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2D62905F9E884905ABD10F13 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87A9602612134B4B894CF528 /* Nunito-Bold.ttf */; };
-		SB200000000000000000B001 /* splashball.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A001 /* splashball.png */; };
-		SB200000000000000000B002 /* splashball@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A002 /* splashball@2x.png */; };
-		SB200000000000000000B003 /* splashball@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A003 /* splashball@3x.png */; };
+		55D02294EDCD396239F7A902 /* QuickBattle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED5D882EDB26F232B6398C4 /* QuickBattle.swift */; };
 		5655C07F8EDC4751BAB253BB /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63246A10DDF249FE813A00BB /* Nunito-ExtraBold.ttf */; };
 		5E234D2C80EC4C229FBBCDE0 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 072201B4BA164A5B859ED286 /* Nunito-SemiBold.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		D436D34AAC693901FCEC39DC /* ShellNavigationModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 62F4C5653A8097CCBDE25A67 /* ShellNavigationModule.mm */; };
 		DB2E41A530CBE8A5D37157A1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		SB200000000000000000B001 /* splashball.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A001 /* splashball.png */; };
+		SB200000000000000000B002 /* splashball@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A002 /* splashball@2x.png */; };
+		SB200000000000000000B003 /* splashball@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A003 /* splashball@3x.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,16 +29,19 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Host/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = Host/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-Host.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Host.debug.xcconfig"; path = "Target Support Files/Pods-Host/Pods-Host.debug.xcconfig"; sourceTree = "<group>"; };
+		525F67C343CF0EB99239584B /* ShellNavigationModule.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ShellNavigationModule.h; path = Host/ShellNavigationModule.h; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-Host.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Host.release.xcconfig"; path = "Target Support Files/Pods-Host/Pods-Host.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Host.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		62F4C5653A8097CCBDE25A67 /* ShellNavigationModule.mm */ = {isa = PBXFileReference; includeInIndex = 1; name = ShellNavigationModule.mm; path = Host/ShellNavigationModule.mm; sourceTree = "<group>"; };
 		63246A10DDF249FE813A00BB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nunito-ExtraBold.ttf"; path = "../../../assets/fonts/Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
+		6ED5D882EDB26F232B6398C4 /* QuickBattle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = QuickBattle.swift; path = Host/QuickBattle.swift; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Host/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Host/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		87A9602612134B4B894CF528 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nunito-Bold.ttf"; path = "../../../assets/fonts/Nunito-Bold.ttf"; sourceTree = "<group>"; };
-		SB100000000000000000A001 /* splashball.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball.png"; path = "Host/splashball.png"; sourceTree = "<group>"; };
+		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		SB100000000000000000A001 /* splashball.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = splashball.png; path = Host/splashball.png; sourceTree = "<group>"; };
 		SB100000000000000000A002 /* splashball@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball@2x.png"; path = "Host/splashball@2x.png"; sourceTree = "<group>"; };
 		SB100000000000000000A003 /* splashball@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball@3x.png"; path = "Host/splashball@3x.png"; sourceTree = "<group>"; };
-		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +64,9 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				525F67C343CF0EB99239584B /* ShellNavigationModule.h */,
+				62F4C5653A8097CCBDE25A67 /* ShellNavigationModule.mm */,
+				6ED5D882EDB26F232B6398C4 /* QuickBattle.swift */,
 			);
 			name = Host;
 			sourceTree = "<group>";
@@ -280,6 +288,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				D436D34AAC693901FCEC39DC /* ShellNavigationModule.mm in Sources */,
+				55D02294EDCD396239F7A902 /* QuickBattle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

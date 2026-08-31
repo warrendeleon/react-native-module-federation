@@ -3,3 +3,4 @@ export * from './modules';
 export * from './api';
 export * from './store';
 export * from './party';
+export * from './shellNavigation';

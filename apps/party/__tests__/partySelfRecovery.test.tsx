@@ -41,7 +41,10 @@ test('opening the Party tab surfaces the slice without the boot marker', async (
 
   // The screen's own effect dispatched partyStateReady: the slice is now visible to every
   // consumer, without waiting for another action.
-  expect((store.getState() as PartySliceShape).party).toEqual({ members: [] });
+  expect((store.getState() as PartySliceShape).party).toEqual({
+    members: [],
+    lastBattleWinnerUid: null,
+  });
 
   await act(async () => {
     tree.unmount();

@@ -26,7 +26,10 @@ test('an add before the slice module loads vanishes; the marker closes the windo
 
   // The marker is the next action through the rebuilt reducer: state.party appears.
   store.dispatch(partyStateReady());
-  expect((store.getState() as PartySliceShape).party).toEqual({ members: [] });
+  expect((store.getState() as PartySliceShape).party).toEqual({
+    members: [],
+    lastBattleWinnerUid: null,
+  });
 
   // And the same add, dispatched after readiness, lands.
   store.dispatch(addToParty(bulbasaur));

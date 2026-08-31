@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "org.jetbrains.kotlin.plugin.compose"
 apply plugin: "com.facebook.react"
 
 /**
@@ -78,6 +79,12 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.host"
+
+    // Jetpack Compose, for the native Quick Battle screen (the SwiftUI counterpart on iOS).
+    buildFeatures {
+        compose true
+    }
+
     defaultConfig {
         applicationId "com.host"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -110,6 +117,15 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // --- Jetpack Compose, for QuickBattleActivity. The BOM pins the whole family from one
+    // version, so the individual artefacts below carry none of their own. ---
+    def composeBom = platform("androidx.compose:compose-bom:2024.09.03")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose:1.9.3")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

@@ -23,5 +23,11 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+      <!-- The native Quick Battle screen. exported=false: nothing outside this app launches it;
+           the shell's TurboModule does, with startActivityForResult. -->
+      <activity
+        android:name=".QuickBattleActivity"
+        android:exported="false"
+        android:theme="@style/AppTheme" />
     </application>
 </manifest>
