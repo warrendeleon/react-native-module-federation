@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
-import { useColorScheme } from 'nativewind';
+import { colorScheme as schemeStore } from 'nativewind';
 import {
   MAX_PARTY,
   partyStateReady,
@@ -70,7 +70,6 @@ export default function PartyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<PartyParamList>>();
   const dispatch = useDispatch();
-  const { colorScheme } = useColorScheme();
   const members = useSelector((s: PartyOwnShape) => s.party?.members ?? EMPTY_MEMBERS);
   const lastBattleWinnerUid = useSelector(
     (s: PartyOwnShape) => s.party?.lastBattleWinnerUid ?? null,
@@ -114,11 +113,13 @@ export default function PartyScreen() {
     setBattleInFlight(true);
     try {
       // The theme is read at the moment of the call, from the same NativeWind observable every
-      // dark: class in the federation subscribes to. It is sent rather than observed because the
-      // native screen has no way to subscribe: a toggle while the battle is open will not reach it.
+      // dark: class in the federation subscribes to. Read imperatively, not through
+      // useColorScheme: this screen has no reason to re-render when the scheme changes — every
+      // colour it draws is a dark: class the styling runtime already repaints on its own — and
+      // subscribing here re-rendered the whole six-slot grid on every toggle.
       const result = (await shellNavigate('QuickBattle', {
         members,
-        colourScheme: colorScheme === 'dark' ? 'dark' : 'light',
+        colourScheme: schemeStore.get() === 'dark' ? 'dark' : 'light',
       })) as QuickBattleResult | undefined;
       // No winner is a real outcome, not a failure: the screen can be closed without battling,
       // and the native side resolves with an empty object when it is.
@@ -128,7 +129,7 @@ export default function PartyScreen() {
     } finally {
       setBattleInFlight(false);
     }
-  }, [battleInFlight, colorScheme, dispatch, members]);
+  }, [battleInFlight, dispatch, members]);
 
   // The owner announces its own arrival. Importing ./partySlice above injected the reducer
   // as a side effect, so on the path where the boot import failed and this tab performed the
