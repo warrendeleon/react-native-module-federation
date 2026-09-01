@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -147,9 +146,9 @@ private object Theme {
   val navy = Color(0xFF0F172A)
   val black = Color(0xFF2E3138)
   val blue = Color(0xFF3A86FF)
-  // The brand blue is a fill, not an ink: on this dark field it measures 3.74:1, under the 4.5:1
-  // small text needs. blueTextDark is the readable pair colours.ts already defines for exactly
-  // this surface, and the one the tab bar's active label takes in dark mode.
+  // The brand blue is a fill, not an ink: on the near-black card surface it measures 3.74:1,
+  // under the 4.5:1 small text needs. blueTextDark is the readable pair colours.ts already
+  // defines for dark surfaces, and the one the tab bar's active label takes in dark mode.
   val blueTextDark = Color(0xFF79AEFF)
   val purple = Color(0xFF8338EC)
   val white = Color(0xFFFFFFFF)

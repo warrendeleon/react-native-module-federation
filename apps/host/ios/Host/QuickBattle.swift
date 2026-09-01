@@ -42,6 +42,8 @@ private struct Contestant: Identifiable {
     paramsJson: String,
     completion: @escaping (String) -> Void
   ) {
+    // nativeId goes unread: one native flow exists today, and a second registry row would need a
+    // switch here first.
     let contestants = Self.decodeMembers(paramsJson)
     let isDark = Self.decodeScheme(paramsJson)
 
@@ -116,9 +118,9 @@ private enum Theme {
   static let navy = Color(hex: 0x0F172A)
   static let black = Color(hex: 0x2E3138)
   static let blue = Color(hex: 0x3A86FF)
-  // The brand blue is a fill, not an ink: on this dark field it measures 3.74:1, under the 4.5:1
-  // small text needs. blueTextDark is the readable pair colours.ts already defines for exactly
-  // this surface, and the one the tab bar's active label takes in dark mode.
+  // The brand blue is a fill, not an ink: on the near-black card surface it measures 3.74:1,
+  // under the 4.5:1 small text needs. blueTextDark is the readable pair colours.ts already
+  // defines for dark surfaces, and the one the tab bar's active label takes in dark mode.
   static let blueTextDark = Color(hex: 0x79AEFF)
   static let purple = Color(hex: 0x8338EC)
   static let white = Color(hex: 0xFFFFFF)

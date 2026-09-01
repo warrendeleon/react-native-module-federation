@@ -53,7 +53,9 @@ class ShellNavigationModule(reactContext: ReactApplicationContext) :
       return
     }
     pendingPromise = promise
-    // openNative arrives on a background queue; starting an Activity has to be on the UI thread.
+    // nativeId goes unread: one native flow exists today, and a second registry row would need a
+    // switch here first. openNative arrives on a background queue; hop to the UI thread to start
+    // the Activity rather than assume the queue is safe to start it from.
     activity.runOnUiThread {
       val intent =
         Intent(activity, QuickBattleActivity::class.java).apply {
