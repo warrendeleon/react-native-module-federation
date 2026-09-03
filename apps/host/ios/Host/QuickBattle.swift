@@ -47,6 +47,17 @@ private struct Contestant: Identifiable {
     let contestants = Self.decodeMembers(paramsJson)
     let isDark = Self.decodeScheme(paramsJson)
 
+    // Every path below funnels into this, and it settles at most once. The battle's own exits
+    // race the two safety nets further down, and whichever lands first wins; the rest become
+    // no-ops instead of double settles.
+    var settled = false
+    let settle: (String) -> Void = { resultJson in
+      guard !settled else { return }
+      settled = true
+      isPresenting = false
+      completion(resultJson)
+    }
+
     // openNative arrives on the TurboModule's own queue, not the main thread. Every UIKit call
     // below has to be on main, so hop before touching anything.
     DispatchQueue.main.async {
@@ -57,19 +68,30 @@ private struct Contestant: Identifiable {
       }
       isPresenting = true
 
+      // The result settles BEFORE the dismissal starts, not in its completion. viewDidDisappear
+      // fires while the sheet is still animating out, so a settle scheduled after the transition
+      // would lose the race to safety net one and the winner would arrive as "{}".
       let view = QuickBattleView(contestants: contestants, isDark: isDark) { resultJson in
-        host.dismiss(animated: true) {
-          isPresenting = false
-          completion(resultJson)
-        }
+        settle(resultJson)
+        host.dismiss(animated: true)
       }
 
-      let controller = UIHostingController(rootView: view)
+      let controller = QuickBattleHostingController(rootView: view)
       controller.modalPresentationStyle = .pageSheet
       // Exit only through the screen's own controls. An interactive swipe-to-dismiss would tear
-      // the sheet away without reaching the completion above, leaving the promise unsettled.
+      // the sheet away without reaching the settle above, leaving the promise pending.
       controller.isModalInPresentation = true
-      host.present(controller, animated: true)
+      // Safety net one: the sheet leaving the screen by any route the buttons did not take —
+      // an ancestor being torn down is enough. A resultless settle beats a pending promise.
+      controller.onDisappear = { settle("{}") }
+      // Safety net two: present() silently does nothing when the host is mid-transition for
+      // reasons this file cannot see. Its completion is the one place that can tell: a presented
+      // controller has a presentingViewController, a refused one does not.
+      host.present(controller, animated: true) {
+        if controller.presentingViewController == nil {
+          settle("{}")
+        }
+      }
     }
   }
 
@@ -106,6 +128,18 @@ private struct Contestant: Identifiable {
     var top = windows.first { $0.isKeyWindow }?.rootViewController
     while let presented = top?.presentedViewController { top = presented }
     return top
+  }
+}
+
+/// The one subclass job: report when the view leaves the screen, so the presenter can settle a
+/// promise that no button settled first. Deliberately dumb; the settle-once wrapper owns the
+/// decision of whether the report matters.
+private final class QuickBattleHostingController<Content: View>: UIHostingController<Content> {
+  var onDisappear: (() -> Void)?
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    onDisappear?()
   }
 }
 

@@ -20,10 +20,12 @@ export interface Spec extends TurboModule {
   openNative(nativeId: string, paramsJson: string): Promise<string>;
 }
 
-// getEnforcing throws when the module is missing from the running binary, and it throws at the
-// moment this module is first imported. That is the behaviour you want — a shell whose native
-// half did not build should fail loudly — but it means nothing may import this file at module
-// scope during boot: TurboModules initialise lazily, and an import that lands before the registry
-// is ready takes the app down with a white screen and no error boundary to catch it. The host's
-// handler requires this file inside the call instead.
+// getEnforcing throws when no native module answers to the name: a binary built without the
+// native half, or a codegen mismatch. React Native's own examples import a spec like this at
+// module scope, and with the module in the binary that is fine. The host's handler requires this
+// file lazily instead, as a choice about where that throw is allowed to land. Imported at boot,
+// a missing native half kills the shell during bundle evaluation, before any error boundary
+// exists; required at the call, the same fault surfaces at the button press, in a running app
+// that can log it and carry on. Runtime delivery is what makes the skew real: JavaScript can
+// arrive on a binary that never built the native side.
 export default TurboModuleRegistry.getEnforcing<Spec>('ShellNavigationModule');

@@ -66,6 +66,11 @@ class ShellNavigationModule(reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    // A dev reload or host teardown while a battle is open would strand the caller's await:
+    // the listener is about to go away, so settle the pending promise the way a resultless
+    // exit does before it can no longer be settled at all.
+    pendingPromise?.resolve("{}")
+    pendingPromise = null
     reactApplicationContext.removeActivityEventListener(activityEventListener)
     super.invalidate()
   }

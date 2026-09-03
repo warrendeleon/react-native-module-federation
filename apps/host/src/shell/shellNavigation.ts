@@ -6,11 +6,10 @@ import type { Spec as ShellNavigationSpec } from '../../specs/NativeShellNavigat
 // what runs. It looks the destination up in the routing table and hands native destinations to the
 // TurboModule, JSON in and JSON out. The remote never learns which branch it took. ---
 
-// The spec module calls TurboModuleRegistry.getEnforcing at import, and that throws when the
-// native half is missing from the binary. Requiring it here, inside the call, keeps that throw
-// where a caller can see it: a boot-time import would run before the TurboModule registry is
-// ready and take the shell down with a white screen. By the time a user taps Quick Battle, the
-// registry has long been up.
+// The spec module calls TurboModuleRegistry.getEnforcing at import, and that throws when no
+// native module answers to the name. Requiring it here, inside the call, decides where that
+// throw can land: at the tap, in a running shell that logs it and carries on, rather than during
+// boot evaluation, where a missing native half would kill the app with no error boundary.
 function nativeModule(): ShellNavigationSpec {
   return require('../../specs/NativeShellNavigationModule').default as ShellNavigationSpec;
 }

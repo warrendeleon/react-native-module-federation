@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -498,7 +499,9 @@ private fun PrimaryButton(title: String, onClick: () -> Unit) {
       Modifier.fillMaxWidth()
         .clip(RoundedCornerShape(14.dp))
         .background(Theme.blue)
-        .clickable(onClick = onClick)
+        // The role is stated because the control is a styled Text, not a Button composable:
+        // without it TalkBack announces plain text, and post 12's bar does not bend for native.
+        .clickable(role = Role.Button, onClick = onClick)
         .padding(vertical = 15.dp),
   )
 }
@@ -515,7 +518,7 @@ private fun SecondaryButton(title: String, isDark: Boolean, onClick: () -> Unit)
       Modifier.fillMaxWidth()
         .clip(RoundedCornerShape(14.dp))
         .border(1.dp, Theme.actionInk(isDark).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-        .clickable(onClick = onClick)
+        .clickable(role = Role.Button, onClick = onClick)
         .padding(vertical = 13.dp),
   )
 }
