@@ -85,6 +85,13 @@ android {
         compose true
     }
 
+    // JVM unit tests for ShellNavigationModule run against the SDK's stub android.jar; default
+    // values instead of "not mocked" throws let a real Intent be constructed as a no-op while
+    // the mocks around it carry the assertions.
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
     defaultConfig {
         applicationId "com.host"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -127,6 +134,13 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.3")
+
+    // --- JVM unit tests for the bridge module: the promise-settling contract under launch
+    // failure, teardown, and the result listener. Mockito 5 mocks finals by default, which is
+    // what lets Activity and the React context stand in without wrappers. ---
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

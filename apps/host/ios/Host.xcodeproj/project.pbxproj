@@ -9,12 +9,15 @@
 /* Begin PBXBuildFile section */
 		0C80B921A6F3F58F76C31292 /* libPods-Host.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		1AA07F4FE92F60BF7E2010C8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B224B37AFC5F7E9FA072047 /* Foundation.framework */; };
 		2D62905F9E884905ABD10F13 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 87A9602612134B4B894CF528 /* Nunito-Bold.ttf */; };
 		55D02294EDCD396239F7A902 /* QuickBattle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED5D882EDB26F232B6398C4 /* QuickBattle.swift */; };
 		5655C07F8EDC4751BAB253BB /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63246A10DDF249FE813A00BB /* Nunito-ExtraBold.ttf */; };
 		5E234D2C80EC4C229FBBCDE0 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 072201B4BA164A5B859ED286 /* Nunito-SemiBold.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A5B687201E686D848A5AA396 /* QuickBattlePresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D6D49066C6E93B92A8C05D /* QuickBattlePresenterTests.swift */; };
+		C2B8E241CF0EE64531996F50 /* QuickBattle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED5D882EDB26F232B6398C4 /* QuickBattle.swift */; };
 		D436D34AAC693901FCEC39DC /* ShellNavigationModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 62F4C5653A8097CCBDE25A67 /* ShellNavigationModule.mm */; };
 		DB2E41A530CBE8A5D37157A1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		SB200000000000000000B001 /* splashball.png in Resources */ = {isa = PBXBuildFile; fileRef = SB100000000000000000A001 /* splashball.png */; };
@@ -29,6 +32,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Host/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = Host/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-Host.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Host.debug.xcconfig"; path = "Target Support Files/Pods-Host/Pods-Host.debug.xcconfig"; sourceTree = "<group>"; };
+		4CCEF8887BD5BC19AD1E930C /* HostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		525F67C343CF0EB99239584B /* ShellNavigationModule.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ShellNavigationModule.h; path = Host/ShellNavigationModule.h; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-Host.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Host.release.xcconfig"; path = "Target Support Files/Pods-Host/Pods-Host.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Host.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -38,6 +42,8 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Host/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Host/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		87A9602612134B4B894CF528 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Nunito-Bold.ttf"; path = "../../../assets/fonts/Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		9B224B37AFC5F7E9FA072047 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		C5D6D49066C6E93B92A8C05D /* QuickBattlePresenterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickBattlePresenterTests.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		SB100000000000000000A001 /* splashball.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = splashball.png; path = Host/splashball.png; sourceTree = "<group>"; };
 		SB100000000000000000A002 /* splashball@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "splashball@2x.png"; path = "Host/splashball@2x.png"; sourceTree = "<group>"; };
@@ -50,6 +56,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-Host.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9F46831FF79FEF8EF8A10A2E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AA07F4FE92F60BF7E2010C8 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +90,7 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-Host.a */,
+				DFF1743CBE8A7FB8EDDE00C5 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -94,6 +109,15 @@
 			path = "";
 			sourceTree = "<group>";
 		};
+		7D5111FFA62B3F2CA05E05AD /* HostTests */ = {
+			isa = PBXGroup;
+			children = (
+				C5D6D49066C6E93B92A8C05D /* QuickBattlePresenterTests.swift */,
+			);
+			name = HostTests;
+			path = HostTests;
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -110,6 +134,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
 				5FE10AD877A2489AB629EBBC /* Resources */,
+				7D5111FFA62B3F2CA05E05AD /* HostTests */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -120,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Host.app */,
+				4CCEF8887BD5BC19AD1E930C /* HostTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -131,6 +157,14 @@
 				5709B34CF0A7D63546082F79 /* Pods-Host.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		DFF1743CBE8A7FB8EDDE00C5 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				9B224B37AFC5F7E9FA072047 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -156,6 +190,23 @@
 			productName = Host;
 			productReference = 13B07F961A680F5B00A75B9A /* Host.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FFA2577BA15C2CFE71DCC7F1 /* HostTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C64D7C479382AFA2DA217C6E /* Build configuration list for PBXNativeTarget "HostTests" */;
+			buildPhases = (
+				6F37C02E2FFAB3B633AE5155 /* Sources */,
+				9F46831FF79FEF8EF8A10A2E /* Frameworks */,
+				D9D7DFCB577CFAB811BDB577 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HostTests;
+			productName = HostTests;
+			productReference = 4CCEF8887BD5BC19AD1E930C /* HostTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -184,6 +235,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Host */,
+				FFA2577BA15C2CFE71DCC7F1 /* HostTests */,
 			);
 		};
 /* End PBXProject section */
@@ -202,6 +254,13 @@
 				SB200000000000000000B001 /* splashball.png in Resources */,
 				SB200000000000000000B002 /* splashball@2x.png in Resources */,
 				SB200000000000000000B003 /* splashball@3x.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9D7DFCB577CFAB811BDB577 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -293,6 +352,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6F37C02E2FFAB3B633AE5155 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5B687201E686D848A5AA396 /* QuickBattlePresenterTests.swift in Sources */,
+				C2B8E241CF0EE64531996F50 /* QuickBattle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -351,6 +419,22 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		1527A29526E57CF3E7A1544D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.HostTests;
+				PRODUCT_NAME = HostTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -510,6 +594,21 @@
 			};
 			name = Release;
 		};
+		91249AD8B158E316D6BCF64F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.HostTests;
+				PRODUCT_NAME = HostTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -527,6 +626,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C64D7C479382AFA2DA217C6E /* Build configuration list for PBXNativeTarget "HostTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1527A29526E57CF3E7A1544D /* Release */,
+				91249AD8B158E316D6BCF64F /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -34,8 +34,13 @@ private struct Contestant: Identifiable {
   /// Re-entrancy guard. UIKit's present() silently does nothing when the host is already
   /// presenting or mid-transition, and a silent no-op here would mean completion never fires and
   /// the party's await hangs for the life of the process. Refuse the second presentation and
-  /// settle its promise immediately instead. Main-thread only, so no lock is needed.
-  private static var isPresenting = false
+  /// settle its promise immediately instead. Main-thread only, so no lock is needed. Internal
+  /// rather than private so the unit bundle can reset it between cases.
+  static var isPresenting = false
+
+  /// The host lookup, held as a variable so the unit bundle can stand in a controlled
+  /// controller, or none. Production never reassigns it; the default is the key-window scan.
+  static var hostProvider: () -> UIViewController? = { topViewController() }
 
   @objc public static func present(
     nativeId: String,
@@ -61,7 +66,7 @@ private struct Contestant: Identifiable {
     // openNative arrives on the TurboModule's own queue, not the main thread. Every UIKit call
     // below has to be on main, so hop before touching anything.
     DispatchQueue.main.async {
-      guard let host = Self.topViewController(), !isPresenting else {
+      guard let host = Self.hostProvider(), !isPresenting else {
         // Nothing to present from, or one flow already up: settle rather than wedge.
         completion("{}")
         return

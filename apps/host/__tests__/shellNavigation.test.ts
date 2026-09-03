@@ -69,4 +69,12 @@ describe('the host handler', () => {
     mockOpenNative.mockResolvedValue('');
     await expect(shellNavigateHandler('QuickBattle', {})).resolves.toBeUndefined();
   });
+
+  it('warns and resolves undefined for a native result that does not parse', async () => {
+    mockOpenNative.mockResolvedValue('not json at all');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(shellNavigateHandler('QuickBattle', {})).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith('[shellNavigate] unparseable native result for QuickBattle');
+    warn.mockRestore();
+  });
 });

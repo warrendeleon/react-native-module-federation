@@ -24,5 +24,15 @@ export const shellNavigateHandler: ShellNavigateFn = async (destination, params)
   }
 
   const resultJson = await nativeModule().openNative(entry.nativeId, JSON.stringify(params ?? {}));
-  return resultJson ? (JSON.parse(resultJson) as ShellNavigateResult) : undefined;
+  if (!resultJson) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(resultJson) as ShellNavigateResult;
+  } catch {
+    // A native result that does not parse is a native-side bug, and not a reason to detonate the
+    // remote's await: warn and resolve, the same tolerance every other edge of this seam shows.
+    console.warn(`[shellNavigate] unparseable native result for ${destination}`);
+    return undefined;
+  }
 };
