@@ -85,9 +85,12 @@ private struct Contestant: Identifiable {
       // an ancestor being torn down is enough. A resultless settle beats a pending promise.
       controller.onDisappear = { settle("{}") }
       // Safety net two: present() silently does nothing when the host is mid-transition for
-      // reasons this file cannot see. Its completion is the one place that can tell: a presented
-      // controller has a presentingViewController, a refused one does not.
-      host.present(controller, animated: true) {
+      // reasons this file cannot see. Whether UIKit runs the completion of a refused present is
+      // not documented, so nothing here depends on it: one main-queue turn later, a presented
+      // controller has a presentingViewController and a refused one still has none, and nil
+      // means nobody will ever dismiss this sheet, so settle now.
+      host.present(controller, animated: true)
+      DispatchQueue.main.async {
         if controller.presentingViewController == nil {
           settle("{}")
         }
