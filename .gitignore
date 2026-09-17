@@ -4,6 +4,12 @@ apps/*/node_modules/
 
 # Re.Pack / Rspack build output
 apps/*/build/
+apps/*/cdn/
+cdn-root/
+
+# Signing keys. The private key signs every production chunk and must never be committed:
+# this directory is ignored before `node tools/gen-signing-keys.mjs` is ever run.
+code-signing/
 
 # iOS
 apps/*/ios/Pods/

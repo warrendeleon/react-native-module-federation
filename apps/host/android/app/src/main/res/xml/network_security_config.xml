@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The local stand-in for a CDN is served over plain http on the build machine, which a release
+     build refuses to talk to. This permits it for the loopback addresses only: localhost, 127.0.0.1
+     and 10.0.2.2, the address an emulator reaches the machine on. A production CDN is served over
+     https, where this exception does nothing at all. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

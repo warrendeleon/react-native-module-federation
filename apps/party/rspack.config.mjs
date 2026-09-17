@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
+import { SwcJsMinimizerRspackPlugin } from '@rspack/core';
 import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import pkg from './package.json' with { type: 'json' };
@@ -19,6 +20,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // because they agreed.
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
+  // Production builds write somewhere else and gain a signature; development is untouched.
+  const isProd = mode === 'production';
 
   return {
     mode,
@@ -30,8 +33,24 @@ export default Repack.defineRspackConfig(env => {
       ...Repack.getResolveOptions({ enablePackageExports: true }),
     },
     output: {
-      path: `${__dirname}/build/[platform]`,
+      // A production build writes the tree the CDN serves, laid out as the URL path it is served
+      // at: cdn/<platform>/partyApp/. A development build keeps writing to build/, where the dev
+      // server reads it from.
+      path: isProd ? `${__dirname}/cdn/[platform]/partyApp` : `${__dirname}/build/[platform]`,
       uniqueName: 'PartyApp',
+    },
+    optimization: {
+      // Re.Pack's default minimiser is terser-webpack-plugin, and under Rspack that plugin has done
+      // nothing since terser-webpack-plugin 5.6.0 (callstack/repack#1390): the build succeeds and
+      // every production chunk ships with its comments and whitespace intact. Re.Pack merges this
+      // array into its own, so the default still sits in the list beside Rspack's SWC minimiser;
+      // the SWC one does the minifying the default skips.
+      minimizer: [
+        new SwcJsMinimizerRspackPlugin({
+          test: /\.(js)?bundle(\?.*)?$/i,
+          minimizerOptions: { format: { comments: false } },
+        }),
+      ],
     },
     module: {
       rules: [
@@ -46,7 +65,13 @@ export default Repack.defineRspackConfig(env => {
     plugins: [
       new Repack.RepackPlugin({
         extraChunks: [
-          { include: /.*/, type: 'remote', outputPath: `build/${platform}/remote` },
+          {
+            include: /.*/,
+            type: 'remote',
+            // The chunks land beside the container and the manifest, because the host will ask
+            // for them at URLs relative to the manifest it loaded.
+            outputPath: isProd ? `cdn/${platform}/partyApp` : `build/${platform}/remote`,
+          },
         ],
       }),
       // PostCSS + Tailwind processing of global.css and the className transform, same as
@@ -142,6 +167,17 @@ export default Repack.defineRspackConfig(env => {
           },
         },
       }),
+      // Each production chunk gets an RS256 signature of its own hash, appended to the file. The
+      // private key sits in code-signing/, git-ignored inside the checkout, and never ships.
+      // Development builds stay unsigned by choice: their chunks are served from this machine
+      // and rebuilt on every save, and this post signs only what leaves it.
+      ...(isProd
+        ? [
+            new Repack.plugins.CodeSigningPlugin({
+              privateKeyPath: path.resolve(__dirname, '../../code-signing/private-key.pem'),
+            }),
+          ]
+        : []),
     ],
   };
 });

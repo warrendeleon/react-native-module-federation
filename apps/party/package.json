@@ -9,6 +9,8 @@
     "start": "react-native start",
     "test": "jest",
     "start:remote": "react-native start --config rspack.config.mjs --port 8083",
+    "bundle:ios:prod": "react-native bundle --platform ios --dev false --entry-file src/index.js --config rspack.config.mjs",
+    "bundle:android:prod": "react-native bundle --platform android --dev false --entry-file src/index.js --config rspack.config.mjs",
     "test:a11y": "jest --testPathPattern accessibility --reporters=default --reporters=@pokedex/a11y-testing/reporter.js"
   },
   "dependencies": {

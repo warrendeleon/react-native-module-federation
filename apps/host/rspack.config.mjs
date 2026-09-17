@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
+import { SwcJsMinimizerRspackPlugin } from '@rspack/core';
 import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import pkg from './package.json' with { type: 'json' };
@@ -22,8 +23,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // is not a list of the host's dependencies — it is a record of what more than one party imports.
 //
 // detailApp is deliberately absent from `remotes` below. The host never loads it.
+
+// --- Where the remotes are served from. Set MF_CDN_BASE and every remote URL below points at the
+// content delivery network instead of the dev servers; leave it unset and nothing changes. The
+// value is read at BUILD time and baked into the bundle, so a build that forgot it ships the dev
+// URLs:
+//   MF_CDN_BASE=http://localhost:8000 npm start      (the local CDN, on a development build)
+//   MF_CDN_BASE=https://cdn.example.com npm run …    (a real one, on a release build)
+const CDN_BASE = process.env.MF_CDN_BASE;
+
+const DEV_REMOTES = {
+  listApp: 'http://localhost:8082',
+  partyApp: 'http://localhost:8083',
+};
+
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
+
+  // The whole switch between the two worlds, in one function: dev server or CDN, same manifest
+  // filename either way. Nothing else in the workspace changes, because the host is the only app
+  // here that holds a remotes map.
+  const remoteUrl = name =>
+    CDN_BASE
+      ? `${name}@${CDN_BASE}/${platform}/${name}/mf-manifest.json`
+      : `${name}@${DEV_REMOTES[name]}/${platform}/mf-manifest.json`;
 
   return {
     mode,
@@ -37,6 +60,19 @@ export default Repack.defineRspackConfig(env => {
     output: {
       path: `${__dirname}/build/[platform]`,
       uniqueName: 'Host',
+    },
+    optimization: {
+      // Re.Pack's default minimiser is terser-webpack-plugin, and under Rspack that plugin has done
+      // nothing since terser-webpack-plugin 5.6.0 (callstack/repack#1390): the build succeeds and
+      // every production chunk ships with its comments and whitespace intact. Re.Pack merges this
+      // array into its own, so the default still sits in the list beside Rspack's SWC minimiser;
+      // the SWC one does the minifying the default skips.
+      minimizer: [
+        new SwcJsMinimizerRspackPlugin({
+          test: /\.(js)?bundle(\?.*)?$/i,
+          minimizerOptions: { format: { comments: false } },
+        }),
+      ],
     },
     module: {
       rules: [
@@ -62,10 +98,10 @@ export default Repack.defineRspackConfig(env => {
         name: 'host',
         filename: 'host.container.js.bundle',
         remotes: {
-          // name@url: the host knows each remote by the manifest URL it lives at. In dev those are
-          // the remotes' own dev servers, list on :8082 and party on :8083.
-          listApp: `listApp@http://localhost:8082/${platform}/mf-manifest.json`,
-          partyApp: `partyApp@http://localhost:8083/${platform}/mf-manifest.json`,
+          // name@url: the host knows each remote by the manifest URL it lives at — the dev
+          // servers on :8082 and :8083, or the CDN when MF_CDN_BASE is set.
+          listApp: remoteUrl('listApp'),
+          partyApp: remoteUrl('partyApp'),
         },
         dts: false,
         shared: {

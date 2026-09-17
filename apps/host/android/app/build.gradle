@@ -148,3 +148,14 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// --- MF_CDN_BASE is read by rspack.config.mjs when the bundle task runs, and Gradle cannot see
+// that: an environment variable is not one of the task's declared inputs, so a build where only
+// the value changed leaves createBundleReleaseJsAndAssets UP-TO-DATE and ships the previous
+// bundle, dev-server URLs and all. Declaring it as an input makes a changed value rebuild the
+// bundle and an unchanged one keep the cache. ---
+tasks.configureEach {
+    if (name.startsWith("createBundle") && name.endsWith("JsAndAssets")) {
+        inputs.property("MF_CDN_BASE", System.getenv("MF_CDN_BASE") ?: "")
+    }
+}

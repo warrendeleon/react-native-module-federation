@@ -20,6 +20,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-11-design-system` | [The design system as a federated singleton](https://warrendeleon.com/blog/federated-design-system-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-design-system) | @pokedex/ui: gluestack-ui copy-in primitives, the token palette and the composed components, shared as a host-provided singleton; the detail completes its design as 4.0.2; one host toggle re-themes every bundle |
 | `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and the touch targets and status regions it found ship as ui 1.0.12 and detail 4.0.11, and the host takes the ui release alongside both remotes |
 | `post-13-native-handoff` | [shell.navigateTo: native screens from a federated remote](https://warrendeleon.com/blog/native-handoff-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-native-handoff) | contracts 3.3.0 carries one routing table and one promise-returning `shellNavigate`; the host adds a TurboModule and presents a fully native Quick Battle in SwiftUI and Compose; the winner's uid comes back through the promise and lands in the party's own state, crossing no contract action |
+| `post-14-production-build` | [The production build and the three modes](https://warrendeleon.com/blog/production-build-three-modes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-production-build) | Both remotes built for production and signed chunk by chunk, laid out as the directory a content delivery network serves; one environment variable moves the host between the dev servers and that CDN, and the release build of each platform runs with no dev server at all |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -34,6 +35,10 @@ apps/
 ├── host/     the shell app; owns the tab bar and loads the two stack remotes
 ├── list/     a federated remote; exposes the Pokédex stack
 └── party/    a federated remote; exposes the Party stack
+tools/
+├── gen-signing-keys.mjs  generates the RSA keypair that signs production chunks (keys stay out of git)
+├── gen-signing-keys.test.mjs  the generator's regression tests: node --test tools/gen-signing-keys.test.mjs
+└── build-cdn.mjs         builds both remotes for production into cdn-root/, the tree a CDN serves
 packages/
 ├── a11y-testing/ the shared accessibility bar: Jest preset, WCAG helpers, report (devDependency only, never bundled)
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
@@ -106,6 +111,40 @@ cd apps/host && npm run ios
 ```
 
 The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen. Tap **Add to party** on a detail and the dispatch crosses the seam: the party app's slice — injected into the shared store at boot — catches it, the Pokédex header counter ticks, and the Party tab shows the member. With two or more members, **Quick Battle** on the Party tab hands the party to a fully native screen the host presents, and the winner's uid comes back through one promise into the party's own state.
+
+### Running the remotes from a CDN instead
+
+The same app, with the remotes' dev servers switched off. Build them for production, serve the
+result as static files, and point the host at it:
+
+```sh
+node tools/gen-signing-keys.mjs                    # once: the key that signs the chunks
+node tools/build-cdn.mjs ios                       # or android, or omit for both
+npx http-server@14.1.1 cdn-root -p 8000 -c-1 --cors       # leave it running
+```
+
+Then, in two terminals:
+
+```sh
+# 1. the host's dev server, told where the remotes live now
+cd apps/host && MF_CDN_BASE=http://localhost:8000 npm start
+
+# 2. build and launch the host
+cd apps/host && npm run ios
+```
+
+The app behaves exactly as it did before, which is the point: the http-server log is the only
+place the change shows up, one GET per manifest, container and chunk. A release build works the
+same way, with the URL baked in at build time rather than read from a running dev server:
+
+```sh
+cd apps/host && MF_CDN_BASE=http://localhost:8000 npm run ios -- --mode Release
+cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 npm run android -- --mode release
+```
+
+An Android emulator reaches the machine at `10.0.2.2` rather than `localhost`, and a release
+build only talks to either over plain http because `res/xml/network_security_config.xml` permits
+those two addresses and nothing else.
 
 ## Architecture
 
