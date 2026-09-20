@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { ScriptManager } from '@callstack/repack/client';
 import { registerRemotes } from '@module-federation/runtime';
 
+import { guardHandledRemoteLoadErrors } from './federationErrors';
 import {
   type FederationMode,
   parseVersionMap,
@@ -24,13 +25,13 @@ import {
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
 //
-// What this app does NOT have yet is anywhere else to get a remote from. A chunk that fails —
-// unresolved mode, a retired version, a signature that does not verify — is a tab that cannot
-// render in a development build, and in a release build it is worse than that: the failure
-// arrives as an uncaught ChunkLoadError and React Native's fatal handler ends the process before
-// the boundary in App.tsx is reached. Measured on a release build rather than assumed. Giving
-// the binary a copy of its own to fall back on is the next post's whole subject; until then, a
-// release build that cannot reach its chunks is a release build that does not run. ---
+// A chunk that fails — a retired version, a signature that does not verify — is one dead tab and
+// nothing more: the boundary in App.tsx renders the design system's error state and the shell and
+// the other tab carry on. Getting there took one non-obvious piece, which is in federationErrors:
+// the failure is reported twice, and the second report is fatal.
+//
+// What this app still does NOT have is anywhere else to get a remote from. A dead tab is honest,
+// and it is not a working app. The copy in the binary is the next post's subject. ---
 
 const REMOTE_NAMES = ['listApp', 'partyApp'] as const;
 
@@ -104,6 +105,11 @@ ScriptManager.shared.addResolver(
     }),
   { key: '__signed_resolver__', priority: 100 },
 );
+
+// --- A chunk that fails to load is handled twice over: once by the boundary, which shows the
+// tab's error state, and once by React Native's global handler, which calls it fatal and in a
+// release build ends the process. The second report is the one that has to go. ---
+guardHandledRemoteLoadErrors();
 
 // --- Fetch and read the version map for this app version. Returns null for every kind of
 // failure, because the caller treats them all the same way: an unreachable CDN, a 404 for an app

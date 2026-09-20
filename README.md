@@ -188,10 +188,10 @@ line of `cdn-root/ios/maps/2.0.0/version-map.json`:
 
 Relaunch the installed app and it loads the new version. The map is the commit, which is why it is
 written last: a map pointing at a directory that is not there yet is a 404 for every user who
-launches in between, and a 404 is not a degraded tab. Nothing in this repository yet gives a
-binary anywhere else to load a remote from, so in a release build that failure arrives as an
-uncaught error and ends the app. Rolling back is the same edit in reverse, and it needs no build
-at all, because the old version's directory was never removed.
+launches in between, and what they get is a tab that will not open. Nothing here gives a binary
+anywhere else to load a remote from yet, so the tab stays broken until the map is right. Rolling
+back is the same edit in reverse, and it needs no build at all, because the old version's
+directory was never removed.
 
 `tools/build-cdn.mjs` seeds a CDN rather than operating one. Running it again rebuilds the whole
 tree from the lists at the top of the file, so it is the wrong tool for the two steps above.
