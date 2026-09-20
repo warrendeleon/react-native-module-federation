@@ -21,6 +21,7 @@ import {
   createThemedRender,
   expectAccessibilityProps,
   expectMinTouchTarget,
+  expectNonColourCue,
   expectScreenReaderAnnouncement,
 } from '@pokedex/a11y-testing';
 
@@ -97,6 +98,24 @@ function buttonContaining(node: { parent: unknown } | null) {
     current = current.parent as typeof current;
   }
   throw new Error('No ancestor of that text declares a size.');
+}
+
+/** Every class name anywhere inside an element, joined: the design system forwards one class
+ *  string through several layers, so a class shows up more than once and the set is what matters. */
+function classNamesWithin(element: { children?: unknown[] }): string {
+  const found: string[] = [];
+  const walk = (node: unknown) => {
+    const n = node as { props?: { className?: string }; children?: unknown[] } | null;
+    if (!n || typeof n !== 'object') {
+      return;
+    }
+    if (typeof n.props?.className === 'string') {
+      found.push(n.props.className);
+    }
+    (n.children ?? []).forEach(walk);
+  };
+  (element.children ?? []).forEach(walk);
+  return found.join(' ');
 }
 
 function setListState(state: Partial<ListState>) {
@@ -189,6 +208,57 @@ describe('WCAG 4.1.3 Status Messages — the states this screen can land in', ()
   ])('the counter speaks the count it is showing', async (party, expected) => {
     const { getByLabelText } = await renderScreen({ party });
     expect(getByLabelText(expected)).toBeTruthy();
+  });
+});
+
+describe('WCAG 1.4.1 Use of Colour — the party counter at six', () => {
+  // Six is the one party size with a state of its own, and the screen marks it twice: the pill
+  // deepens from the pale green to the brand green, and the label beside it changes. Only the
+  // second of those reaches a reader who cannot use the colour, which is what SC 1.4.1 asks for,
+  // so it is the one asserted here. The two greens are measured in the design system's matrix.
+  test('a full party says so in words, not only in green', async () => {
+    const party = Array.from({ length: 6 }, (_, i) => ({ uid: String(i) }));
+    const { getByLabelText } = await renderScreen({ party });
+    expectNonColourCue(getByLabelText(/6 of 6/i), /full/i);
+  });
+
+  // And the colour half, asserted as the class this screen chose rather than the hex it painted:
+  // in a consumer, @pokedex/ui resolves to its compiled build and className never reaches the
+  // styling runtime, so a colour read here would be {} whatever the class said. The hexes behind
+  // these two classes are measured in the design system's own contrast matrix.
+  test.each([
+    [6, ['bg-pokemonGreen', 'dark:bg-white/20'], ['bg-lightGreen', 'dark:bg-white/10']],
+    [5, ['bg-lightGreen', 'dark:bg-white/10'], ['bg-pokemonGreen', 'dark:bg-white/20']],
+  ])('a party of %i paints the pill %s in both themes', async (size, expected, other) => {
+    const party = Array.from({ length: size }, (_, i) => ({ uid: String(i) }));
+    const { getByLabelText } = await renderScreen({ party });
+    const classes = classNamesWithin(getByLabelText(new RegExp(`${size} of 6`, 'i')));
+    // Both halves of each state, because the dark theme is half the cue and the one nobody
+    // looks at: a light fill left conditional and a dark one left constant would mark the full
+    // party in one theme and not the other, and only this assertion would notice.
+    expected.forEach(cls => expect(classes).toContain(cls));
+    other.forEach(cls => expect(classes).not.toContain(cls));
+  });
+
+  // The other half of the same claim: a party with room left must not be wearing the full state.
+  // Without this, a label hard-coded to "Party full" would pass the test above.
+  test('a party with room left does not claim to be full', async () => {
+    const { getByLabelText } = await renderScreen({ party: [{ uid: 'a' }] });
+    expect(getByLabelText(/1 of 6/i).props.accessibilityLabel).not.toMatch(/full/i);
+  });
+});
+
+describe('WCAG 4.1.2 Name, Role, Value — the version chip', () => {
+  // Which build of this remote is on screen is operational information, and a screen-reader user
+  // has as much use for it as anyone reading a bug report. It is a separate element from the
+  // counter beside it, so reaching it does not mean listening to the party count first.
+  test('the chip names the build it was compiled at', async () => {
+    const { getByLabelText } = await renderScreen();
+    const chip = getByLabelText(/version/i);
+    expectAccessibilityProps(chip, { label: /version/i });
+    // Under Jest no bundler substitutes the version, so the fallback is what renders. What this
+    // proves is that the chip shows the same value it announces, whatever that value is.
+    expectNonColourCue(chip, 'listApp');
   });
 });
 

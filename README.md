@@ -21,6 +21,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-12-a11y-testing` | [Accessibility testing across federated remotes](https://warrendeleon.com/blog/accessibility-testing-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-a11y-testing) | @pokedex/a11y-testing: one Jest preset, WCAG helpers and a report, installed by both source packages and both remotes; the token matrix checks contrast at the design system, each team checks its own screens against the same bar, and the touch targets and status regions it found ship as ui 1.0.12 and detail 4.0.11, and the host takes the ui release alongside both remotes |
 | `post-13-native-handoff` | [shell.navigateTo: native screens from a federated remote](https://warrendeleon.com/blog/native-handoff-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-native-handoff) | contracts 3.3.0 carries one routing table and one promise-returning `shellNavigate`; the host adds a TurboModule and presents a fully native Quick Battle in SwiftUI and Compose; the winner's uid comes back through the promise and lands in the party's own state, crossing no contract action |
 | `post-14-production-build` | [The production build and the three modes](https://warrendeleon.com/blog/production-build-three-modes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-production-build) | Both remotes built for production and signed chunk by chunk, laid out as the directory a content delivery network serves; one environment variable moves the host between the dev servers and that CDN, and the release build of each platform runs with no dev server at all |
+| `post-15-cdn-flip` | [CDN delivery: the version map, the resolver, and the live flip](https://warrendeleon.com/blog/cdn-version-resolution-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-cdn-flip) | The CDN holds every published version of each remote; each released app version gets a map saying which of them it may load; the host fetches its own map at launch and resolves every chunk to a versioned, signature-verified URL. Then a new remote version reaches an installed app through one uploaded directory and one edited line, and is rolled back the same way |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -36,9 +37,9 @@ apps/
 ├── list/     a federated remote; exposes the Pokédex stack
 └── party/    a federated remote; exposes the Party stack
 tools/
-├── gen-signing-keys.mjs  generates the RSA keypair that signs production chunks (keys stay out of git)
+├── gen-signing-keys.mjs  generates the RSA keypair that signs production chunks, and writes the public half into the host's native config (keys stay out of git)
 ├── gen-signing-keys.test.mjs  the generator's regression tests: node --test tools/gen-signing-keys.test.mjs
-└── build-cdn.mjs         builds both remotes for production into cdn-root/, the tree a CDN serves
+└── build-cdn.mjs         builds every published version of both remotes into cdn-root/, and writes one version map per released app version
 packages/
 ├── a11y-testing/ the shared accessibility bar: Jest preset, WCAG helpers, report (devDependency only, never bundled)
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
@@ -53,7 +54,7 @@ Requirements: Node 22.11+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPod
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
-git checkout post-12-a11y-testing
+git checkout post-15-cdn-flip
 ```
 
 The apps install four `@pokedex` packages from a local registry, so publish them before installing anything. Leave the registry running in its own terminal:
@@ -118,33 +119,82 @@ The same app, with the remotes' dev servers switched off. Build them for product
 result as static files, and point the host at it:
 
 ```sh
-node tools/gen-signing-keys.mjs                    # once: the key that signs the chunks
+node tools/gen-signing-keys.mjs                    # once: the signing key, and its public half
 node tools/build-cdn.mjs ios                       # or android, or omit for both
 npx http-server@14.1.1 cdn-root -p 8000 -c-1 --cors       # leave it running
+```
+
+The first command writes the keypair that signs every production chunk and copies the public half
+into `ios/Host/Info.plist` and `android/app/src/main/res/values/strings.xml`, which is where the
+host's verifier reads it from. The second builds every published version of both remotes and
+writes one version map per released app version:
+
+```
+cdn-root/ios/listApp/1.0.0/      cdn-root/ios/maps/1.0.0/version-map.json
+cdn-root/ios/listApp/1.1.0/      cdn-root/ios/maps/2.0.0/version-map.json
+cdn-root/ios/listApp/1.2.0/
+cdn-root/ios/partyApp/1.0.0/
 ```
 
 Then, in two terminals:
 
 ```sh
-# 1. the host's dev server, told where the remotes live now
-cd apps/host && MF_CDN_BASE=http://localhost:8000 npm start
+# 1. the host's dev server, told where the remotes live and which binary this is
+cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm start
 
 # 2. build and launch the host
 cd apps/host && npm run ios
 ```
 
-The app behaves exactly as it did before, which is the point: the http-server log is the only
-place the change shows up, one GET per manifest, container and chunk. A release build works the
-same way, with the URL baked in at build time rather than read from a running dev server:
+At launch the app fetches `maps/2.0.0/version-map.json`, and loads exactly the versions that file
+names. The banner above the tab bar says which mode the launch resolved to and which versions it
+got; the chip in the Pokédex header says which build of the list remote is on screen.
+
+Build it as `MF_APP_VERSION=1.0.0` instead and the same source produces a binary that asks a
+different question and is handed listApp 1.0.0. Two app versions, one CDN, different code — which
+is the whole reason the map is per app version.
+
+A release build works the same way, with everything baked in at build time rather than read from a
+running dev server:
 
 ```sh
-cd apps/host && MF_CDN_BASE=http://localhost:8000 npm run ios -- --mode Release
-cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 npm run android -- --mode release
+cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release
+cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 MF_APP_VERSION=2.0.0 npm run android -- --mode release
 ```
 
 An Android emulator reaches the machine at `10.0.2.2` rather than `localhost`, and a release
 build only talks to either over plain http because `res/xml/network_security_config.xml` permits
 those two addresses and nothing else.
+
+### Shipping a remote version without a new binary
+
+Two steps, in this order, against the tree the server is already serving. Build the version and
+put its directory on the CDN first:
+
+```sh
+( cd apps/list && MF_REMOTE_VERSION=1.3.0 npm run bundle:ios:prod )
+cp -R apps/list/cdn/ios/listApp/1.3.0 cdn-root/ios/listApp/1.3.0
+```
+
+Nothing has changed for anybody yet: the directory is there and no map points at it. Then edit one
+line of `cdn-root/ios/maps/2.0.0/version-map.json`:
+
+```json
+{
+  "listApp": "1.3.0",
+  "partyApp": "1.0.0"
+}
+```
+
+Relaunch the installed app and it loads the new version. The map is the commit, which is why it is
+written last: a map pointing at a directory that is not there yet is a 404 for every user who
+launches in between, and a 404 is not a degraded tab. Nothing in this repository yet gives a
+binary anywhere else to load a remote from, so in a release build that failure arrives as an
+uncaught error and ends the app. Rolling back is the same edit in reverse, and it needs no build
+at all, because the old version's directory was never removed.
+
+`tools/build-cdn.mjs` seeds a CDN rather than operating one. Running it again rebuilds the whole
+tree from the lists at the top of the file, so it is the wrong tool for the two steps above.
 
 ## Architecture
 

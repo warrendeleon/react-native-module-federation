@@ -10,6 +10,8 @@ import { partyStateReady, registerShellNavigateHandler } from '@pokedex/contract
 import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
+import { FEDERATION_BANNER_HEIGHT, FederationBanner } from './src/shell/FederationBanner';
+import { initializeFederation } from './src/shell/scriptManager';
 import { shellNavigateHandler } from './src/shell/shellNavigation';
 
 // The host fills the contract's navigation slot once, at module scope, before any remote can
@@ -128,7 +130,8 @@ const splashStyles = StyleSheet.create({
 // chrome, including the transient kind.
 function ShellToaster() {
   const insets = useSafeAreaInsets();
-  return <Toaster bottomOffset={insets.bottom + 49 + 12} />;
+  // Cleared of the tab bar, and of the federation banner now sitting above it.
+  return <Toaster bottomOffset={insets.bottom + 49 + 12 + FEDERATION_BANNER_HEIGHT + 6} />;
 }
 
 // The tab glyphs, defined once at module scope: an icon renderer created inside App would be a
@@ -171,6 +174,53 @@ const renderPartyTabIcon = (p: { focused: boolean; color: string; size: number }
 
 const Tab = createBottomTabNavigator();
 
+// --- The navigation shell, mounted only once the boot gate has opened. Its tabs are React.lazy
+// federated imports, so mounting it is what starts the first download: it must not happen before
+// initializeFederation has decided where remotes come from and registered them there. ---
+function Shell({
+  navTheme,
+  mode,
+  onReady,
+}: {
+  navTheme: React.ComponentProps<typeof NavigationContainer>['theme'];
+  mode: 'light' | 'dark';
+  onReady: () => void;
+}) {
+
+  return (
+    <NavigationContainer theme={navTheme} onReady={onReady}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          // Both tab labels are 10pt, so both are held to 4.5:1 on the bar they sit on,
+          // and the bar is colors.card: white in light, the near-black neutral in dark.
+          //
+          // Active: colours.blue is a fill and a large-text colour — 3.48:1 on the light bar
+          // and 3.74:1 on the dark — so the readable pair is used instead.
+          //
+          // Inactive: react-navigation derives it as text mixed 50% into card when nothing
+          // is set, which is #8E8E8F on white, 3.27:1. One tab is always unfocused, so that
+          // pair is always on screen. It is stated here rather than inherited, and it is the
+          // same darkGrey/lightGrey pair every other secondary line in the federation uses.
+          tabBarActiveTintColor: mode === 'dark' ? colours.blueTextDark : colours.blueText,
+          tabBarInactiveTintColor: mode === 'dark' ? colours.lightGrey : colours.darkGrey,
+          tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
+        }}>
+        <Tab.Screen
+          name="Pokédex"
+          component={PokedexTab}
+          options={{ tabBarIcon: renderPokedexTabIcon }}
+        />
+        <Tab.Screen
+          name="Party"
+          component={PartyTab}
+          options={{ tabBarIcon: renderPartyTabIcon }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   // One source of truth: the shared styling runtime's colour scheme. Earlier versions kept
   // host state beside it, and the navigation chrome (native, repainted on its own commit)
@@ -203,9 +253,35 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   const [navReady, setNavReady] = useState(false);
 
-  // Screens load on demand; state modules load at boot. Importing partyApp/partySlice runs the
-  // module that injects the party's reducer into the shared store — even if the user never opens
-  // the Party tab. The host triggers the load and knows nothing about what is inside.
+  // --- The boot gate. Until the version map has answered there is nothing to resolve a federated
+  // import against: the map decides which build of each remote this binary may load, and an
+  // import that fires first would be resolved against the build-time placeholder URLs. The wait
+  // is bounded by the probe's own timeout and it happens behind the splash, so a launch looks the
+  // way it always did.
+  //
+  // A failure is not a reason to hold the app back. The gate opens either way; what changes is
+  // the mode the banner reports and whether the tabs can load anything at all. ---
+  const [federationReady, setFederationReady] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    initializeFederation()
+      .catch(err => console.warn('federation initialisation failed', err))
+      .then(() => {
+        if (live) {
+          setFederationReady(true);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Screens load on demand; state modules load at boot — where boot now means the moment the
+  // gate above opens, because this import is a federated load like any other. Importing
+  // partyApp/partySlice runs the module that injects the party's reducer into the shared store,
+  // even if the user never opens the Party tab. The host triggers the load and knows nothing
+  // about what is inside.
   //
   // Loading at boot is a head start, not a guarantee: the chunk arrives over the network, and
   // nothing here stops a user reaching an Add button before it lands. So the resolve is made
@@ -227,46 +303,25 @@ export default function App() {
   // disabled rather than pretending. The catch guards the rejection path so a failed load can
   // never surface as an unhandled rejection.
   useEffect(() => {
+    if (!federationReady) {
+      return;
+    }
     import('partyApp/styles').catch(err => console.warn('party styles failed to load', err));
     import('partyApp/partySlice')
       .then(() => store.dispatch(partyStateReady()))
       .catch(err => console.warn('party state module failed to load', err));
-  }, []);
+  }, [federationReady]);
 
   return (
     <Provider store={store}>
       <SafeAreaProvider>
         <GluestackUIProvider mode={mode}>
-          <NavigationContainer theme={navTheme} onReady={() => setNavReady(true)}>
-            <Tab.Navigator
-              screenOptions={{
-                headerShown: false,
-                // Both tab labels are 10pt, so both are held to 4.5:1 on the bar they sit on,
-                // and the bar is colors.card: white in light, the near-black neutral in dark.
-                //
-                // Active: colours.blue is a fill and a large-text colour — 3.48:1 on the light bar
-                // and 3.74:1 on the dark — so the readable pair is used instead.
-                //
-                // Inactive: react-navigation derives it as text mixed 50% into card when nothing
-                // is set, which is #8E8E8F on white, 3.27:1. One tab is always unfocused, so that
-                // pair is always on screen. It is stated here rather than inherited, and it is the
-                // same darkGrey/lightGrey pair every other secondary line in the federation uses.
-                tabBarActiveTintColor: mode === 'dark' ? colours.blueTextDark : colours.blueText,
-                tabBarInactiveTintColor: mode === 'dark' ? colours.lightGrey : colours.darkGrey,
-                tabBarLabelStyle: { fontFamily: 'Nunito-SemiBold' },
-              }}>
-              <Tab.Screen
-                name="Pokédex"
-                component={PokedexTab}
-                options={{ tabBarIcon: renderPokedexTabIcon }}
-              />
-              <Tab.Screen
-                name="Party"
-                component={PartyTab}
-                options={{ tabBarIcon: renderPartyTabIcon }}
-              />
-            </Tab.Navigator>
-          </NavigationContainer>
+          {federationReady ? (
+            <>
+              <Shell navTheme={navTheme} mode={mode} onReady={() => setNavReady(true)} />
+              <FederationBanner />
+            </>
+          ) : null}
           <ShellToaster />
           {/* The splash sits OUTSIDE the NavigationContainer: the remotes' native headers are
               UIKit views that draw above any zIndex inside the container, so an overlay inside

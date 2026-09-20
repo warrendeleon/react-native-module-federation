@@ -213,6 +213,13 @@ describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
   test('the party counter on its dark pill', () => {
     expectColorContrast(colours.pokemonGreen, composite(colours.white, 0.1, colours.navy));
   });
+
+  // The same pill at six, where it deepens to mark the full party. In light that is a change of
+  // hue; over navy the pill is translucent white to begin with, so it is a change of alpha, and
+  // the brighter surface it leaves is the one the numeral now sits on.
+  test('the party counter on its dark pill at six', () => {
+    expectColorContrast(colours.pokemonGreen, composite(colours.white, 0.2, colours.navy));
+  });
 });
 
 describe('WCAG 1.4.11 Non-text Contrast — the floating back pill', () => {
@@ -282,6 +289,30 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the host tab bar', () => {
 
   test('the unfocused tab label on the dark bar', () => {
     expectColorContrast(colours.lightGrey, colours.black);
+  });
+});
+
+describe('WCAG 1.4.3 Contrast (Minimum) — the federation chrome', () => {
+  // Two surfaces the operational layer added, both painting tokens rather than colours of their
+  // own, and both carrying text small enough to need the full 4.5:1.
+  //
+  // The host's banner is a filled pill with a white line on it, and the fill says which mode the
+  // launch resolved to. Its third fill is colours.red, which the status block below already
+  // measures against white, so it is not repeated here.
+  test('the banner line on the dev-mode fill', () => {
+    expectColorContrast(colours.white, colours.darkGrey);
+  });
+
+  test('the banner line on the CDN-mode fill', () => {
+    expectColorContrast(colours.white, colours.blueText);
+  });
+
+  // The Pokédex header's version chip, beside the party counter and painting the same pill: the
+  // neutral surface in light, and in dark the translucent white the counter uses, composited over
+  // the screen's navy. The light half is colours.darkGrey on colours.offGrey, already measured
+  // above with the rest of the neutral surfaces.
+  test('the version chip on its dark pill', () => {
+    expectColorContrast(colours.lightGrey, composite(colours.white, 0.1, colours.navy));
   });
 });
 

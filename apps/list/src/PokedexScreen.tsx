@@ -27,6 +27,12 @@ import { useGetPokemonTypesQuery } from './typesApi';
 // @pokedex/ui, and the row markup is the design system's PokemonCard — the same component, and at
 // runtime the same singleton instance, the party tab renders. FlatList stays FlatList; three
 // columns is a prop, not a new list engine.
+// --- The version this bundle was built at, compiled in by DefinePlugin. Showing it is what
+// makes a deploy visible: two builds of this remote are otherwise the same screen, so without
+// it there is no way to tell from the app which one is running. The fallback covers Jest, where
+// no bundler runs and the name is never substituted. ---
+const REMOTE_VERSION = typeof __REMOTE_VERSION__ === 'string' ? __REMOTE_VERSION__ : 'dev';
+
 // A single shared empty array: a fresh [] per row per render would defeat the row memo
 // exactly the way a fresh closure would.
 const EMPTY_TYPES: string[] = [];
@@ -73,6 +79,7 @@ export default function PokedexScreen() {
   // party's module loads, s.party is undefined; ?? 0 renders an honest zero rather than crashing
   // on a slice that is not there yet.
   const partyCount = useSelector((s: PartySliceShape) => s.party?.members.length ?? 0);
+  const partyFull = partyCount >= MAX_PARTY;
   // Stable across renders, so the memoised rows above it actually skip work.
   const openDetail = React.useCallback(
     (id: number) => navigation.navigate('PokemonDetail', { id }),
@@ -113,24 +120,49 @@ export default function PokedexScreen() {
         }
         contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + 8 }]}
         ListHeaderComponent={
-          // The count changes when the user adds a member from a screen away, without focus
-          // moving here. A sighted user sees the number tick; a screen-reader user is told
-          // nothing unless this is a live region (SC 4.1.3). The label spells the ratio out,
-          // because "3/6" is read as "three slash six" or as a date, depending on the reader.
-          <Box
-            className="flex-row items-center justify-between px-1.5 py-2.5"
-            accessible
-            accessibilityLiveRegion="polite"
-            accessibilityLabel={`My Party, ${partyCount} of ${MAX_PARTY}`}>
-            <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
-              My Party
-            </Text>
-            <Box className="rounded-full bg-lightGreen px-2.5 py-0.5 dark:bg-white/10">
-              {/* darkGrey, not darkGreen: darkGreen is #A6D3A0, the grass fill, and on lightGreen
-                  it measures 1.53:1. darkGrey is the colour the label beside it already uses. */}
-              <Text size="xs" className="font-head text-darkGrey dark:text-pokemonGreen">
-                {partyCount}/{MAX_PARTY}
+          <Box className="flex-row items-center justify-between px-1.5 py-2.5">
+            {/* Which build of this remote is on screen. Its own element rather than part of the
+                counter's group, so a screen reader can reach it without it being read out every
+                time the party count changes. */}
+            <Box
+              className="rounded-full bg-offGrey px-2 py-0.5 dark:bg-white/10"
+              accessible
+              accessibilityLabel={`Pokédex remote, version ${REMOTE_VERSION}`}>
+              <Text size="xs" className="font-semi text-darkGrey dark:text-lightGrey">
+                listApp {REMOTE_VERSION}
               </Text>
+            </Box>
+            {/* The count changes when the user adds a member from a screen away, without focus
+                moving here. A sighted user sees the number tick; a screen-reader user is told
+                nothing unless this is a live region (SC 4.1.3). The label spells the ratio out,
+                because "3/6" is read as "three slash six" or as a date, depending on the reader.
+                At six it reads the full state too, which is the word a colour alone cannot say. */}
+            <Box
+              className="flex-row items-center gap-2"
+              accessible
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${partyFull ? 'Party full' : 'My Party'}, ${partyCount} of ${MAX_PARTY}`}>
+              <Text size="sm" className="font-semi text-darkGrey dark:text-lightGrey">
+                {partyFull ? 'Party full' : 'My Party'}
+              </Text>
+              {/* Full is the party's one state worth marking, and it is marked twice: the label
+                  changes beside this pill, and the pill deepens. Colour alone would leave the
+                  state unavailable to anyone who cannot use it (SC 1.4.1), and the label alone
+                  would leave it unmarked for everyone else, so both are here — in both themes.
+                  The dark half deepens by alpha rather than by hue, because the pill over navy is
+                  translucent white in the first place and a green fill there would be a different
+                  component wearing the same shape.
+                  darkGrey, not darkGreen: darkGreen is #A6D3A0, the grass fill, and on lightGreen
+                  it measures 1.53:1. darkGrey is the colour the label beside it already uses, and
+                  it clears the bar on both greens. All four pairs are in the contrast matrix. */}
+              <Box
+                className={`rounded-full px-2.5 py-0.5 ${
+                  partyFull ? 'bg-pokemonGreen dark:bg-white/20' : 'bg-lightGreen dark:bg-white/10'
+                }`}>
+                <Text size="xs" className="font-head text-darkGrey dark:text-pokemonGreen">
+                  {partyCount}/{MAX_PARTY}
+                </Text>
+              </Box>
             </Box>
           </Box>
         }

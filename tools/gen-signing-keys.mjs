@@ -12,6 +12,12 @@
 // stays valid only for the key that made it. A missing public half is derived from the private
 // one; a public half on its own, or a pair that does not match, stops the script.
 //
+// The public half is then written into the two files the host's native verifier reads it from:
+// the iOS Info.plist and Android's res/values/strings.xml. Neither can be a build step, because
+// both are read by name at runtime and both are committed files, so the copy in them is what a
+// binary is compiled with. Doing it here means a fresh clone is ready to build after one command,
+// rather than after one command and two instructions nobody reads.
+//
 // Usage: node tools/gen-signing-keys.mjs
 
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
@@ -60,6 +66,72 @@ if (existsSync(privatePath)) {
   console.log('generated an RSA-2048 chunk-signing keypair');
 }
 
+// --- Put the public half where the app reads it. The two platforms want the same key in two
+// shapes: iOS parses PEM, so it gets the file verbatim; Android strips the header and footer and
+// then decodes what is left, and it does that without removing line breaks, so it gets the base64
+// body on a single line. ---
+// Line endings are normalised before either shape is built. A public key that has been through a
+// tool or an editor that writes CRLF still matches its private key — the check above compares DER
+// bytes, not text — but a carriage return left inside the Android value survives into the string
+// its decoder is handed, and base64 with a stray \r in it does not decode.
+const publicPem = readFileSync(publicPath, 'utf8').replace(/\r\n/g, '\n').trim();
+const publicBase64 = publicPem
+  .split('\n')
+  .filter(line => !line.includes('PUBLIC KEY'))
+  .join('');
+
+const hostDir = join(repoRoot, 'apps', 'host');
+const embedTargets = [
+  {
+    file: join(hostDir, 'ios', 'Host', 'Info.plist'),
+    label: 'ios/Host/Info.plist',
+    pattern: /(<key>RepackPublicKey<\/key>\s*<string>)[\s\S]*?(<\/string>)/,
+    value: publicPem,
+  },
+  {
+    file: join(hostDir, 'android', 'app', 'src', 'main', 'res', 'values', 'strings.xml'),
+    label: 'android/app/src/main/res/values/strings.xml',
+    pattern: /(<string name="RepackPublicKey">)[\s\S]*?(<\/string>)/,
+    value: publicBase64,
+  },
+];
+
+// A target that cannot be written is a failure, not a warning. Verification is strict and fails
+// closed, so a key that never reached the app surfaces later as every remote refusing to load,
+// with an error that says nothing about this script.
+let embedFailed = false;
+for (const target of embedTargets) {
+  let before;
+  try {
+    before = readFileSync(target.file, 'utf8');
+  } catch {
+    console.error(`could not read ${target.label}: the public key was not embedded there`);
+    embedFailed = true;
+    continue;
+  }
+  // Whether the entry is there is asked of the file, not inferred from whether the write changed
+  // anything: on every run after the first the replacement produces the same bytes, and reading
+  // that as a missing entry would report a healthy file as broken.
+  if (!target.pattern.test(before)) {
+    console.error(
+      `no RepackPublicKey entry in ${target.label}: add one, then run this again. Without it the app has no key to verify against and strict verification refuses every chunk.`,
+    );
+    embedFailed = true;
+    continue;
+  }
+  const after = before.replace(target.pattern, `$1${target.value}$2`);
+  if (after === before) {
+    console.log(`public key already embedded in apps/host/${target.label}`);
+    continue;
+  }
+  writeFileSync(target.file, after);
+  console.log(`embedded the public key -> apps/host/${target.label}`);
+}
+
 console.log(`\nprivate key: ${privatePath}  (signs the chunks; never commit it, never ship it)`);
 console.log(`public key:  ${publicPath}  (what a host checks the signature against)\n`);
-console.log(readFileSync(publicPath, 'utf8').trim());
+console.log(publicPem);
+
+if (embedFailed) {
+  process.exit(1);
+}

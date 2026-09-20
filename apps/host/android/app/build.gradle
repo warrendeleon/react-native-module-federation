@@ -149,13 +149,18 @@ dependencies {
     }
 }
 
-// --- MF_CDN_BASE is read by rspack.config.mjs when the bundle task runs, and Gradle cannot see
-// that: an environment variable is not one of the task's declared inputs, so a build where only
-// the value changed leaves createBundleReleaseJsAndAssets UP-TO-DATE and ships the previous
-// bundle, dev-server URLs and all. Declaring it as an input makes a changed value rebuild the
-// bundle and an unchanged one keep the cache. ---
+// --- MF_CDN_BASE and MF_APP_VERSION are read by rspack.config.mjs when the bundle task runs, and
+// Gradle cannot see that: an environment variable is not one of the task's declared inputs, so a
+// build where only the value changed leaves createBundleReleaseJsAndAssets UP-TO-DATE and ships
+// the previous bundle, dev-server URLs and all. Declaring them as inputs makes a changed value
+// rebuild the bundle and an unchanged one keep the cache.
+//
+// MF_APP_VERSION matters here for the same reason and bites harder: the two-binaries demo builds
+// the same source twice with nothing different but that variable, so without this line the second
+// build silently ships the first one's bundle and asks the CDN the first one's question. ---
 tasks.configureEach {
     if (name.startsWith("createBundle") && name.endsWith("JsAndAssets")) {
         inputs.property("MF_CDN_BASE", System.getenv("MF_CDN_BASE") ?: "")
+        inputs.property("MF_APP_VERSION", System.getenv("MF_APP_VERSION") ?: "")
     }
 }

@@ -18,6 +18,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // — exposes a stack, shares the navigation libraries — which is the point worth noticing: two apps
 // owned by two teams arrive at the same shape because the contract they installed says so, not
 // because they agreed.
+
+// --- Which version of this remote the build produces, and the directory it is written to. Same
+// variable, same rule as listApp's: a version directory is written once and never edited after
+// installed apps have started loading it. ---
+const REMOTE_VERSION = process.env.MF_REMOTE_VERSION || '1.0.0';
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
   // Production builds write somewhere else and gain a signature; development is untouched.
@@ -34,9 +39,11 @@ export default Repack.defineRspackConfig(env => {
     },
     output: {
       // A production build writes the tree the CDN serves, laid out as the URL path it is served
-      // at: cdn/<platform>/partyApp/. A development build keeps writing to build/, where the dev
-      // server reads it from.
-      path: isProd ? `${__dirname}/cdn/[platform]/partyApp` : `${__dirname}/build/[platform]`,
+      // at: cdn/<platform>/partyApp/<version>/. A development build keeps writing to build/, where
+      // the dev server reads it from, and carries no version: there is only ever one build there.
+      path: isProd
+        ? `${__dirname}/cdn/[platform]/partyApp/${REMOTE_VERSION}`
+        : `${__dirname}/build/[platform]`,
       uniqueName: 'PartyApp',
     },
     optimization: {
@@ -68,9 +75,12 @@ export default Repack.defineRspackConfig(env => {
           {
             include: /.*/,
             type: 'remote',
-            // The chunks land beside the container and the manifest, because the host will ask
-            // for them at URLs relative to the manifest it loaded.
-            outputPath: isProd ? `cdn/${platform}/partyApp` : `build/${platform}/remote`,
+            // The chunks land beside the container and the manifest, inside the same version
+            // directory, because the host will ask for them at URLs relative to the manifest it
+            // loaded.
+            outputPath: isProd
+              ? `cdn/${platform}/partyApp/${REMOTE_VERSION}`
+              : `build/${platform}/remote`,
           },
         ],
       }),

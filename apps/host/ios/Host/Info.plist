@@ -35,6 +35,12 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string/>
+	<!-- The public half of the chunk-signing keypair. Re.Pack's native verifier reads it from
+	     this key by name, and strict verification fails closed without it. Written here by
+	     tools/gen-signing-keys.mjs; left empty in the repository because the key is generated per
+	     checkout, and a public key is safe to commit but a stale one is not useful. -->
+	<key>RepackPublicKey</key>
+	<string></string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
-import { SwcJsMinimizerRspackPlugin } from '@rspack/core';
+import { DefinePlugin, SwcJsMinimizerRspackPlugin } from '@rspack/core';
 import { NativeWindPlugin } from '@callstack/repack-plugin-nativewind';
 import { ReanimatedPlugin } from '@callstack/repack-plugin-reanimated';
 import pkg from './package.json' with { type: 'json' };
@@ -24,13 +24,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //
 // detailApp is deliberately absent from `remotes` below. The host never loads it.
 
-// --- Where the remotes are served from. Set MF_CDN_BASE and every remote URL below points at the
-// content delivery network instead of the dev servers; leave it unset and nothing changes. The
-// value is read at BUILD time and baked into the bundle, so a build that forgot it ships the dev
-// URLs:
+// --- Where the remotes are served from. Set MF_CDN_BASE and the host looks to the content
+// delivery network instead of the dev servers; leave it unset and nothing changes. The value is
+// read at BUILD time and baked into the bundle, so a build that forgot it ships the dev URLs:
 //   MF_CDN_BASE=http://localhost:8000 npm start      (the local CDN, on a development build)
 //   MF_CDN_BASE=https://cdn.example.com npm run …    (a real one, on a release build)
-const CDN_BASE = process.env.MF_CDN_BASE;
+//
+// What changed in this post is who uses the value. It still shapes the remotes map below, but
+// that map is now a placeholder: the URLs it holds carry no version segment, so against a
+// versioned CDN tree they resolve to nothing. The value that matters is the one handed to the
+// running code through DefinePlugin, where src/shell/scriptManager.ts reads it, asks the CDN
+// which versions this binary may run, and re-registers every remote at a versioned URL before
+// the first import fires.
+// Trailing slashes are trimmed, because every URL built from this value adds its own separator
+// and a base written with one produces a double slash in the middle of every path. Most servers
+// forgive that; a signature is cached against the URL that fetched it, so it is not worth finding
+// out which ones do not.
+const CDN_BASE = (process.env.MF_CDN_BASE || '').replace(/\/+$/, '');
+
+// --- This binary's own version, the question it asks the CDN at launch. The CDN answers with the
+// remote versions this binary is allowed to run, which is how a two-year-old install keeps
+// working: it keeps being handed the versions it shipped against. A real app reads this from the
+// version it was released under; here it is a variable, so one checkout can produce two binaries
+// that ask different questions:
+//   MF_APP_VERSION=1.0.0 npm run ios -- --mode Release
+const APP_VERSION = process.env.MF_APP_VERSION || '1.0.0';
 
 const DEV_REMOTES = {
   listApp: 'http://localhost:8082',
@@ -40,9 +58,11 @@ const DEV_REMOTES = {
 export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
-  // The whole switch between the two worlds, in one function: dev server or CDN, same manifest
-  // filename either way. Nothing else in the workspace changes, because the host is the only app
-  // here that holds a remotes map.
+  // The build-time remotes map, in one function: dev server or CDN, same manifest filename either
+  // way. In CDN mode what it produces is a placeholder and nothing loads from it — the versioned
+  // URL the app really uses is decided at launch. It is left pointing somewhere plausible rather
+  // than removed, because Module Federation wants a name and an entry for every remote declared
+  // at build time, and because in dev mode this is still the whole story.
   const remoteUrl = name =>
     CDN_BASE
       ? `${name}@${CDN_BASE}/${platform}/${name}/mf-manifest.json`
@@ -94,6 +114,13 @@ export default Repack.defineRspackConfig(env => {
       // detects the package and warns when the plugin is absent; the official Callstack plugin
       // wires that transform in, version-locked to the installed @callstack/repack.
       new ReanimatedPlugin(),
+      // The two build-time facts the operational layer needs as literals in the bundle: where the
+      // CDN is, and which version this binary is. An empty base is the signal that no CDN was
+      // configured, which is what keeps a plain development build on the dev servers.
+      new DefinePlugin({
+        __MF_CDN_BASE__: JSON.stringify(CDN_BASE),
+        __APP_VERSION__: JSON.stringify(APP_VERSION),
+      }),
       new Repack.plugins.ModuleFederationPluginV2({
         name: 'host',
         filename: 'host.container.js.bundle',

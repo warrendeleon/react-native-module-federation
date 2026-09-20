@@ -7,10 +7,16 @@ module.exports = {
   // and @pokedex/detail import the same module specifier, so their animated components resolve to
   // the same mock. The federated state module has no resolvable source under Jest either; its
   // mock repeats the real module's side effect (reducer injection) so boot readiness is testable.
+  // The federation runtime is the third entry's reason: Re.Pack's ScriptManager and Module
+  // Federation's registerRemotes both reach into a bundler runtime that a Jest process does not
+  // have, and the host touches both at module scope so the resolver is registered before any
+  // federated import can fire. Their stand-ins record what was asked of them.
   moduleNameMapper: {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^partyApp/partySlice$': '<rootDir>/__mocks__/partyApp-partySlice.js',
     '^partyApp/styles$': '<rootDir>/__mocks__/partyApp-styles.js',
+    '^@callstack/repack/client$': '<rootDir>/__mocks__/repack-client.js',
+    '^@module-federation/runtime$': '<rootDir>/__mocks__/module-federation-runtime.js',
   },
   // @gluestack-ui/utils ships .jsx files, and the base preset's transform pattern covers
   // (js|ts|tsx) only, so they would reach Jest untransformed and throw on their import
