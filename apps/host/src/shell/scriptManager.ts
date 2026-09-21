@@ -51,10 +51,11 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '1.0
 const CDN_CONFIGURED = CDN_BASE.length > 0;
 
 // --- How long the launch waits for the version map. It is a boot gate: everything federated is
-// behind it, so a CDN that is merely slow must not hold the app at its splash screen for as long
-// as the platform's default fetch timeout, which is 30 seconds. AbortSignal.timeout() would say
-// this in one line and does not exist in React Native's fetch, so the controller and the timer
-// are wired by hand. ---
+// behind it, and the request has no timeout of its own to fall back on. React Native builds
+// Android's HTTP client with every timeout at zero and passes the request's own `timeout` through
+// on iOS, where it defaults to zero, so a CDN that is merely slow would hold the app at its splash
+// screen for as long as the network let it. AbortSignal.timeout() would say this in one line and
+// does not exist in React Native's fetch, so the controller and the timer are wired by hand. ---
 const PROBE_TIMEOUT_MS = 1500;
 
 // --- Signature verification is only meaningful where there is a public key to verify against:
