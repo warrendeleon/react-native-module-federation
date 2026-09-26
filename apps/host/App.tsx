@@ -11,7 +11,8 @@ import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
 import { FEDERATION_BANNER_HEIGHT, FederationBanner } from './src/shell/FederationBanner';
-import { initializeFederation } from './src/shell/scriptManager';
+import type { FederationMode } from './src/shell/remoteLocator';
+import { getFederationStatus, initializeFederation } from './src/shell/scriptManager';
 import { shellNavigateHandler } from './src/shell/shellNavigation';
 
 // The host fills the contract's navigation slot once, at module scope, before any remote can
@@ -37,6 +38,18 @@ registerShellNavigateHandler(shellNavigateHandler);
 // React.lazy caches a rejection for good, so retrying means building a fresh lazy component
 // and remounting it, which is exactly what the boundary's Try again does. The tab degrades to
 // the design system's error state; the shell and the other tab keep running.
+//
+// What the error state tells the user depends on where this launch loads remotes from. In
+// development the likely cause is a dev server that is not running. From the CDN there is no dev
+// server: the version could not be downloaded, or its signature did not verify, and a relaunch is
+// worth trying because it asks the CDN for the version map again. With no map at all there is no
+// version to load, and only a relaunch asks again.
+const LOAD_FAILURE_MESSAGE: Record<FederationMode, string> = {
+  dev: 'The remote did not answer. Check its dev server, then try again.',
+  cdn: 'The remote could not be downloaded or verified. Try again, or relaunch the app.',
+  unresolved: 'The app could not find out which version of this remote to load. Relaunch the app.',
+};
+
 export class RemoteBoundary extends React.Component<
   { load: () => Promise<{ default: React.ComponentType }> },
   { failed: boolean; attempt: number }
@@ -56,7 +69,7 @@ export class RemoteBoundary extends React.Component<
       return (
         <ErrorState
           title="This tab could not load"
-          message="The remote did not answer. Check its dev server, then try again."
+          message={LOAD_FAILURE_MESSAGE[getFederationStatus().mode]}
           onRetry={this.retry}
           retryLabel="Try again"
         />

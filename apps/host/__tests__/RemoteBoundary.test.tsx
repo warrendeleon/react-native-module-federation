@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { RemoteBoundary } from '../App';
+import * as federation from '../src/shell/scriptManager';
 
 function texts(tree: ReactTestRenderer.ReactTestRenderer) {
   return tree.root.findAll(n => typeof n.props.children === 'string').map(n => n.props.children);
@@ -43,4 +44,33 @@ test('a dead remote degrades to the error state and Try again recovers with a fr
   await act(async () => {
     tree.unmount();
   });
+});
+
+// The words under the title follow where this launch loads remotes from. A Release build served
+// from the CDN has no dev server, so advice to check one would be wrong in exactly the build
+// users run; the refused chunk and the missing version both land here.
+test.each([
+  ['dev', /dev server/],
+  ['cdn', /downloaded or verified/],
+  ['unresolved', /which version/],
+] as const)('in %s mode the error state says what to try there', async (mode, advice) => {
+  const status = jest
+    .spyOn(federation, 'getFederationStatus')
+    .mockReturnValue({ mode, source: '', versions: {} });
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  let tree!: ReactTestRenderer.ReactTestRenderer;
+  await act(async () => {
+    tree = ReactTestRenderer.create(
+      <RemoteBoundary load={() => Promise.reject(new Error('refused'))} />,
+    );
+  });
+  expect(texts(tree).some(t => advice.test(t))).toBe(true);
+  if (mode !== 'dev') {
+    expect(texts(tree).some(t => /dev server/.test(t))).toBe(false);
+  }
+  await act(async () => {
+    tree.unmount();
+  });
+  status.mockRestore();
+  warn.mockRestore();
 });
