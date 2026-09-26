@@ -52,9 +52,10 @@ afterEach(() => {
 });
 
 describe('the resolver the host installs', () => {
-  // Re.Pack registers a resolver per remote at its default priority of 2, and that one hands back
-  // the unversioned URL from the build-time remotes map. Anything at or below 2 here loses to it,
-  // and loses quietly: the app runs, and every remote is the wrong build.
+  // Re.Pack registers a resolver per remote at its default priority of 2. Once the launch has
+  // re-registered the remotes it resolves to the right versioned URL, with no signature
+  // verification on its locator. At 2 the winner depends on registration order, and below it this
+  // one always loses, quietly: the app runs the right versions, unverified.
   test('outranks the one Re.Pack registers per remote', () => {
     const { repack } = loadFederation(CDN_BASE, '2.0.0');
     const [[, options]] = repack.__resolvers;

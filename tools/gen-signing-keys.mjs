@@ -66,14 +66,12 @@ if (existsSync(privatePath)) {
   console.log('generated an RSA-2048 chunk-signing keypair');
 }
 
-// --- Put the public half where the app reads it. The two platforms want the same key in two
-// shapes: iOS parses PEM, so it gets the file verbatim; Android strips the header and footer and
-// then decodes what is left, and it does that without removing line breaks, so it gets the base64
-// body on a single line. ---
-// Line endings are normalised before either shape is built. A public key that has been through a
-// tool or an editor that writes CRLF still matches its private key — the check above compares DER
-// bytes, not text — but a carriage return left inside the Android value survives into the string
-// its decoder is handed, and base64 with a stray \r in it does not decode.
+// --- Put the public half where the app reads it. The two platforms take the key in two shapes:
+// iOS parses PEM, so it gets the file verbatim; Android strips the header, the footer and the line
+// breaks before it decodes, so it is given the base64 body alone, on one line. ---
+// Line endings are normalised before either shape is built, so a public key that has been through
+// a tool or an editor that writes CRLF embeds exactly the values one saved with LF does. It still
+// matches its private key either way: the check above compares DER bytes, not text.
 const publicPem = readFileSync(publicPath, 'utf8').replace(/\r\n/g, '\n').trim();
 const publicBase64 = publicPem
   .split('\n')

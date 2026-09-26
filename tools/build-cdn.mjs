@@ -36,7 +36,10 @@ const ALL_PLATFORMS = ['ios', 'android'];
 //
 // listApp has three because this post ships two releases of it. 1.0.0 and 1.1.0 are the same
 // screen with different stamps on it, which is what the two-binaries demo needs; 1.2.0 is the
-// build that added the party counter's full state, and it is the one the flip ships. ---
+// build that added the party counter's full state, and it is the one the flip ships. This tool
+// builds every version from the source in front of it, so rebuilt from the finished tree all three
+// carry that state: the post builds 1.0.0 and 1.1.0 before making the change, which is what keeps
+// them without it. ---
 const REMOTE_VERSIONS = {
   listApp: ['1.0.0', '1.1.0', '1.2.0'],
   partyApp: ['1.0.0'],

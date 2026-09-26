@@ -173,7 +173,7 @@ put its directory on the CDN first:
 
 ```sh
 ( cd apps/list && MF_REMOTE_VERSION=1.3.0 npm run bundle:ios:prod )
-cp -R apps/list/cdn/ios/listApp/1.3.0 cdn-root/ios/listApp/1.3.0
+rsync -a --exclude '*.map' --exclude mf-stats.json apps/list/cdn/ios/listApp/1.3.0/ cdn-root/ios/listApp/1.3.0/
 ```
 
 Nothing has changed for anybody yet: the directory is there and no map points at it. Then edit one

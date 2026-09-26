@@ -121,8 +121,8 @@ test('a CRLF public key still embeds as one clean line for Android', () => {
     const r = s.run();
     assert.equal(r.status, 0, r.stderr);
 
-    // Android's verifier strips the PEM header and footer and decodes what is left without
-    // removing carriage returns, so one left in here is a key that cannot be decoded at all.
+    // Both verifiers would skip a stray carriage return (each decoder ignores it), so what this
+    // pins is the generator's own promise: a CRLF key file embeds exactly what an LF one does.
     const android = embeddedKey(s.read(STRINGS), STRINGS_KEY);
     assert.ok(!/\s/.test(android), 'the Android value must carry no whitespace');
     assert.equal(android, base64Body(readFileSync(s.pub, 'utf8').replace(/\r\n/g, '\n')));

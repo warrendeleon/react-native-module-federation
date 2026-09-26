@@ -1,9 +1,8 @@
 <resources>
     <string name="app_name">Pokédex</string>
     <!-- The public half of the chunk-signing keypair, read by name by Re.Pack's native verifier.
-         The base64 body only: the verifier strips the PEM header and footer before parsing, and
-         a line break inside this value survives into the string it parses. Written by
-         tools/gen-signing-keys.mjs; empty in the repository, because the key is generated per
-         checkout. -->
+         The base64 body alone, on one line: the verifier strips any PEM header, footer and line
+         breaks before it decodes. Written by tools/gen-signing-keys.mjs; empty in the repository,
+         because the key is generated per checkout. -->
     <string name="RepackPublicKey"></string>
 </resources>

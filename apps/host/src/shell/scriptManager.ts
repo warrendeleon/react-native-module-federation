@@ -86,8 +86,10 @@ let initialization: Promise<FederationStatus> | undefined;
 
 // --- The resolver. It is asked about every script the federation loads, in priority order, and
 // the first resolver to return a locator wins. Re.Pack registers its own resolver per remote when
-// that remote is registered, at the default priority of 2, and that one would hand back the
-// unversioned URL from the build-time remotes map. Priority 100 puts this one in front of it.
+// that remote is registered, at the default priority of 2. Before the launch re-registers the
+// remotes, that one hands back the unversioned URL from the build-time remotes map; after it, the
+// versioned one, but with no signature verification on its locator. Priority 100 puts this one in
+// front of it either way, so every script is resolved here, and verified.
 //
 // Registered here at module scope, not inside initializeFederation, because a resolver that is
 // not in place before the first import is a resolver that missed its only chance: resolution
