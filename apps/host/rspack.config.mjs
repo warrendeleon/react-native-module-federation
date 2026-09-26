@@ -38,8 +38,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // the first import fires.
 // Trailing slashes are trimmed, because every URL built from this value adds its own separator
 // and a base written with one produces a double slash in the middle of every path. Most servers
-// forgive that; a signature is cached against the URL that fetched it, so it is not worth finding
-// out which ones do not.
+// forgive that; a downloaded script is cached against the URL that fetched it, so it is not worth
+// finding out which ones do not.
 const CDN_BASE = (process.env.MF_CDN_BASE || '').replace(/\/+$/, '');
 
 // --- This binary's own version, the question it asks the CDN at launch. The CDN answers with the
@@ -59,7 +59,7 @@ export default Repack.defineRspackConfig(env => {
   const { mode, platform } = env;
 
   // The build-time remotes map, in one function: dev server or CDN, same manifest filename either
-  // way. In CDN mode what it produces is a placeholder and nothing loads from it — the versioned
+  // way. In CDN mode what it produces is a placeholder and nothing loads from it: the versioned
   // URL the app really uses is decided at launch. It is left pointing somewhere plausible rather
   // than removed, because Module Federation wants a name and an entry for every remote declared
   // at build time, and because in dev mode this is still the whole story.

@@ -39,8 +39,10 @@ export default Repack.defineRspackConfig(env => {
     },
     output: {
       // A production build writes the tree the CDN serves, laid out as the URL path it is served
-      // at: cdn/<platform>/partyApp/<version>/. A development build keeps writing to build/, where
-      // the dev server reads it from, and carries no version: there is only ever one build there.
+      // at: cdn/<platform>/partyApp/<version>/. The version segment is what lets one CDN hold
+      // several releases of this remote at once, each at its own URL. A development build keeps
+      // writing to build/, where the dev server reads it from, and carries no version: there is
+      // only ever one build there, and it is whatever was saved last.
       path: isProd
         ? `${__dirname}/cdn/[platform]/partyApp/${REMOTE_VERSION}`
         : `${__dirname}/build/[platform]`,
@@ -77,7 +79,8 @@ export default Repack.defineRspackConfig(env => {
             type: 'remote',
             // The chunks land beside the container and the manifest, inside the same version
             // directory, because the host will ask for them at URLs relative to the manifest it
-            // loaded.
+            // loaded. Miss the version segment here and the manifest is versioned while its own
+            // chunks are not, which resolves to a 404 on first import.
             outputPath: isProd
               ? `cdn/${platform}/partyApp/${REMOTE_VERSION}`
               : `build/${platform}/remote`,

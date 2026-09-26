@@ -148,7 +148,7 @@ export default function PokedexScreen() {
               {/* Full is the party's one state worth marking, and it is marked twice: the label
                   changes beside this pill, and the pill deepens. Colour alone would leave the
                   state unavailable to anyone who cannot use it (SC 1.4.1), and the label alone
-                  would leave it unmarked for everyone else, so both are here — in both themes.
+                  would leave it unmarked for everyone else, so both are here, in both themes.
                   The dark half deepens by alpha rather than by hue, because the pill over navy is
                   translucent white in the first place and a green fill there would be a different
                   component wearing the same shape.

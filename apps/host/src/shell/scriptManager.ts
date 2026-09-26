@@ -91,9 +91,10 @@ let initialization: Promise<FederationStatus> | undefined;
 // versioned one, but with no signature verification on its locator. Priority 100 puts this one in
 // front of it either way, so every script is resolved here, and verified.
 //
-// Registered here at module scope, not inside initializeFederation, because a resolver that is
-// not in place before the first import is a resolver that missed its only chance: resolution
-// happens once per script, and the answer is cached. ---
+// Registered here at module scope, so it is in place before anything federated can be imported,
+// whatever order the launch runs in. Once webpack and the federation runtime have loaded a
+// container or a chunk they never ask for it again, so a resolver added after a script's first
+// load never sees that script. ---
 ScriptManager.shared.addResolver(
   async (scriptId: string, caller?: string) =>
     resolveRemoteLocator({

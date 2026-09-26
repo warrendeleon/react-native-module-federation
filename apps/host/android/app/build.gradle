@@ -155,9 +155,10 @@ dependencies {
 // the previous bundle, dev-server URLs and all. Declaring them as inputs makes a changed value
 // rebuild the bundle and an unchanged one keep the cache.
 //
-// MF_APP_VERSION matters here for the same reason and bites harder: the two-binaries demo builds
-// the same source twice with nothing different but that variable, so without this line the second
-// build silently ships the first one's bundle and asks the CDN the first one's question. ---
+// MF_APP_VERSION matters here for the same reason, and more: the two-binaries demo, run on
+// Android, builds the same source twice with nothing different but that variable, so without this
+// line the second build silently ships the first one's bundle and asks the CDN the first one's
+// question. ---
 tasks.configureEach {
     if (name.startsWith("createBundle") && name.endsWith("JsAndAssets")) {
         inputs.property("MF_CDN_BASE", System.getenv("MF_CDN_BASE") ?: "")
