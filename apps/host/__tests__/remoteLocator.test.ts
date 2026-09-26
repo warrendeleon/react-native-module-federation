@@ -26,32 +26,47 @@ function input(over: Partial<ResolveInput> = {}): ResolveInput {
   };
 }
 
+// The URL a script resolves to, for the cases that should locate one.
+function located(over: Partial<ResolveInput> = {}) {
+  const resolution = resolveRemoteLocator(input(over));
+  if (resolution.kind !== 'locate') {
+    throw new Error(`expected a locator, got ${JSON.stringify(resolution)}`);
+  }
+  return resolution.locator;
+}
+
 describe('resolveRemoteLocator', () => {
   // Deferring returns the dev servers' own resolution, which is the whole of development.
   test('defers in dev mode', () => {
-    expect(resolveRemoteLocator(input({ mode: 'dev' }))).toBeUndefined();
+    expect(resolveRemoteLocator(input({ mode: 'dev' }))).toEqual({ kind: 'defer' });
   });
 
-  // No map means no versions, so there is no URL this function could honestly produce.
-  test('defers when the version map never resolved', () => {
-    expect(resolveRemoteLocator(input({ mode: 'unresolved' }))).toBeUndefined();
+  // No map means no versions. Deferring here would hand the remote to Re.Pack's own resolver,
+  // which loads it from the unversioned build-time URL with no signature check, so it is refused.
+  test('refuses a remote when the version map never resolved', () => {
+    expect(resolveRemoteLocator(input({ mode: 'unresolved' })).kind).toBe('refuse');
+    expect(
+      resolveRemoteLocator(
+        input({ mode: 'unresolved', scriptId: '__federation_expose_ListStack', caller: 'listApp' }),
+      ).kind,
+    ).toBe('refuse');
   });
 
   test('sends a container to its own version directory, verified', () => {
     expect(resolveRemoteLocator(input({ scriptId: 'listApp' }))).toEqual({
-      url: 'https://cdn.example.com/ios/listApp/1.2.0/listApp.container.js.bundle',
-      cache: true,
-      verifyScriptSignature: 'strict',
+      kind: 'locate',
+      locator: {
+        url: 'https://cdn.example.com/ios/listApp/1.2.0/listApp.container.js.bundle',
+        cache: true,
+        verifyScriptSignature: 'strict',
+      },
     });
   });
 
   // A chunk's id says nothing about which remote wants it. The caller does, and this is the case
   // that proves the resolver reads it rather than matching on the id.
   test('sends a chunk to the version directory of the remote that asked for it', () => {
-    const locator = resolveRemoteLocator(
-      input({ scriptId: '__federation_expose_ListStack', caller: 'listApp' }),
-    );
-    expect(locator?.url).toBe(
+    expect(located({ scriptId: '__federation_expose_ListStack', caller: 'listApp' }).url).toBe(
       'https://cdn.example.com/ios/listApp/1.2.0/__federation_expose_ListStack.chunk.bundle',
     );
   });
@@ -59,31 +74,43 @@ describe('resolveRemoteLocator', () => {
   // Two remotes on one CDN at once, each at the version the map named for it: the same launch
   // resolving different remotes to different versions is the point of a map with two lines.
   test('resolves each remote at its own version', () => {
-    expect(resolveRemoteLocator(input({ scriptId: 'partyApp' }))?.url).toBe(
+    expect(located({ scriptId: 'partyApp' }).url).toBe(
       'https://cdn.example.com/ios/partyApp/1.0.0/partyApp.container.js.bundle',
     );
   });
 
-  test('defers for a script belonging to no known remote', () => {
-    expect(
-      resolveRemoteLocator(input({ scriptId: 'something.chunk', caller: 'somethingApp' })),
-    ).toBeUndefined();
-  });
+  // Anything that is not one of this host's remotes keeps Re.Pack's own resolution, in every mode.
+  test.each(['cdn', 'unresolved'] as const)(
+    'defers for a script belonging to no known remote in %s mode',
+    mode => {
+      expect(
+        resolveRemoteLocator(input({ mode, scriptId: 'something.chunk', caller: 'somethingApp' })),
+      ).toEqual({ kind: 'defer' });
+    },
+  );
 
-  // A map that names one remote and not the other leaves the second with no version. Guessing
-  // one would be worse than the failure: it would fetch code nobody pinned.
-  test('defers for a remote the map said nothing about', () => {
+  // A map that names one remote and not the other leaves the second with no version. Guessing one
+  // would fetch code nobody pinned, and deferring would fetch it unverified, so it is refused, for
+  // the container and for every chunk it would ask for.
+  test('refuses a remote the map said nothing about', () => {
+    const versions = { listApp: '1.2.0' };
+    expect(resolveRemoteLocator(input({ scriptId: 'partyApp', versions }))).toEqual({
+      kind: 'refuse',
+      reason: 'the version map named no version for partyApp',
+    });
     expect(
-      resolveRemoteLocator(input({ scriptId: 'partyApp', versions: { listApp: '1.2.0' } })),
-    ).toBeUndefined();
+      resolveRemoteLocator(
+        input({ scriptId: '__federation_expose_PartyStack', caller: 'partyApp', versions }),
+      ).kind,
+    ).toBe('refuse');
   });
 
   test('carries the verification mode it is given', () => {
-    expect(resolveRemoteLocator(input({ verify: 'off' }))?.verifyScriptSignature).toBe('off');
+    expect(located({ verify: 'off' }).verifyScriptSignature).toBe('off');
   });
 
   test('builds android paths from the platform it is given', () => {
-    expect(resolveRemoteLocator(input({ platform: 'android' }))?.url).toBe(
+    expect(located({ platform: 'android' }).url).toBe(
       'https://cdn.example.com/android/listApp/1.2.0/listApp.container.js.bundle',
     );
   });

@@ -64,6 +64,50 @@ describe('the resolver the host installs', () => {
   });
 });
 
+// --- The registered resolver itself, as Re.Pack will call it. Refusing has to throw rather than
+// return nothing: Re.Pack's resolveScript asks the next resolver whenever one returns nothing, and
+// the next one for a remote is Re.Pack's own, which would load it from an unversioned URL with no
+// signature check. It stops at the first resolver that throws. ---
+type Resolver = (scriptId: string, caller?: string) => Promise<unknown>;
+const theResolver = (repack: Recorder) => repack.__resolvers[0][0] as Resolver;
+
+describe('what the resolver answers after the launch', () => {
+  test('locates a mapped remote, verified, and refuses one the map did not name', async () => {
+    respondWith({ listApp: '1.2.0' });
+    const { initializeFederation, repack } = loadFederation(CDN_BASE, '2.0.0');
+    await initializeFederation();
+    const resolve = theResolver(repack);
+
+    await expect(resolve('listApp')).resolves.toEqual({
+      url: `${CDN_BASE}/ios/listApp/1.2.0/listApp.container.js.bundle`,
+      cache: true,
+      verifyScriptSignature: 'strict',
+    });
+    await expect(resolve('partyApp')).rejects.toThrow('refused partyApp');
+    await expect(resolve('__federation_expose_PartyStack', 'partyApp')).rejects.toThrow(
+      'refused __federation_expose_PartyStack',
+    );
+    // Not one of this host's remotes: Re.Pack's own resolution still applies.
+    await expect(resolve('something.chunk', 'somethingApp')).resolves.toBeUndefined();
+  });
+
+  test('refuses every remote when the version map could not be read', async () => {
+    respondWith({}, false, 404);
+    const { initializeFederation, repack } = loadFederation(CDN_BASE, '2.0.0');
+    await initializeFederation();
+    const resolve = theResolver(repack);
+
+    await expect(resolve('listApp')).rejects.toThrow('refused listApp');
+    await expect(resolve('partyApp')).rejects.toThrow('refused partyApp');
+  });
+
+  test('defers everything to the dev servers when no CDN was configured', async () => {
+    const { initializeFederation, repack } = loadFederation('', '2.0.0');
+    await initializeFederation();
+    await expect(theResolver(repack)('listApp')).resolves.toBeUndefined();
+  });
+});
+
 describe('the launch probe', () => {
   test('re-registers every mapped remote at its versioned manifest, with force', async () => {
     respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });

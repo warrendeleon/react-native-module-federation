@@ -16,6 +16,12 @@ export interface RemoteLocator {
   verifyScriptSignature: VerifyMode;
 }
 
+/** The resolver's decision for one script. */
+export type Resolution =
+  | { kind: 'defer' }
+  | { kind: 'locate'; locator: RemoteLocator }
+  | { kind: 'refuse'; reason: string };
+
 export interface ResolveInput {
   /** The container's name for a container, otherwise the chunk's own id. */
   scriptId: string;
@@ -47,33 +53,47 @@ function remoteFor(
   return undefined;
 }
 
-// --- Map one script to the URL it should be fetched from, or undefined to let Re.Pack resolve it
-// the way it always has. Deferring is the right answer more often than it looks: in development,
-// for anything that is not one of this host's remotes, and for a remote the version map said
-// nothing about — in that last case there is no version to build a URL out of, and a guess would
-// be worse than a failure a reader can see. ---
-export function resolveRemoteLocator(input: ResolveInput): RemoteLocator | undefined {
-  if (input.mode !== 'cdn') {
-    return undefined;
+// --- Decide one script: locate it inside its version's directory, refuse it, or defer it to
+// Re.Pack's own resolution.
+//
+// Deferring hands the script to the next resolver, and for one of this host's remotes the next
+// one is Re.Pack's per-remote resolver: it answers with a URL built from whichever manifest was
+// registered last and no signature check at all. That is the right answer in development, where
+// the dev servers own everything, and for any script that is not one of this host's remotes.
+// Outside development it is never the right answer for a remote: with no version map, or a map
+// that named no version for this remote, deferring would load code from an unversioned URL,
+// unverified. So those loads are refused, and the refusal surfaces as the tab's error state. ---
+export function resolveRemoteLocator(input: ResolveInput): Resolution {
+  if (input.mode === 'dev') {
+    return { kind: 'defer' };
   }
   const remoteName = remoteFor(input.scriptId, input.caller, input.remoteNames);
   if (!remoteName) {
-    return undefined;
+    return { kind: 'defer' };
   }
-  const version = input.versions[remoteName];
+  const version = input.mode === 'cdn' ? input.versions[remoteName] : undefined;
   if (!version) {
-    return undefined;
+    return {
+      kind: 'refuse',
+      reason:
+        input.mode === 'cdn'
+          ? `the version map named no version for ${remoteName}`
+          : `no version map was read at launch, so ${remoteName} has no version to load`,
+    };
   }
   const filename =
     input.scriptId === remoteName
       ? `${remoteName}.container.js.bundle`
       : `${input.scriptId}.chunk.bundle`;
   return {
-    url: `${input.cdnBase}/${input.platform}/${remoteName}/${version}/${filename}`,
-    // Caching is per URL, and a URL here carries its version, so a cached file can only ever be
-    // served for the version it was fetched for. A new version is a new URL and a fresh download.
-    cache: true,
-    verifyScriptSignature: input.verify,
+    kind: 'locate',
+    locator: {
+      url: `${input.cdnBase}/${input.platform}/${remoteName}/${version}/${filename}`,
+      // Caching is per URL, and a URL here carries its version, so a cached file can only ever be
+      // served for the version it was fetched for. A new version is a new URL and a fresh download.
+      cache: true,
+      verifyScriptSignature: input.verify,
+    },
   };
 }
 

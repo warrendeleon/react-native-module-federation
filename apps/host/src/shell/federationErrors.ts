@@ -1,29 +1,36 @@
 // --- Why this file exists.
 //
-// When a remote's chunk fails to load — a signature that does not verify, a version that is not
-// on the CDN — the app handles it. Webpack's remote runtime catches the rejection, records it,
-// and leaves the module unresolvable; React.lazy then hands RemoteBoundary a module that is not a
-// component, and the boundary renders the design system's error state. One tab is dead, the shell
-// and the other tab carry on. That is the behaviour this app is built for and it works.
+// When a remote's chunk fails to load (a signature that does not verify, a version that is not
+// on the CDN) the app handles it. Webpack's remote runtime catches the rejection, records it and
+// replaces the module's factory with one that throws. On device the import then settles without a
+// component, React.lazy reports "Element type is invalid ... resolves to: undefined", and
+// RemoteBoundary renders the design system's error state. One tab is dead, the shell and the other
+// tab carry on. That is the behaviour this app is built for and it works.
 //
 // The same error is ALSO reported to React Native's global error handler, which treats it as
 // fatal. In a development build that is a red box over a working app. In a release build it ends
 // the process: verification doing its job, or a mistyped version in the map, takes the whole app
-// down before the boundary's error state is ever seen. Measured on release builds of both
-// platforms, with a tampered chunk and with a version the CDN does not hold.
+// down before the boundary's error state is ever seen. Measured on iOS Release builds with a
+// tampered chunk and with a version the CDN does not hold, and on an Android release build with a
+// version the CDN does not hold.
 //
 // So the host claims that one error. It is not suppressing a failure — the failure is already
 // handled, visibly, one tab away — it is declining to let a handled failure be reported twice,
 // the second time fatally. Everything that is not this exact shape is passed to the handler that
-// was there before, unchanged. ---
+// was there before, unchanged.
+//
+// "Already handled" holds because every federated import in this host is either behind
+// RemoteBoundary or carries its own catch (the boot imports in App.tsx). A new federated import
+// added without one would have its failure logged here and otherwise go unseen. ---
 
 // --- What identifies an error the federation layer has already dealt with.
 //
 // Webpack's remote runtime wraps every attempt to load a federated module. When one fails, its
-// error handler records the failure, replaces the module with one that cannot resolve, and
-// appends `while loading "<request>" from <container>` to the message. That suffix is written at
-// exactly one place in the runtime, and only after the failure has been absorbed, which is what
-// makes it usable as evidence rather than as a guess.
+// error handler records the failure, replaces the module's factory with one that throws, and
+// appends `\nwhile loading "<request>" from <container>` to the message. That suffix is written at
+// exactly one place in the runtime, only after the failure has been absorbed, and always as the
+// last line of the message, which is what makes it usable as evidence rather than as a guess. The
+// match is anchored there: the same words anywhere else in a message are not this suffix.
 //
 // Matching the suffix rather than the error itself is deliberate, because there is more than one
 // error. A chunk whose signature does not verify arrives as a ChunkLoadError; a version that is
@@ -35,7 +42,7 @@
 // `webpack/container/reference/listApp`; in a release build that module is minified to its
 // numeric id, `77469`. A check for the remote's name there passes in development and fails in
 // release, which is the shape of bug this guard exists to prevent. ---
-const HANDLED_BY_REMOTE_RUNTIME = /while loading "[^"]+" from \S+/;
+const HANDLED_BY_REMOTE_RUNTIME = /\nwhile loading "[^"\n]+" from \S+$/;
 
 /**
  * Whether an error is a federated module failure that webpack's remote runtime has already

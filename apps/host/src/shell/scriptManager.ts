@@ -20,7 +20,8 @@ import {
 //               loads exactly the remote versions that map names. Shipping a remote is then an
 //               upload and one edited line, with no new binary and no store review.
 //   unresolved  the map could not be fetched or could not be read. There is no version to load
-//               anything at, so no remote can load, and the banner says so.
+//               anything at, so the resolver refuses every remote rather than let one load from
+//               an unversioned URL unverified, and the banner says so.
 //
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
@@ -89,15 +90,16 @@ let initialization: Promise<FederationStatus> | undefined;
 // that remote is registered, at the default priority of 2. Before the launch re-registers the
 // remotes, that one hands back the unversioned URL from the build-time remotes map; after it, the
 // versioned one, but with no signature verification on its locator. Priority 100 puts this one in
-// front of it either way, so every script is resolved here, and verified.
+// front of it either way, so every script of these remotes is decided here: located at its version
+// and verified, or refused.
 //
 // Registered here at module scope, so it is in place before anything federated can be imported,
 // whatever order the launch runs in. Once webpack and the federation runtime have loaded a
 // container or a chunk they never ask for it again, so a resolver added after a script's first
 // load never sees that script. ---
 ScriptManager.shared.addResolver(
-  async (scriptId: string, caller?: string) =>
-    resolveRemoteLocator({
+  async (scriptId: string, caller?: string) => {
+    const resolution = resolveRemoteLocator({
       scriptId,
       caller,
       remoteNames: REMOTE_NAMES,
@@ -106,7 +108,15 @@ ScriptManager.shared.addResolver(
       platform: Platform.OS,
       cdnBase: CDN_BASE,
       verify: VERIFY,
-    }),
+    });
+    if (resolution.kind === 'refuse') {
+      // Thrown, not returned. Returning nothing passes the script to the next resolver, which for a
+      // remote is Re.Pack's own and would load it unverified. Re.Pack's resolveScript stops at the
+      // first resolver that throws, so the load fails and the tab shows its error state.
+      throw new Error(`[federation] refused ${scriptId}: ${resolution.reason}`);
+    }
+    return resolution.kind === 'locate' ? resolution.locator : undefined;
+  },
   { key: '__signed_resolver__', priority: 100 },
 );
 

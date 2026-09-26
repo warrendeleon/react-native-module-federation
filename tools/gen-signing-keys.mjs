@@ -13,10 +13,11 @@
 // one; a public half on its own, or a pair that does not match, stops the script.
 //
 // The public half is then written into the two files the host's native verifier reads it from:
-// the iOS Info.plist and Android's res/values/strings.xml. Neither can be a build step, because
-// both are read by name at runtime and both are committed files, so the copy in them is what a
-// binary is compiled with. Doing it here means a fresh clone is ready to build after one command,
-// rather than after one command and two instructions nobody reads.
+// the iOS Info.plist and Android's res/values/strings.xml. This tutorial does that here, when the
+// key is made, rather than in a build step: the value in those files is what a binary is compiled
+// with, and writing it once means a fresh clone is ready to build after one command. A build step
+// that generated them before native compilation would work too; it would need the key present on
+// every machine that builds.
 //
 // Usage: node tools/gen-signing-keys.mjs
 

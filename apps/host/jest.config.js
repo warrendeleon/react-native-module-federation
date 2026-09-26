@@ -2,15 +2,16 @@ const preset = require('@react-native/jest-preset');
 
 module.exports = {
   preset: '@react-native/jest-preset',
-  // Reanimated drives animations through the JSI, which a Jest process has no runtime for, so it
-  // is replaced by the stand-in in __mocks__. One entry covers the whole federation: @pokedex/ui
-  // and @pokedex/detail import the same module specifier, so their animated components resolve to
-  // the same mock. The federated state module has no resolvable source under Jest either; its
-  // mock repeats the real module's side effect (reducer injection) so boot readiness is testable.
-  // The last two entries are for the federation runtime: Re.Pack's ScriptManager and Module
-  // Federation's registerRemotes both reach into a bundler runtime that a Jest process does not
-  // have, and the host touches both at module scope, so the resolver is in place before any
-  // federated import can fire. Their stand-ins record what was asked of them.
+  // Reanimated drives animations through the JSI (the JavaScript Interface React Native uses to
+  // call native code), which a Jest process has no runtime for, so it is replaced by the stand-in
+  // in __mocks__. One entry covers the whole federation: @pokedex/ui and @pokedex/detail import
+  // the same module specifier, so their animated components resolve to the same mock. The
+  // federated state module has no resolvable source under Jest either; its mock repeats the real
+  // module's side effect (reducer injection) so boot readiness is testable.
+  // The Re.Pack client and Module Federation runtime entries exist because Re.Pack's ScriptManager
+  // and Module Federation's registerRemotes both reach into a bundler runtime that a Jest process
+  // does not have, and the host touches both at module scope, so the resolver is in place before
+  // any federated import can fire. Their stand-ins record what was asked of them.
   moduleNameMapper: {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^partyApp/partySlice$': '<rootDir>/__mocks__/partyApp-partySlice.js',

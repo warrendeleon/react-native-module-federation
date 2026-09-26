@@ -83,8 +83,9 @@ export default Repack.defineRspackConfig(env => {
             type: 'remote',
             // The chunks land beside the container and the manifest, inside the same version
             // directory, because the host will ask for them at URLs relative to the manifest it
-            // loaded. Miss the version segment here and the manifest is versioned while its own
-            // chunks are not, which resolves to a 404 on first import.
+            // loaded. This entry copies them there: Rspack has already written them under
+            // output.path, so a missing version segment here breaks nothing at runtime, and
+            // instead leaves a second, unversioned copy of every chunk beside the versions.
             outputPath: isProd
               ? `cdn/${platform}/listApp/${REMOTE_VERSION}`
               : `build/${platform}/remote`,

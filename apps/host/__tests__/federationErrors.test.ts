@@ -66,6 +66,21 @@ describe('isHandledRemoteLoadError', () => {
     expect(isHandledRemoteLoadError(new Error('listApp failed to do something'))).toBe(false);
   });
 
+  // The suffix is the last line the runtime wrote. The same words anywhere else are a diagnostic
+  // that happens to quote them, and treating that as handled would hide a real crash.
+  test('does not match the suffix words in the middle of a message', () => {
+    expect(
+      isHandledRemoteLoadError(
+        new Error(
+          'cache miss\nwhile loading "./ListStack" from 77469\nTypeError: cannot read property of undefined',
+        ),
+      ),
+    ).toBe(false);
+    expect(
+      isHandledRemoteLoadError(new Error('quoted: while loading "./ListStack" from 77469')),
+    ).toBe(false);
+  });
+
   test.each([
     ['a string', 'while loading "./ListStack" from 77469'],
     ['null', null],
@@ -74,5 +89,63 @@ describe('isHandledRemoteLoadError', () => {
     ['a message that is not a string', { message: 42 }],
   ])('does not match %s', (_case, value) => {
     expect(isHandledRemoteLoadError(value)).toBe(false);
+  });
+});
+
+// --- The installed handler, not just the matcher. What the guard promises is about forwarding:
+// a handled remote failure stops here, and everything else reaches the handler that was there
+// before, with its fatal flag intact. Loaded fresh each time, because installation happens once
+// per module instance. ---
+describe('the installed global handler', () => {
+  type Handler = (error: unknown, isFatal?: boolean) => void;
+
+  function install() {
+    const previous = jest.fn<void, [unknown, boolean?]>();
+    let installed: Handler | undefined;
+    const globals = globalThis as unknown as { ErrorUtils?: unknown };
+    const original = globals.ErrorUtils;
+    globals.ErrorUtils = {
+      getGlobalHandler: () => previous,
+      setGlobalHandler: (handler: Handler) => {
+        installed = handler;
+      },
+    };
+    jest.isolateModules(() => {
+      require('../src/shell/federationErrors').guardHandledRemoteLoadErrors();
+    });
+    globals.ErrorUtils = original;
+    if (!installed) {
+      throw new Error('the guard did not install a handler');
+    }
+    return { handler: installed, previous };
+  }
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('stops a handled remote failure from reaching the fatal handler', () => {
+    const { handler, previous } = install();
+    handler(
+      named('ChunkLoadError', 'Loading chunk __federation_expose_ListStack failed.\nwhile loading "./ListStack" from 77469'),
+      true,
+    );
+    expect(previous).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['an ordinary application error', new Error('Cannot read property id of undefined')],
+    ['the suffix words mid-message', new Error('while loading "./ListStack" from 77469\nand then this')],
+    ['a string thrown on its own', 'while loading "./ListStack" from 77469'],
+  ])('forwards %s with its fatal flag', (_case, error) => {
+    const { handler, previous } = install();
+    handler(error, true);
+    expect(previous).toHaveBeenCalledWith(error, true);
+    handler(error, false);
+    expect(previous).toHaveBeenLastCalledWith(error, false);
   });
 });

@@ -47,10 +47,12 @@ check "apps/party/cdn/ios/partyApp/$SMOKE_VERSION/partyApp.container.js.bundle"
 check "apps/party/cdn/ios/partyApp/$SMOKE_VERSION/mf-manifest.json"
 check "$OUT/host/main.jsbundle"
 
-# The manifest and the chunks beside it have to agree about where they live: a version segment
-# added to one and not the other leaves every import resolving to a directory with nothing in it.
-# The chunk list is read first and checked for emptiness, because a manifest that cannot be read
-# would otherwise make the loop below run zero times and say nothing.
+# The manifest's own chunk list is followed into the version directory, so a build whose output
+# path lost its version segment fails here rather than at a user's launch. (The extraChunks
+# outputPath only copies the chunks, so a segment missing there leaves stray copies, not a
+# failure, and this check does not see it.) The chunk list is read first and checked for
+# emptiness, because a manifest that cannot be read would otherwise make the loop below run zero
+# times and say nothing.
 chunks=$(node -e "
   const m = require('./apps/list/cdn/ios/listApp/$SMOKE_VERSION/mf-manifest.json');
   console.log(m.exposes.flatMap(e => e.assets.js.sync).join(' '));
