@@ -168,9 +168,10 @@ describe('the launch probe', () => {
   });
 });
 
-// --- Every remote module the host imports is evaluated inside the error guard's window. The
-// runtime hands each module's factory to the plugins' onLoad hook, and a function returned from
-// it replaces the factory, so the plugin is asked directly here, the way the runtime asks it. ---
+// --- Every remote module the host imports is evaluated inside the error guard's window. An
+// import() asks the runtime for the module's factory unexecuted, with loadFactory: false, so the
+// runtime hands that factory to the plugins' onLoad hook, and a function returned from the hook
+// replaces it. The plugin is asked directly here, the way the runtime asks it. ---
 describe('the evaluation window the host installs', () => {
   const theWindow = (runtime: Recorder) =>
     runtime.__plugins.find(plugin => plugin.name === 'evaluation-window')!;

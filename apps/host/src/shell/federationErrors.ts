@@ -68,11 +68,13 @@ export function isHandledRemoteLoadError(error: unknown): boolean {
   return typeof message === 'string' && HANDLED_BY_REMOTE_RUNTIME.test(message);
 }
 
-// --- A remote module evaluated where its failure can be caught. The runtime plugin in
-// scriptManager.ts hands every remote module's factory to evaluateRemoteModule before anything
-// runs it. While the factory runs, a fatal report is that module's own: the guard holds it
-// instead of passing it on, and once the factory returns, the error is thrown from here, so the
-// import that asked for the module fails like any other failed load.
+// --- A remote module evaluated where its failure can be caught. For every remote module the host
+// imports, the runtime plugin in scriptManager.ts hands the module's factory to
+// evaluateRemoteModule before anything runs it. That works because an import() asks the runtime
+// for the factory unexecuted, with loadFactory: false. While the factory runs, a fatal report is
+// that module's own: the guard holds it instead of passing it on, and once the factory returns,
+// the error is thrown from here, so the import that asked for the module fails like any other
+// failed load.
 //
 // The window is exact because evaluation is synchronous: nothing else can run between opening it
 // and closing it. Only fatal reports are held; a non-fatal one passes through as it always did.
