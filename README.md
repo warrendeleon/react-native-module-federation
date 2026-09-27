@@ -22,6 +22,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-13-native-handoff` | [shell.navigateTo: native screens from a federated remote](https://warrendeleon.com/blog/native-handoff-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-native-handoff) | contracts 3.3.0 carries one routing table and one promise-returning `shellNavigate`; the host adds a TurboModule and presents a fully native Quick Battle in SwiftUI and Compose; the winner's uid comes back through the promise and lands in the party's own state, crossing no contract action |
 | `post-14-production-build` | [The production build and the three modes](https://warrendeleon.com/blog/production-build-three-modes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-production-build) | Both remotes built for production and signed chunk by chunk, laid out as the directory a content delivery network serves; one environment variable moves the host between the dev servers and that CDN, and the release build of each platform runs with no dev server at all |
 | `post-15-cdn-flip` | [CDN delivery: the version map, the resolver, and the live flip](https://warrendeleon.com/blog/cdn-version-resolution-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-cdn-flip) | The CDN holds every published version of each remote; each released app version gets a map saying which of them it may load; the host fetches its own map at launch and resolves every chunk to a versioned, signature-verified URL. Then a new remote version reaches an installed app through one uploaded directory and one edited line, and is rolled back the same way |
+| `post-16-fallbacks` | [Fallback for federated remotes: the copy in the binary and the net in the session](https://warrendeleon.com/blog/offline-fallback-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-fallbacks) | Every release build carries a signed copy of both remotes. With the CDN out of reach at launch the app runs from those copies; mid-session, a remote that fails to load drops to its own copy while the other stays on the CDN. A tab that still fails shows its error state, and Try again loads the remote again rather than replaying the failure |
 
 `main` tracks the latest post. More tags land as the series grows.
 
@@ -39,7 +40,7 @@ apps/
 tools/
 ├── gen-signing-keys.mjs  generates the RSA keypair that signs production chunks, and writes the public half into the host's native config (keys stay out of git)
 ├── gen-signing-keys.test.mjs  the generator's regression tests: node --test tools/gen-signing-keys.test.mjs
-└── build-cdn.mjs         builds every published version of both remotes into cdn-root/, and writes one version map per released app version
+└── build-cdn.mjs         builds every published version of both remotes into cdn-root/, writes one version map per released app version, and stages the copy each release build carries in embed-root/
 packages/
 ├── a11y-testing/ the shared accessibility bar: Jest preset, WCAG helpers, report (devDependency only, never bundled)
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
@@ -54,7 +55,7 @@ Requirements: Node 22.11+, Xcode with an iOS simulator, Ruby + Bundler, CocoaPod
 ```sh
 git clone https://github.com/warrendeleon/react-native-module-federation
 cd react-native-module-federation
-git checkout post-15-cdn-flip
+git checkout post-16-fallbacks
 ```
 
 The apps install four `@pokedex` packages from a local registry, so publish them before installing anything. Leave the registry running in its own terminal:
@@ -188,13 +189,37 @@ line of `cdn-root/ios/maps/2.0.0/version-map.json`:
 
 Relaunch the installed app and it loads the new version. The map is the commit, which is why it is
 written last: a map pointing at a directory that is not there yet is a 404 for every user who
-launches in between, and what they get is a tab that will not open. Nothing here gives a binary
-anywhere else to load a remote from yet, so the tab stays broken until the map is right. Rolling
-back is the same edit in reverse, and it needs no build at all, because the old version's
-directory was never removed.
+launches in between. What they get is the copy of that remote their binary carries (see below):
+a working tab, but the version the binary shipped with, not the one being released. Rolling back
+is the same edit in reverse, and it needs no build at all, because the old version's directory
+was never removed.
 
 `tools/build-cdn.mjs` seeds a CDN rather than operating one. Running it again rebuilds the whole
 tree from the lists at the top of the file, so it is the wrong tool for the two steps above.
+
+### When the CDN is not there
+
+`tools/build-cdn.mjs` also prepares the copy a release build carries: the version of each remote
+that its app version's map names, staged in `embed-root/`, with each version's manifest written
+into `apps/host/src/shell/embedded-manifests.ts`. The last build phase of the iOS target and a
+Gradle task on Android copy `embed-root/` into the binary byte for byte, so every file still
+verifies against the signing key. Run it before the release build; without `embed-root/` both
+builds warn, succeed, and carry nothing.
+
+```sh
+node tools/build-cdn.mjs ios
+cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release
+```
+
+Stop the server, check that `curl http://localhost:8000/ios/maps/2.0.0/version-map.json` now
+fails, and cold-start the app: the banner turns purple and reads `bundled`, and both tabs open
+from the copies. Start the server again, move `cdn-root/ios/listApp/1.2.0` out of `cdn-root`, and
+cold-start once more: the list's manifest is a 404, so that one remote runs from its copy and the
+banner reads `cdn · listApp 1.2.0 embedded · partyApp 1.0.0`, while the party still loads from the
+CDN. Move the directory back afterwards.
+
+A copy only needs a release build: a development build loads its own bundle from the dev server,
+so it has no app directory to read a copy from and stays on the dev servers.
 
 ## Architecture
 
@@ -208,9 +233,11 @@ flowchart TD
         t1["Pokédex tab"]
         t2["Party tab"]
         native["Quick Battle<br/>SwiftUI · Jetpack Compose<br/>presented by the host's TurboModule"]
+        copies[("the copy in the binary<br/>one signed version of each remote,<br/>the one its app version's map names")]
         tabs --> t1
         tabs --> t2
     end
+    cdn[("CDN · cdn-root<br/>every published version + one map per app version")]
     list[("list remote<br/>:8082 · ListStack")]
     party[("party remote<br/>:8083 · PartyStack + partySlice")]
     t1 -.->|"React.lazy · loaded at launch"| list
@@ -223,4 +250,6 @@ flowchart TD
     registry -->|"contracts + ui + the detail view"| list
     registry -->|"contracts + ui + the detail view"| party
     party ==>|"shellNavigate('QuickBattle') · awaits the winner's uid"| native
+    t1 & t2 -.->|"release build: the versions its map names"| cdn
+    t1 & t2 -.->|"no map at launch, or one remote fails to load:<br/>the manifest net and the tab's boundary drop it here"| copies
 ```

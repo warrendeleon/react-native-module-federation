@@ -1,14 +1,20 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { ScriptManager } from '@callstack/repack/client';
 import {
+  getInstance,
+  loadRemote,
   type ModuleFederationRuntimePlugin,
   registerPlugins,
   registerRemotes,
 } from '@module-federation/runtime';
 
+import NativeEmbeddedRemotes from '../../specs/NativeEmbeddedRemotesModule';
+import { BUNDLED_VERSIONS, EMBEDDED_MANIFESTS } from './embedded-manifests';
 import { evaluateRemoteModule, guardHandledRemoteLoadErrors } from './federationErrors';
 import {
+  embeddedManifestUrl,
   type FederationMode,
+  manifestRemote,
   parseVersionMap,
   remoteManifestUrl,
   resolveRemoteLocator,
@@ -23,23 +29,37 @@ import {
 //   cdn         the app asks the CDN for the version map written for its own app version, and
 //               loads exactly the remote versions that map names. Shipping a remote is then an
 //               upload and one edited line, with no new binary and no store review.
-//   unresolved  the map could not be fetched or could not be read. There is no version to load
-//               anything at, so the resolver refuses every remote rather than let one load from
-//               an unversioned URL unverified, and the banner says so.
+//   bundled     the map could not be fetched or read, and the binary carries its own copy of each
+//               remote, baked in when it was built. The whole launch runs from those copies, read
+//               from the disk and verified exactly like a download.
+//   unresolved  the map could not be fetched or read, and there is no copy to run instead. There
+//               is no version to load anything at, so the resolver refuses every remote rather than
+//               let one load from an unversioned URL unverified, and the banner says so.
 //
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
 //
-// A chunk that fails (a retired version, a signature that does not verify) is one dead tab and
-// nothing more: the boundary in App.tsx renders the design system's error state and the shell and
-// the other tab carry on. Getting there took one non-obvious piece, which is in federationErrors:
-// Re.Pack reports the failure as fatal before React renders the tab, and in a release build that
-// report ends the process.
-//
-// What this app still does NOT have is anywhere else to get a remote from. A dead tab is honest,
-// and it is not a working app. The copy in the binary is the next post's subject. ---
+// Inside a CDN launch one remote can still fail to load: a retired version, a container or chunk
+// that does not arrive, one that does not verify. That remote drops to its own copy for the rest
+// of the session while the others stay on the CDN. Only when there is no copy left to try does its
+// tab show the error state, and even then the process survives it: federationErrors has why. ---
 
 const REMOTE_NAMES = ['listApp', 'partyApp'] as const;
+type RemoteName = (typeof REMOTE_NAMES)[number];
+
+function isRemoteName(name: string): name is RemoteName {
+  return (REMOTE_NAMES as readonly string[]).includes(name);
+}
+
+// --- Where each remote's runtime keeps the chunks it has installed: a global array, which its
+// chunk files push onto as they load. A container starting up installs every chunk already in it,
+// including chunks a previous container of the same remote fetched, so a reload clears it (see
+// reloadRemote). The name is rspackChunk followed by the output.uniqueName each remote's
+// rspack.config.mjs sets. ---
+const CHUNK_REGISTRY: Record<RemoteName, string> = {
+  listApp: 'rspackChunkListApp',
+  partyApp: 'rspackChunkPartyApp',
+};
 
 // --- The two build-time literals, compiled in by DefinePlugin in rspack.config.mjs. They are
 // declared rather than imported because they do not exist as modules: the bundler replaces each
@@ -71,19 +91,81 @@ const PROBE_TIMEOUT_MS = 1500;
 const SIGNED_PLATFORMS = ['ios', 'android'];
 const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : 'off';
 
+// --- Where the copies in the binary sit on the device.
+//
+// On iOS they are inside the .app itself, and the JavaScript bundle's own URL points into it: a
+// release build loads file:///…/Host.app/main.jsbundle, and the directory above that file is the
+// .app. A development build loads its bundle from the dev server over http, so there is no
+// directory to derive and no copy to use. Everything below that runs from a copy therefore needs
+// a release build.
+//
+// On Android the copies are packed into the APK's assets, which are not files on disk. A native
+// module copies them out once per app version and says where it put them, before the first
+// federated load (see prepareEmbeddedCopies). ---
+const sourceCode = NativeModules.SourceCode as
+  | { scriptURL?: string; getConstants?: () => { scriptURL?: string } }
+  | undefined;
+const SCRIPT_URL = sourceCode?.scriptURL ?? sourceCode?.getConstants?.().scriptURL;
+const APP_PATH = SCRIPT_URL?.startsWith('file://')
+  ? SCRIPT_URL.replace(/^file:\/\//, '').replace(/\/[^/]+$/, '')
+  : undefined;
+
+let embeddedRoot: string | undefined = Platform.OS === 'ios' ? APP_PATH : undefined;
+
+// The copy of each remote this build carries, as tools/build-cdn.mjs recorded it for this
+// platform: which version, and that version's manifest.
+const bundledVersions: Record<string, string> = BUNDLED_VERSIONS[Platform.OS] ?? {};
+
+function hasEmbeddedCopy(remote: string): boolean {
+  return (
+    embeddedRoot !== undefined &&
+    bundledVersions[remote] !== undefined &&
+    EMBEDDED_MANIFESTS[Platform.OS]?.[remote] !== undefined
+  );
+}
+
 export interface FederationStatus {
   mode: FederationMode;
   /** Where the code came from, in the words the banner shows. */
   source: string;
-  /** remote -> version for this launch. Empty outside CDN mode. */
+  /** remote -> the version each remote is running this launch. Empty in development. */
   versions: Record<string, string>;
+  /** The remotes running from their copy in the binary: all of them in bundled mode. */
+  embedded: readonly string[];
 }
 
 let status: FederationStatus = {
   mode: 'dev',
   source: 'dev servers',
   versions: {},
+  embedded: [],
 };
+
+// The versions the map named, kept apart from status.versions, which changes as remotes fall back.
+let mapVersions: Record<string, string> = {};
+
+// The banner re-renders when a remote falls back mid-session, so the status is published rather
+// than only read. Every change replaces the object, which is what lets a subscriber compare the
+// old snapshot with the new one.
+const listeners = new Set<() => void>();
+
+function setStatus(next: FederationStatus): void {
+  status = next;
+  listeners.forEach(listener => listener());
+}
+
+export function subscribeFederationStatus(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+// --- The remotes that failed from the CDN this session and now run from their copy. In memory on
+// purpose: a failure that was only the network heals at the next launch, which asks the CDN
+// again. Remembering failures across launches, and rolling a bad version back for good, belongs
+// to the next post. ---
+const fallbackRemotes = new Set<string>();
 
 // The in-flight (or finished) initialisation. Held as a promise rather than a boolean, so that a
 // second caller arriving while the probe is still in the air waits for the same answer instead of
@@ -101,7 +183,8 @@ let initialization: Promise<FederationStatus> | undefined;
 // Registered here at module scope, so it is in place before anything federated can be imported,
 // whatever order the launch runs in. Once webpack and the federation runtime have loaded a
 // container or a chunk they never ask for it again, so a resolver added after a script's first
-// load never sees that script. ---
+// load never sees that script. It is handed the fallback set itself rather than a copy, so a
+// remote that falls back is served from its copy on its very next script. ---
 ScriptManager.shared.addResolver(
   async (scriptId: string, caller?: string) => {
     const resolution = resolveRemoteLocator({
@@ -109,7 +192,10 @@ ScriptManager.shared.addResolver(
       caller,
       remoteNames: REMOTE_NAMES,
       mode: status.mode,
-      versions: status.versions,
+      versions: mapVersions,
+      bundledVersions,
+      fallbackRemotes,
+      embeddedRoot,
       platform: Platform.OS,
       cdnBase: CDN_BASE,
       verify: VERIFY,
@@ -135,10 +221,10 @@ guardHandledRemoteLoadErrors();
 // guarded require inside the remote's own container, and carries nothing the guard can match. So
 // every remote module is evaluated inside the window federationErrors.ts keeps for it. The runtime
 // passes a module's factory to its plugins' onLoad hook before anything calls it only when the
-// factory was asked for unexecuted, with loadFactory: false. That is how the bundler's own runtime
-// asks for every import() of a remote, so the tabs and the boot loads alike reach the hook with a
-// factory nothing has run yet. A function returned from the hook replaces the factory; this plugin
-// returns one that runs the real factory inside evaluateRemoteModule. ---
+// factory was asked for unexecuted, with loadFactory: false. loadRemoteModule asks that way for
+// every remote module the host loads, the tabs and the boot loads alike, so each reaches the hook
+// with a factory nothing has run yet. A function returned from the hook replaces the factory; this
+// plugin returns one that runs the real factory inside evaluateRemoteModule. ---
 const evaluationWindow: ModuleFederationRuntimePlugin = {
   name: 'evaluation-window',
   onLoad({ exposeModuleFactory }) {
@@ -150,10 +236,85 @@ const evaluationWindow: ModuleFederationRuntimePlugin = {
 };
 registerPlugins([evaluationWindow]);
 
+// --- The manifest net. Module Federation fetches a remote's mf-manifest.json before any of its
+// code loads, and it does that on its own, outside React, so no error boundary is anywhere near a
+// manifest that fails. The net sits where the runtime asks instead, in a plugin's `fetch` hook,
+// which the runtime calls for every manifest before falling back to its own fetch:
+//
+//   - a remote running from its copy (bundled mode, or one that already fell back) gets the
+//     manifest compiled into the host. React Native's fetch cannot read a file:// URL, so the
+//     manifest is handed over as a Response built in memory, while the remote's code still loads
+//     from the disk through the resolver above.
+//   - a CDN remote gets a real fetch, and on any failure (a 404 for a retired version, a timeout,
+//     a dropped connection) it falls back to its copy and gets the compiled manifest instead.
+//   - anything else, and any remote without a copy, is left to the runtime's own fetch.
+//
+// The hook may return a Promise of a Response, or nothing to hand the request back to the
+// runtime. ---
+const embeddedFallback: ModuleFederationRuntimePlugin = {
+  name: 'embedded-fallback',
+  fetch(url: string) {
+    if (status.mode !== 'cdn' && status.mode !== 'bundled') {
+      return undefined;
+    }
+    const remote = manifestRemote(url, REMOTE_NAMES);
+    if (!remote || !hasEmbeddedCopy(remote)) {
+      return undefined;
+    }
+    if (status.mode === 'bundled' || fallbackRemotes.has(remote)) {
+      return Promise.resolve(embeddedManifestResponse(remote));
+    }
+    return cdnManifestOrEmbedded(url, remote);
+  },
+};
+registerPlugins([embeddedFallback]);
+
+function embeddedManifestResponse(remote: string): Response {
+  return new Response(JSON.stringify(EMBEDDED_MANIFESTS[Platform.OS]?.[remote]), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// --- A CDN remote's manifest, fetched for real, with the copy behind it. The wait is the probe's
+// own: the map already answered within it, so a manifest that takes longer is treated as a
+// failure too. ---
+async function cdnManifestOrEmbedded(url: string, remote: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (response.ok) {
+      return response;
+    }
+    console.warn(`[federation] ${remote} manifest returned ${response.status}`);
+  } catch (error) {
+    console.warn(`[federation] ${remote} manifest could not be fetched`, error);
+  } finally {
+    clearTimeout(timer);
+  }
+  fallBack(remote);
+  return embeddedManifestResponse(remote);
+}
+
+// Record that a remote runs from its copy until the next launch, and put it on the banner.
+function fallBack(remote: string): void {
+  if (fallbackRemotes.has(remote)) {
+    return;
+  }
+  fallbackRemotes.add(remote);
+  console.warn(`[federation] ${remote} failed from the CDN; running its copy from the binary`);
+  setStatus({
+    ...status,
+    versions: { ...status.versions, [remote]: bundledVersions[remote] },
+    embedded: [...status.embedded, remote].sort(),
+  });
+}
+
 // --- Fetch and read the version map for this app version. Returns null for every kind of
 // failure, because the caller treats them all the same way: an unreachable CDN, a 404 for an app
 // version nobody published a map for, a timeout, and a map that does not parse all end with this
-// binary running no remotes. ---
+// binary running its copies, or nothing if it has none. ---
 async function fetchVersionMap(): Promise<Record<string, string> | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
@@ -202,6 +363,20 @@ function registerCdnRemotes(versions: Record<string, string>): void {
   );
 }
 
+// --- Android only: copy the baked-in remotes out of the APK's assets, so the resolver has a real
+// directory to point at. It runs alongside the probe rather than before it, since neither needs
+// the other. Best effort: when it fails, the launch behaves like a binary with no copies. ---
+async function prepareEmbeddedCopies(): Promise<void> {
+  if (Platform.OS !== 'android' || !NativeEmbeddedRemotes) {
+    return;
+  }
+  try {
+    embeddedRoot = await NativeEmbeddedRemotes.prepare(APP_VERSION);
+  } catch (error) {
+    console.warn('[federation] the copies in the binary could not be prepared', error);
+  }
+}
+
 // --- Awaited in App.tsx before the navigator mounts, so that every remote is registered at its
 // resolved version before the first React.lazy import can fire. Safe to call more than once and
 // from more than one place at once: every caller gets the first call's promise. ---
@@ -211,36 +386,132 @@ export function initializeFederation(): Promise<FederationStatus> {
 }
 
 async function resolveFederation(): Promise<FederationStatus> {
-  if (!CDN_CONFIGURED) {
-    status = __DEV__
-      ? { mode: 'dev', source: 'dev servers', versions: {} }
-      : { mode: 'unresolved', source: 'no CDN configured', versions: {} };
+  if (!CDN_CONFIGURED && __DEV__) {
+    setStatus({ mode: 'dev', source: 'dev servers', versions: {}, embedded: [] });
     return status;
   }
 
-  const versions = await fetchVersionMap();
+  const [versions] = await Promise.all([
+    CDN_CONFIGURED ? fetchVersionMap() : Promise.resolve(null),
+    prepareEmbeddedCopies(),
+  ]);
   if (!versions) {
-    // Worded to cover every way this fails, because the banner is a claim the app makes about
-    // itself: a map that was served and refused is not an unreachable one, and the log line
-    // beside it already says which of the two happened.
-    status = { mode: 'unresolved', source: 'no usable version map', versions: {} };
-    return status;
+    return runFromCopies(CDN_CONFIGURED ? 'no usable version map' : 'no CDN configured');
   }
 
   // The status is set before the registration because the resolver reads it, and then rolled back
   // if the registration throws. Claiming CDN mode after a failed re-registration would put the
   // versions on the banner while every load went to the build-time placeholder URL: an app that
   // says it is running 1.2.0 and is running nothing.
-  status = { mode: 'cdn', source: CDN_BASE, versions };
+  mapVersions = versions;
+  setStatus({ mode: 'cdn', source: CDN_BASE, versions, embedded: [] });
   try {
     registerCdnRemotes(versions);
   } catch (error) {
     console.warn('[federation] remotes could not be re-registered', error);
-    status = { mode: 'unresolved', source: 'remotes could not be registered', versions: {} };
+    mapVersions = {};
+    return runFromCopies('remotes could not be registered');
   }
   return status;
 }
 
+// --- The launch that never reached a usable map. With copies in the binary it runs from them,
+// every remote registered at its manifest inside the binary so that the one place the runtime
+// reads says where the code now comes from. With none, there is nothing to run. ---
+function runFromCopies(reason: string): FederationStatus {
+  const embedded = REMOTE_NAMES.filter(hasEmbeddedCopy);
+  if (embedded.length === 0) {
+    setStatus({ mode: 'unresolved', source: reason, versions: {}, embedded: [] });
+    return status;
+  }
+  const versions = Object.fromEntries(embedded.map(name => [name, bundledVersions[name]]));
+  setStatus({ mode: 'bundled', source: 'the copy in the binary', versions, embedded });
+  try {
+    registerRemotes(
+      embedded.map(name => ({ name, entry: embeddedManifestUrlFor(name) })),
+      { force: true },
+    );
+  } catch (error) {
+    console.warn('[federation] the copies could not be registered', error);
+    setStatus({ mode: 'unresolved', source: 'remotes could not be registered', versions: {}, embedded: [] });
+  }
+  return status;
+}
+
+function embeddedManifestUrlFor(remote: string): string {
+  return embeddedManifestUrl(embeddedRoot ?? '', Platform.OS, remote, bundledVersions[remote]);
+}
+
 export function getFederationStatus(): FederationStatus {
   return status;
+}
+
+// --- Every federated load in the host goes through here: the tabs' stacks and the two modules
+// partyApp loads at boot. What makes it different from import() is that it asks the runtime every
+// time. An import() of a remote compiles into a module of the host's own bundle, which keeps the
+// result of the first attempt for the rest of the session, a failed one included; loadRemote has
+// no such module in between, so a retry is a retry.
+//
+// It asks for the module's factory rather than its exports, because the factory is what the
+// evaluation window above wraps: the runtime hands back the plugin's wrapper, and calling it here
+// evaluates the module inside the window, where a module that throws as it is evaluated fails this
+// load instead of ending the app. ---
+export async function loadRemoteModule<T>(id: string): Promise<T | undefined> {
+  const factory = await loadRemote<() => T>(id, { loadFactory: false, from: 'runtime' });
+  return factory ? factory() : undefined;
+}
+
+// --- For the tab boundary. A CDN remote whose load gets past the manifest net and still fails (a
+// container or chunk that did not arrive or did not verify, a manifest that arrived broken, a
+// module that threw as it was evaluated) can drop to its copy, once. In bundled mode it is already
+// on its copy, and in development the dev servers own it. ---
+export function canFallBack(remote: string): boolean {
+  return status.mode === 'cdn' && !fallbackRemotes.has(remote) && hasEmbeddedCopy(remote);
+}
+
+// Drop a remote to its copy and start its next load from nothing, at the copy's manifest.
+export function fallBackAndReload(remote: string): void {
+  if (!isRemoteName(remote) || !hasEmbeddedCopy(remote)) {
+    return;
+  }
+  fallBack(remote);
+  reloadRemote(remote, embeddedManifestUrlFor(remote));
+}
+
+// For Try again: start a remote's next load from nothing, from wherever it is registered now,
+// which the federation runtime is asked rather than told. That covers every mode, development
+// included, where the dev server's URL is known only to the build.
+export function forceReloadRemote(remote: string): void {
+  if (!isRemoteName(remote)) {
+    return;
+  }
+  const registered = getInstance()?.options.remotes.find(entry => entry.name === remote);
+  if (registered && 'entry' in registered) {
+    reloadRemote(remote, registered.entry);
+  }
+}
+
+// --- Make a remote's next load start from nothing. After a load that failed, two records of the
+// remote outlive the failure, and a retry that leaves either behind replays it:
+//
+//   - the federation runtime keeps the remote's entry, the manifest it read and the container it
+//     loaded, and after a failure the failed attempt itself, which it hands back to every later
+//     request. Registering the remote again with force removes all of it, the container's global
+//     included, and points the next load at `entry`.
+//   - the remote's chunk registry keeps every chunk the last container fetched. A new container
+//     installs them all before it fetches anything, so without this a remote dropping to its copy
+//     would run the copy's container over chunks from the CDN. One gap stays open: a chunk the
+//     failed container was still downloading lands in whichever registry exists when it arrives,
+//     and nothing here can cancel the download. When the copy is the version the CDN was serving,
+//     the default, it is the same bytes either way.
+//
+// Re.Pack's script cache is not a third. Once a load settles it keeps no promise to replay, and a
+// download that fails verification is never written to its cache, on either platform. ---
+function reloadRemote(remote: RemoteName, entry: string): void {
+  try {
+    registerRemotes([{ name: remote, entry }], { force: true });
+  } catch (error) {
+    console.warn(`[federation] ${remote} could not be registered again`, error);
+  }
+  delete (globalThis as Record<string, unknown>)[CHUNK_REGISTRY[remote]];
 }

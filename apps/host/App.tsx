@@ -6,13 +6,25 @@ import { Provider } from 'react-redux';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colours, ErrorState, GluestackUIProvider, LoadingState, Toaster } from '@pokedex/ui';
-import { partyStateReady, registerShellNavigateHandler } from '@pokedex/contracts';
+import {
+  type ListStackModule,
+  partyStateReady,
+  type PartyStackModule,
+  registerShellNavigateHandler,
+} from '@pokedex/contracts';
 import { useColorScheme } from 'nativewind';
 
 import { store } from './src/store';
 import { FEDERATION_BANNER_HEIGHT, FederationBanner } from './src/shell/FederationBanner';
 import type { FederationMode } from './src/shell/remoteLocator';
-import { getFederationStatus, initializeFederation } from './src/shell/scriptManager';
+import {
+  canFallBack,
+  fallBackAndReload,
+  forceReloadRemote,
+  getFederationStatus,
+  initializeFederation,
+  loadRemoteModule,
+} from './src/shell/scriptManager';
 import { shellNavigateHandler } from './src/shell/shellNavigation';
 
 // The host fills the contract's navigation slot once, at module scope, before any remote can
@@ -34,54 +46,144 @@ registerShellNavigateHandler(shellNavigateHandler);
 // the shared styling runtime, not state the host owns — which is what makes one toggle repaint
 // three independently shipped bundles at once.
 // A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
-// spinner. The boundary around it exists because a rejected chunk otherwise crashes the shell:
-// React.lazy caches a rejection for good, so retrying means building a fresh lazy component
-// and remounting it, which is exactly what the boundary's Try again does. The tab degrades to
-// the design system's error state; the shell and the other tab keep running.
+// spinner, inside its own boundary. One boundary per tab is what keeps a failure to that tab: a
+// screen that throws while rendering takes down everything up to the nearest boundary, and without
+// one that is the whole navigator.
 //
-// What the error state tells the user depends on where this launch loads remotes from. In
-// development the likely cause is a dev server that is not running. From the CDN there is no dev
-// server: the version could not be downloaded, its signature did not verify, or its code failed as
-// it started, and the boundary cannot tell which, so the message names all three. A relaunch is
-// worth trying because it asks the CDN for the version map again. With no map at all there is no
-// version to load, and only a relaunch asks again.
+// The tab loads its stack with loadRemoteModule, where earlier posts wrote
+// import('listApp/ListStack'). An import() of a remote compiles into a module of the host's own
+// bundle, and the bundle keeps that module for the rest of the session once it has been asked for,
+// a failed one included. After a failed load it keeps the empty module the failure left behind, and
+// every later import() settles with that, even when the retry downloads the remote successfully.
+// loadRemoteModule asks the runtime every time, which is what lets a retry retry, and it evaluates
+// the module where one that throws as it loads fails the load instead of the app.
+//
+// The boundary is the second net. The first, in scriptManager.ts, catches a manifest that fails
+// before any code loads. What reaches the boundary got past it, and it matters which way:
+//
+//   - the load failed: a container or chunk that did not arrive or did not verify, a manifest that
+//     arrived broken, or a module that threw as it was evaluated. The remote never produced a
+//     component. From the CDN, the remote drops to its copy in the binary and the tab loads it
+//     behind the loading state, so the swap is invisible. Only a load with no copy left to try
+//     shows the error state.
+//   - the remote rendered and then threw. Its component is the one the session has now, and a
+//     component that has rendered cannot be swapped out in the middle of a session, so the tab
+//     shows the error state straight away. Try again renders it again, which recovers an error
+//     that does not repeat.
+//
+// Try again has to get past two caches. React.lazy keeps the promise it was given and the result it
+// settled with, a rejection included, so the same lazy component can only ever fail again: a retry
+// needs a new one, remounted under a new key. And after a failed load the federation runtime keeps
+// its own record of the remote, which forceReloadRemote clears first.
+//
+// What the error state says depends on how the tab failed and where this launch loads remotes
+// from. In development the likely cause is a dev server that is not running. From the CDN there is
+// no dev server: the version could not be downloaded, its signature did not verify, or its code
+// failed as it started, and the boundary cannot tell which, so the message names all three. A
+// relaunch is worth trying because it asks the CDN for the version map again. Running from the
+// copies, the CDN was out of reach at launch and a relaunch asks again. With no map and no copy
+// there is no version to load, and only a relaunch asks again.
 const LOAD_FAILURE_MESSAGE: Record<FederationMode, string> = {
   dev: 'The remote did not answer. Check its dev server, then try again.',
   cdn: 'The remote could not be downloaded, verified or started. Try again, or relaunch the app.',
+  bundled: "The app's own copy of this remote could not be loaded. Relaunch the app.",
   unresolved: 'The app could not find out which version of this remote to load. Relaunch the app.',
 };
 
+const RENDER_FAILURE_MESSAGE = 'It loaded, then hit an error. Try again.';
+
+type RemoteModule = { default?: unknown };
+
+// What React can render as a component: a function or a class, or an object React made from one
+// (memo, forwardRef, lazy), which it marks with $$typeof. Checked before React sees the module, so
+// a remote that settles without one fails here, under its own name, rather than as React's
+// "Element type is invalid".
+function isComponent(value: unknown): value is React.ComponentType {
+  return (
+    typeof value === 'function' ||
+    (typeof value === 'object' && value !== null && '$$typeof' in value)
+  );
+}
+
 export class RemoteBoundary extends React.Component<
-  { load: () => Promise<{ default: React.ComponentType }> },
+  { remote: string; load: () => Promise<RemoteModule | null | undefined> },
   { failed: boolean; attempt: number }
 > {
   state = { failed: false, attempt: 0 };
   lazyFor: React.LazyExoticComponent<React.ComponentType> | null = null;
   lazyAttempt = -1;
+  // The last attempt whose load arrived with a component in it. A failure in an attempt that got
+  // that far was thrown by the remote's own code, not by its load.
+  loadedAttempt = -1;
+
   static getDerivedStateFromError() {
     return { failed: true };
   }
+
   componentDidCatch(error: unknown) {
-    console.warn('remote failed to load', error);
+    console.warn(`${this.props.remote} failed`, error);
+    if (this.dropsToCopy()) {
+      fallBackAndReload(this.props.remote);
+      this.nextAttempt();
+    }
   }
-  retry = () => this.setState(({ attempt }) => ({ failed: false, attempt: attempt + 1 }));
+
+  retry = () => {
+    // A remote whose code loaded is rendered again as it is; one whose load failed is cleared
+    // first, or the runtime would hand the same failure back.
+    if (!this.loaded()) {
+      forceReloadRemote(this.props.remote);
+    }
+    this.nextAttempt();
+  };
+
+  loaded() {
+    return this.loadedAttempt === this.state.attempt;
+  }
+
+  // A failure the copy in the binary can answer: the load failed, so the remote never produced a
+  // component, and this remote has a copy it has not dropped to yet.
+  dropsToCopy() {
+    return !this.loaded() && canFallBack(this.props.remote);
+  }
+
+  nextAttempt() {
+    this.setState(({ attempt }) => ({ failed: false, attempt: attempt + 1 }));
+  }
+
   render() {
+    const { remote, load } = this.props;
     if (this.state.failed) {
+      // Rendered once between the catch and componentDidCatch, where the swap has been decided but
+      // has not run yet, so the error state never flashes up before an invisible reload.
+      if (this.dropsToCopy()) {
+        return <LoadingState />;
+      }
+      const loaded = this.loaded();
       return (
         <ErrorState
-          title="This tab could not load"
-          message={LOAD_FAILURE_MESSAGE[getFederationStatus().mode]}
+          title={loaded ? 'This tab stopped working' : 'This tab could not load'}
+          message={loaded ? RENDER_FAILURE_MESSAGE : LOAD_FAILURE_MESSAGE[getFederationStatus().mode]}
           onRetry={this.retry}
           retryLabel="Try again"
         />
       );
     }
-    // Keyed by attempt: a new key discards the lazy component whose rejection React cached
-    // and starts a fresh import. The lazy component itself is cached per attempt, because a
-    // fresh one on every render would remount the tab each time the shell re-renders.
+    // Keyed by attempt: a new key discards the lazy component whose rejection React cached and
+    // starts a fresh load. The lazy component itself is kept per attempt, because a fresh one on
+    // every render would remount the tab each time the shell re-renders.
     if (!this.lazyFor || this.lazyAttempt !== this.state.attempt) {
-      this.lazyFor = React.lazy(this.props.load);
-      this.lazyAttempt = this.state.attempt;
+      const attempt = this.state.attempt;
+      this.lazyFor = React.lazy(async () => {
+        const module = await load();
+        const component = module?.default;
+        if (!isComponent(component)) {
+          throw new Error(`${remote} loaded without a component to render`);
+        }
+        this.loadedAttempt = attempt;
+        return { default: component };
+      });
+      this.lazyAttempt = attempt;
     }
     const Remote = this.lazyFor;
     return (
@@ -92,8 +194,18 @@ export class RemoteBoundary extends React.Component<
   }
 }
 
-const PokedexTab = () => <RemoteBoundary load={() => import('listApp/ListStack')} />;
-const PartyTab = () => <RemoteBoundary load={() => import('partyApp/PartyStack')} />;
+const PokedexTab = () => (
+  <RemoteBoundary
+    remote="listApp"
+    load={() => loadRemoteModule<{ default: ListStackModule }>('listApp/ListStack')}
+  />
+);
+const PartyTab = () => (
+  <RemoteBoundary
+    remote="partyApp"
+    load={() => loadRemoteModule<{ default: PartyStackModule }>('partyApp/PartyStack')}
+  />
+);
 
 // The branded splash as the app's own first frame: the launch storyboard carries the same
 // field and ball, but this overlay guarantees the mark shows on every runtime, then fades.
@@ -292,7 +404,7 @@ export default function App() {
   }, []);
 
   // Screens load on demand; state modules load at boot — where boot now means the moment the
-  // gate above opens, because this import is a federated load like any other. Importing
+  // gate above opens, because this is a federated load like any other. Loading
   // partyApp/partySlice runs the module that injects the party's reducer into the shared store,
   // even if the user never opens the Party tab. The host triggers the load and knows nothing
   // about what is inside.
@@ -306,7 +418,7 @@ export default function App() {
   // disabled; a tap can never dispatch into a store with no reducer for it.
   //
   // It sits in an effect rather than at module scope for an observed reason, not a traced one:
-  // at module scope this import produced React's update-on-an-unmounted-component warning on
+  // at module scope this load produced React's update-on-an-unmounted-component warning on
   // some cold starts, and in an effect it does not. What creates that update is not established
   // (inject() notifies nobody on its own), so this placement is the arrangement that made the
   // warning stop, and an effect is where a side effect belongs anyway.
@@ -320,8 +432,10 @@ export default function App() {
     if (!federationReady) {
       return;
     }
-    import('partyApp/styles').catch(err => console.warn('party styles failed to load', err));
-    import('partyApp/partySlice')
+    loadRemoteModule('partyApp/styles').catch(err =>
+      console.warn('party styles failed to load', err),
+    );
+    loadRemoteModule('partyApp/partySlice')
       .then(() => store.dispatch(partyStateReady()))
       .catch(err => console.warn('party state module failed to load', err));
   }, [federationReady]);

@@ -165,3 +165,33 @@ tasks.configureEach {
         inputs.property("MF_APP_VERSION", System.getenv("MF_APP_VERSION") ?: "")
     }
 }
+
+// --- The copy in the binary, Android's half. build-cdn stages each remote's embedded version under
+// embed-root/android, and this task mirrors that tree into the APK's assets at cdn/android, where
+// EmbeddedRemotesModule copies it out at launch. Sync rather than Copy, so a file an earlier build
+// embedded and this one does not is removed instead of shipped.
+//
+// With embed-root missing it warns, embeds nothing, and the build still succeeds. That is the trap:
+// a green release build that carries no copies. Run build-cdn before a release build. ---
+def embedSource = file("$rootDir/../../../embed-root/android")
+def embeddedAssetsDir = layout.buildDirectory.dir("generated/embedded-remotes").get().asFile
+
+def embedRemotes = tasks.register('embedRemotes', Sync) {
+    from(embedSource) { include '**/*.bundle' }
+    into(file("$embeddedAssetsDir/cdn/android"))
+    doFirst {
+        if (!embedSource.exists()) {
+            logger.warn("warning: ${embedSource} does not exist, so no remotes are embedded. Run 'node tools/build-cdn.mjs' before a release build.")
+        }
+    }
+}
+
+android {
+    sourceSets {
+        main {
+            assets.srcDirs += embeddedAssetsDir
+        }
+    }
+}
+
+tasks.named('preBuild').configure { dependsOn embedRemotes }

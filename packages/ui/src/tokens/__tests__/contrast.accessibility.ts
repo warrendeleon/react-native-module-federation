@@ -307,6 +307,10 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the federation chrome', () => {
     expectColorContrast(colours.white, colours.blueText);
   });
 
+  test('the banner line on the bundled-mode fill', () => {
+    expectColorContrast(colours.white, colours.purple);
+  });
+
   // The Pokédex header's version chip, beside the party counter and painting the same pill: the
   // neutral surface in light, and in dark the translucent white the counter uses, composited over
   // the screen's navy. The light half is colours.darkGrey on colours.offGrey, already measured

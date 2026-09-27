@@ -1,35 +1,38 @@
 // --- Why this file exists.
 //
-// When a remote's chunk fails to load (a signature that does not verify, a version that is not
-// on the CDN), three things happen, in this order. Webpack's remote runtime records the error and
-// replaces the module's factory with one that throws. Re.Pack's guarded require, which Re.Pack
-// puts in the runtime of every bundle it builds, catches that throw, reports the error to React
-// Native's global error handler as fatal, and returns nothing. Only then does the tab's import
-// settle, without a component: React.lazy fails with "Element type is invalid ... resolves to:
-// undefined", and RemoteBoundary catches that render error and shows the design system's error
-// state. One tab is dead, the shell and the other tab carry on.
+// When a federated module the host imports with import() fails to load (a signature that does not
+// verify, a version that is not on the CDN), three things happen, in this order. Webpack's remote
+// runtime records the error and replaces the module's factory with one that throws. Re.Pack's
+// guarded require, which Re.Pack puts in the runtime of every bundle it builds, catches that
+// throw, reports the error to React Native's global error handler as fatal, and returns nothing.
+// Only then does the import settle, without the module.
 //
-// The fatal report comes first, before React has tried to render the tab. In a development build
-// it is a red box over a working app. In a release build it ends the process: verification doing
-// its job, or a mistyped version in the map, takes the whole app down before the boundary gets
-// its turn. Measured on iOS Release builds with a tampered chunk and with a version the CDN does
-// not hold, and on an Android release build with a version the CDN does not hold.
+// The fatal report comes first, before anything that asked for the module has heard back. In a
+// development build it is a red box over a working app. In a release build it ends the process:
+// verification doing its job, or a mistyped version in the map, takes the whole app down before
+// the code that would have handled the failure gets its turn. Measured on iOS Release builds with
+// a tampered chunk and with a version the CDN does not hold, and on an Android release build with a
+// version the CDN does not hold, when the tabs still loaded their stacks with import().
 //
 // So the host logs that one report and drops it. The guard does not handle the failure: it keeps
-// the process alive, so RemoteBoundary can handle the render failure that follows from it.
+// the process alive, so the code that asked for the module can handle what follows from it.
 //
-// Dropping the report is safe only because every federated import in this host is either behind
-// RemoteBoundary or carries its own catch (the boot imports in App.tsx). A new federated import
-// added without one would have its failure logged here and otherwise go unseen.
+// Since the fallback post the host no longer imports a remote module with import() at all. Every
+// federated load goes through loadRemoteModule in scriptManager.ts (App.tsx says why), and a load
+// that fails there rejects like any other promise, with no report to the global handler. The
+// matcher stays for any import() added later. Dropping its report is safe only while every such
+// import carries its own catch: one added without a catch would have its failure logged here and
+// otherwise go unseen.
 //
-// There is a second shape of fatal report. A remote whose code downloads and verifies, and then
-// throws while its modules are being evaluated (a module that throws at its top level, or one that
-// calls, as it loads, something the host's copy of a shared library does not have), fails inside
+// There is a second shape of fatal report, which this file now holds back as well. A remote whose
+// code throws while it is being evaluated (a module that throws at its top level, or one that
+// calls, as it loads, something the host's copy of a shared library does not have) fails inside
 // Re.Pack's guarded require too: the remote's container is a bundle Re.Pack built, so the
-// outermost require in it is guarded as well. That report is fatal, and it carries no suffix,
-// because as far as the remote runtime is concerned the load succeeded. Measured on an iOS Release
-// build with a list version that throws at the top of one of its modules: with only the matcher
-// below, the app ended at launch. evaluateRemoteModule, further down, is what catches it.
+// outermost require in it is guarded as well. The report is fatal, the require returns nothing,
+// and no suffix marks it, because as far as the remote runtime is concerned the load succeeded.
+// Measured on an iOS Release build with a list version that throws at the top of one of its
+// modules: with only the matcher below, the app ended at launch. What marks this report is when it
+// happens, which is what evaluateRemoteModule, below, is for.
 //
 // Everything that is neither of these two shapes is passed to the handler that was there before,
 // unchanged. ---
@@ -46,7 +49,7 @@
 // Matching the suffix rather than the error itself is deliberate, because there is more than one
 // error. A chunk whose signature does not verify arrives as a ChunkLoadError; a version that is
 // not on the CDN arrives as `[ Federation Runtime ]: Failed to get manifest. #RUNTIME-003`. Both
-// carry the suffix, both end with the tab showing its error state, and a guard written around
+// carry the suffix, both are handled by whatever asked for the module, and a guard written around
 // either one of them would have let the other kill the app.
 //
 // The container half is not inspected for the same reason. In a development build it reads
@@ -57,8 +60,8 @@ const HANDLED_BY_REMOTE_RUNTIME = /\nwhile loading "[^"\n]+" from \S+$/;
 
 /**
  * Whether an error is a federated module failure that webpack's remote runtime has recorded and
- * turned into a module that throws. The import that asked for it settles without a component, and
- * RemoteBoundary shows the tab's error state when React renders it.
+ * turned into a module that throws. The import() that asked for it settles without the module, and
+ * its own catch deals with that.
  */
 export function isHandledRemoteLoadError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) {
@@ -69,21 +72,21 @@ export function isHandledRemoteLoadError(error: unknown): boolean {
 }
 
 // --- A remote module evaluated where its failure can be caught. For every remote module the host
-// imports, the runtime plugin in scriptManager.ts hands the module's factory to
-// evaluateRemoteModule before anything runs it. That works because an import() asks the runtime
-// for the factory unexecuted, with loadFactory: false. While the factory runs, a fatal report is
-// that module's own: the guard holds it instead of passing it on, and once the factory returns,
-// the error is thrown from here, so the import that asked for the module fails like any other
-// failed load.
+// loads, the runtime plugin in scriptManager.ts hands the module's factory to evaluateRemoteModule
+// before anything runs it. That works because loadRemoteModule asks the runtime for the factory
+// unexecuted, with loadFactory: false. While the factory runs, a fatal report is that module's
+// own: the guard holds it instead of passing it on, and once the factory returns, the error is
+// thrown from here, so the load that asked for the module fails like any other failed load.
 //
 // The window is exact because evaluation is synchronous: nothing else can run between opening it
 // and closing it. Only fatal reports are held; a non-fatal one passes through as it always did.
 //
-// The error thrown from here then reaches the host's own guarded require, which reports it as
-// fatal a second time, outside the window. So every error thrown from here is remembered, and the
-// guard drops that second report the way it drops the suffix. Both records live on the global
-// object, under names every evaluation of this file knows, for the same Fast Refresh reason as
-// the wrapped handler below. ---
+// Through loadRemoteModule the error thrown from here rejects the load and reaches no handler.
+// Through an import() it would reach the host's own guarded require, which reports it as fatal a
+// second time, outside the window, so every error thrown from here is remembered, and the guard
+// drops that second report the way it drops the suffix. Both records live on the global object,
+// under names every evaluation of this file knows, for the same Fast Refresh reason as the
+// wrapped handler below. ---
 const EVALUATING = '__federationEvaluating';
 const THROWN = '__federationEvaluationErrors';
 type Evaluation = { failure?: { error: unknown } };
@@ -167,16 +170,16 @@ export function guardHandledRemoteLoadErrors(): void {
     if (evaluation && isFatal) {
       evaluation.failure ??= { error };
       console.warn(
-        '[federation] a remote module threw while it was evaluated; the import that asked for it settles without it',
+        '[federation] a remote module threw while it was evaluated; the load that asked for it fails instead',
         error,
       );
       return;
     }
     if (isHandledRemoteLoadError(error) || isThrownFromEvaluation(error)) {
-      // Logged, not swallowed: the reason behind a tab's error state belongs in the console of
-      // whoever is looking at it.
+      // Logged, not swallowed: the reason a module is missing belongs in the console of whoever
+      // is looking at it.
       console.warn(
-        '[federation] a remote failed to load; its tab will show the error state',
+        '[federation] a remote module failed to load; the import that asked for it handles it',
         error,
       );
       return;

@@ -5,6 +5,7 @@ import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
+import com.host.specs.NativeEmbeddedRemotesModuleSpec
 import com.host.specs.NativeShellNavigationModuleSpec
 
 // --- Registration. iOS gets this for free from RCT_EXPORT_MODULE and autolinking; Android wants
@@ -20,6 +21,7 @@ class HostNativePackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? =
     when (name) {
       NativeShellNavigationModuleSpec.NAME -> ShellNavigationModule(reactContext)
+      NativeEmbeddedRemotesModuleSpec.NAME -> EmbeddedRemotesModule(reactContext)
       else -> null
     }
 
@@ -33,7 +35,16 @@ class HostNativePackage : BaseReactPackage() {
           false, // needsEagerInit
           false, // isCxxModule
           true, // isTurboModule
-        )
+        ),
+      NativeEmbeddedRemotesModuleSpec.NAME to
+        ReactModuleInfo(
+          NativeEmbeddedRemotesModuleSpec.NAME,
+          EmbeddedRemotesModule::class.java.name,
+          false, // canOverrideExistingModule
+          false, // needsEagerInit
+          false, // isCxxModule
+          true, // isTurboModule
+        ),
     )
   }
 }

@@ -3,16 +3,22 @@
 //
 // In development nothing here has an opinion: the dev servers own resolution and every function
 // defers. In CDN mode the host has already been told, by the version map it fetched at launch,
-// which version of each remote this binary may run. From that one fact each script — a remote's
-// container, or any chunk that container later asks for — resolves to a URL inside that version's
-// directory, with signature verification switched on. ---
+// which version of each remote this binary may run. From that one fact each script (a remote's
+// container, or any chunk that container later asks for) resolves to a URL inside that version's
+// directory, with signature verification switched on.
+//
+// The binary also carries a copy of each remote, baked in at build time. A script is served from
+// that copy when the whole launch is running without the CDN (bundled mode), or when that one
+// remote has already failed from the CDN this session and fallen back. ---
 
-export type FederationMode = 'dev' | 'cdn' | 'unresolved';
+export type FederationMode = 'dev' | 'cdn' | 'bundled' | 'unresolved';
 export type VerifyMode = 'strict' | 'off';
 
 export interface RemoteLocator {
   url: string;
   cache: boolean;
+  /** Set for a file:// URL, which Re.Pack must load as it is rather than resolve against the app. */
+  absolute?: boolean;
   verifyScriptSignature: VerifyMode;
 }
 
@@ -31,6 +37,12 @@ export interface ResolveInput {
   mode: FederationMode;
   /** remote -> version, as the version map pinned it for this launch. */
   versions: Record<string, string>;
+  /** remote -> version of the copy baked into this binary. */
+  bundledVersions: Record<string, string>;
+  /** Remotes that failed from the CDN this session and now load from the baked-in copy. */
+  fallbackRemotes: ReadonlySet<string>;
+  /** The directory the baked-in copies sit under on the device; undefined when there is none. */
+  embeddedRoot: string | undefined;
   platform: string;
   cdnBase: string;
   verify: VerifyMode;
@@ -71,6 +83,13 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
   if (!remoteName) {
     return { kind: 'defer' };
   }
+  const filename =
+    input.scriptId === remoteName
+      ? `${remoteName}.container.js.bundle`
+      : `${input.scriptId}.chunk.bundle`;
+  if (input.mode === 'bundled' || input.fallbackRemotes.has(remoteName)) {
+    return locateEmbedded(input, remoteName, filename);
+  }
   const version = input.mode === 'cdn' ? input.versions[remoteName] : undefined;
   if (!version) {
     return {
@@ -81,10 +100,6 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
           : `no version map was read at launch, so ${remoteName} has no version to load`,
     };
   }
-  const filename =
-    input.scriptId === remoteName
-      ? `${remoteName}.container.js.bundle`
-      : `${input.scriptId}.chunk.bundle`;
   return {
     kind: 'locate',
     locator: {
@@ -97,10 +112,55 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
   };
 }
 
+// --- A script from the copy baked into the binary.
+//
+// The URL is an absolute file:// path, for a reason that is easy to miss. Re.Pack can also look a
+// relative path up inside the app, and on iOS that lookup goes through the app bundle's resource
+// search. There, .bundle is a package extension: a directory the system treats as a single item.
+// Every chunk here is a flat file ending in .bundle, and in practice the search does not find it
+// and does not say so. An absolute path skips the search.
+//
+// Verification stays on. The copy is the same signed bytes the CDN serves, and Re.Pack checks a
+// file on disk exactly as it checks a download, which is also why the copy is never rewritten on
+// its way into the app. A binary with no copy of this remote, or nowhere to read one from, is
+// refused rather than deferred, for the same reason as above: deferring loads it unverified. ---
+function locateEmbedded(
+  input: ResolveInput,
+  remoteName: string,
+  filename: string,
+): Resolution {
+  const version = input.bundledVersions[remoteName];
+  if (!version) {
+    return {
+      kind: 'refuse',
+      reason: `this binary carries no copy of ${remoteName}`,
+    };
+  }
+  if (!input.embeddedRoot) {
+    return {
+      kind: 'refuse',
+      reason: `the copy of ${remoteName} has no directory to load from on this build`,
+    };
+  }
+  return {
+    kind: 'locate',
+    locator: {
+      url: `file://${input.embeddedRoot}/cdn/${input.platform}/${remoteName}/${version}/${filename}`,
+      cache: true,
+      absolute: true,
+      verifyScriptSignature: input.verify,
+    },
+  };
+}
+
 // --- Where this binary asks what it may run. The app version is in the path rather than a query
 // string so that every answer is a plain file a static server can hold, and so a proxy or CDN
 // treats two app versions as two resources. ---
-export function versionMapUrl(cdnBase: string, platform: string, appVersion: string): string {
+export function versionMapUrl(
+  cdnBase: string,
+  platform: string,
+  appVersion: string,
+): string {
   return `${cdnBase}/${platform}/maps/${appVersion}/version-map.json`;
 }
 
@@ -112,6 +172,33 @@ export function remoteManifestUrl(
   version: string,
 ): string {
   return `${cdnBase}/${platform}/${remoteName}/${version}/mf-manifest.json`;
+}
+
+// --- The manifest URL a remote is registered at when it runs from the copy in the binary. No file
+// is read at this path: React Native's fetch cannot open file:// URLs, so the manifest itself is
+// compiled into the host and handed to the federation runtime in memory. The URL is still worth
+// registering, because it names the remote, the version and where the code comes from, in the one
+// place the runtime reads. ---
+export function embeddedManifestUrl(
+  embeddedRoot: string,
+  platform: string,
+  remoteName: string,
+  version: string,
+): string {
+  return `file://${embeddedRoot}/cdn/${platform}/${remoteName}/${version}/mf-manifest.json`;
+}
+
+// --- Which of this host's remotes a manifest URL belongs to, or undefined for any other request.
+// Every manifest the host registers, on the CDN or in the binary, sits inside a directory named
+// after its remote. ---
+export function manifestRemote(
+  url: string,
+  remoteNames: readonly string[],
+): string | undefined {
+  if (!url.endsWith('/mf-manifest.json')) {
+    return undefined;
+  }
+  return remoteNames.find(name => url.includes(`/${name}/`));
 }
 
 // --- What a version is allowed to look like. Every version in the map becomes a path segment in

@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colours } from '@pokedex/ui';
 
 import type { FederationMode } from './remoteLocator';
-import { getFederationStatus } from './scriptManager';
+import { getFederationStatus, subscribeFederationStatus } from './scriptManager';
 
 // --- One line saying where this launch's code came from. It exists because the difference
 // between a remote loaded from a dev server and the same remote loaded from a CDN is otherwise
@@ -12,31 +12,45 @@ import { getFederationStatus } from './scriptManager';
 // also what makes a demo of it unprovable. The line makes the mode and the resolved versions
 // something you can photograph.
 //
+// It follows the status as it changes, not only as it was at launch: a remote that drops to its
+// copy in the binary mid-session is marked on the line the moment it does.
+//
 // Host operational chrome rather than part of the design system, so it is plain React Native with
 // its own stylesheet. It still takes its colours from the shared tokens, because a surface with
 // text on it has to clear the same contrast bar as everything else: each fill below carries white
-// text, and all three pairs are measured in the design system's contrast matrix, which is where
-// every token pairing in this federation is measured. ---
+// text, and every pair is measured in the design system's contrast matrix, which is where every
+// token pairing in this federation is measured. ---
 
 export const FEDERATION_BANNER_HEIGHT = 26;
 
 // The bottom tab bar's own height, the same number the toaster is floated clear of.
 const TAB_BAR_HEIGHT = 49;
 
-// dev is the neutral state, cdn is the one the operational layer exists for, and unresolved is a
-// failure: no version map, so no remote can load at all.
+// dev is the neutral state, cdn is the one the operational layer exists for, bundled is the app
+// running on its own copies with the CDN out of reach, and unresolved is a failure: no version
+// map and no copy, so no remote can load at all.
 const MODE_FILL: Record<FederationMode, string> = {
   dev: colours.darkGrey,
   cdn: colours.blueText,
+  bundled: colours.purple,
   unresolved: colours.red,
 };
 
 export function FederationBanner() {
   const insets = useSafeAreaInsets();
-  const { mode, source, versions } = getFederationStatus();
+  const { mode, source, versions, embedded } = useSyncExternalStore(
+    subscribeFederationStatus,
+    getFederationStatus,
+  );
 
   const names = Object.keys(versions).sort();
-  const pairs = names.map(name => `${name} ${versions[name]}`);
+  // In bundled mode every remote runs from its copy and the mode already says so. In a CDN launch
+  // a remote that dropped to its copy is the exception, so it is the one that gets marked.
+  const pairs = names.map(name =>
+    mode === 'cdn' && embedded.includes(name)
+      ? `${name} ${versions[name]} embedded`
+      : `${name} ${versions[name]}`,
+  );
   const detail = pairs.length > 0 ? pairs.join(' · ') : source;
   // Spoken separately from what is drawn. The middle dot is a visual separator: a screen reader
   // announces it as a word, as a pause, or not at all, none of which is the sentence intended.

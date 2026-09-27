@@ -32,3 +32,6 @@ apps/*/android/local.properties
 # Misc
 .DS_Store
 *.log
+
+# The copies build-cdn stages for the native embed phases.
+embed-root/

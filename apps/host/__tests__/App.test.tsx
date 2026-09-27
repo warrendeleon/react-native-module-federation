@@ -9,11 +9,11 @@ import App from '../App';
 import { getFederationStatus, initializeFederation } from '../src/shell/scriptManager';
 import { store } from '../src/store';
 
-// The federated partyApp/partySlice specifier resolves to the mock in __mocks__, which
+// The runtime's stand-in serves partyApp/partySlice from the mock in __mocks__, which
 // performs the real module's side effect: injecting the party reducer. That lets this
-// test prove the whole boot sequence rather than swallowing a failed import.
+// test prove the whole boot sequence rather than swallowing a failed load.
 //
-// The sequence gained a step in the version-map post: nothing federated is imported until
+// The sequence gained a step in the version-map post: nothing federated is loaded until
 // initializeFederation has settled, so the state module's load now waits behind the boot gate.
 // That is why the render is flushed twice below — the first pass opens the gate and mounts the
 // shell, the second runs the shell's own effect. A single pass would leave the slice missing,
@@ -25,8 +25,8 @@ test('boot readiness: the gate opens, the state module loads, the marker surface
   });
   await ReactTestRenderer.act(async () => {});
 
-  // The boot effect's then-chain has run: import resolved, reducer injected,
-  // partyStateReady dispatched, so the slice is surfaced in state. If the import
+  // The boot effect's then-chain has run: load resolved, reducer injected,
+  // partyStateReady dispatched, so the slice is surfaced in state. If the load
   // had failed and been caught, state.party would still be undefined and this
   // test would say so instead of passing silently.
   expect((store.getState() as PartySliceShape).party).toEqual({ members: [] });
@@ -42,7 +42,7 @@ test('boot readiness: the gate opens, the state module loads, the marker surface
 // only as the previous test failing for an unrelated-looking reason.
 test('the boot gate settles on dev mode when no CDN is configured', async () => {
   const status = await initializeFederation();
-  expect(status).toEqual({ mode: 'dev', source: 'dev servers', versions: {} });
+  expect(status).toEqual({ mode: 'dev', source: 'dev servers', versions: {}, embedded: [] });
   expect(getFederationStatus()).toBe(status);
 });
 
