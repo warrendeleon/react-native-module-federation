@@ -51,7 +51,7 @@ test('a dead remote degrades to the error state and Try again recovers with a fr
 // users run; the refused chunk and the missing version both land here.
 test.each([
   ['dev', /dev server/],
-  ['cdn', /downloaded or verified/],
+  ['cdn', /downloaded, verified or started/],
   ['unresolved', /which version/],
 ] as const)('in %s mode the error state says what to try there', async (mode, advice) => {
   const status = jest

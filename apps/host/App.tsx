@@ -41,12 +41,13 @@ registerShellNavigateHandler(shellNavigateHandler);
 //
 // What the error state tells the user depends on where this launch loads remotes from. In
 // development the likely cause is a dev server that is not running. From the CDN there is no dev
-// server: the version could not be downloaded, or its signature did not verify, and a relaunch is
+// server: the version could not be downloaded, its signature did not verify, or its code failed as
+// it started, and the boundary cannot tell which, so the message names all three. A relaunch is
 // worth trying because it asks the CDN for the version map again. With no map at all there is no
 // version to load, and only a relaunch asks again.
 const LOAD_FAILURE_MESSAGE: Record<FederationMode, string> = {
   dev: 'The remote did not answer. Check its dev server, then try again.',
-  cdn: 'The remote could not be downloaded or verified. Try again, or relaunch the app.',
+  cdn: 'The remote could not be downloaded, verified or started. Try again, or relaunch the app.',
   unresolved: 'The app could not find out which version of this remote to load. Relaunch the app.',
 };
 

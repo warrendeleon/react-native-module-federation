@@ -17,8 +17,6 @@
 //
 // So the host logs that one report and drops it. The guard does not handle the failure: it keeps
 // the process alive, so RemoteBoundary can handle the render failure that follows from it.
-// Everything that is not this exact shape is passed to the handler that was there before,
-// unchanged.
 //
 // Dropping the report is safe only because every federated import in this host is either behind
 // RemoteBoundary or carries its own catch (the boot imports in App.tsx). A new federated import
@@ -31,7 +29,10 @@
 // outermost require in it is guarded as well. That report is fatal, and it carries no suffix,
 // because as far as the remote runtime is concerned the load succeeded. Measured on an iOS Release
 // build with a list version that throws at the top of one of its modules: with only the matcher
-// below, the app ended at launch. evaluateRemoteModule, further down, is what catches it. ---
+// below, the app ended at launch. evaluateRemoteModule, further down, is what catches it.
+//
+// Everything that is neither of these two shapes is passed to the handler that was there before,
+// unchanged. ---
 
 // --- What identifies an error the federation layer has already dealt with.
 //
