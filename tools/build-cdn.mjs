@@ -201,11 +201,12 @@ for (const platform of ALL_PLATFORMS) {
     const published = join(cdnDir, remote, version);
     const embedded = join(embedDir, remote, version);
     mkdirSync(embedded, { recursive: true });
-    // Every script the federation loads sits at the top of the version directory: the container
-    // and its chunks. index.bundle is the remote's own app, for running it on its own, and the
-    // host never loads it.
+    // Every script of the version sits at the top of its directory, and the copy is all of them,
+    // byte for byte: the container, its chunks, and index.bundle, which the manifest names among
+    // the shared modules' assets. The assets/ folder beside them holds images the host's shared
+    // copies of those libraries already carry.
     for (const file of readdirSync(published)) {
-      if (file.endsWith('.bundle') && file !== 'index.bundle') {
+      if (file.endsWith('.bundle')) {
         copyFileSync(join(published, file), join(embedded, file));
       }
     }
