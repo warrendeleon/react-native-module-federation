@@ -22,7 +22,16 @@
 //
 // Dropping the report is safe only because every federated import in this host is either behind
 // RemoteBoundary or carries its own catch (the boot imports in App.tsx). A new federated import
-// added without one would have its failure logged here and otherwise go unseen. ---
+// added without one would have its failure logged here and otherwise go unseen.
+//
+// There is a second shape of fatal report. A remote whose code downloads and verifies, and then
+// throws while its modules are being evaluated (a module that throws at its top level, or one that
+// calls, as it loads, something the host's copy of a shared library does not have), fails inside
+// Re.Pack's guarded require too: the remote's container is a bundle Re.Pack built, so the
+// outermost require in it is guarded as well. That report is fatal, and it carries no suffix,
+// because as far as the remote runtime is concerned the load succeeded. Measured on an iOS Release
+// build with a list version that throws at the top of one of its modules: with only the matcher
+// below, the app ended at launch. evaluateRemoteModule, further down, is what catches it. ---
 
 // --- What identifies an error the federation layer has already dealt with.
 //
@@ -58,6 +67,73 @@ export function isHandledRemoteLoadError(error: unknown): boolean {
   return typeof message === 'string' && HANDLED_BY_REMOTE_RUNTIME.test(message);
 }
 
+// --- A remote module evaluated where its failure can be caught. The runtime plugin in
+// scriptManager.ts hands every remote module's factory to evaluateRemoteModule before anything
+// runs it. While the factory runs, a fatal report is that module's own: the guard holds it
+// instead of passing it on, and once the factory returns, the error is thrown from here, so the
+// import that asked for the module fails like any other failed load.
+//
+// The window is exact because evaluation is synchronous: nothing else can run between opening it
+// and closing it. Only fatal reports are held; a non-fatal one passes through as it always did.
+//
+// The error thrown from here then reaches the host's own guarded require, which reports it as
+// fatal a second time, outside the window. So every error thrown from here is remembered, and the
+// guard drops that second report the way it drops the suffix. Both records live on the global
+// object, under names every evaluation of this file knows, for the same Fast Refresh reason as
+// the wrapped handler below. ---
+const EVALUATING = '__federationEvaluating';
+const THROWN = '__federationEvaluationErrors';
+type Evaluation = { failure?: { error: unknown } };
+
+function store(): Record<string, unknown> {
+  return globalThis as unknown as Record<string, unknown>;
+}
+
+function thrownFromEvaluation(): WeakSet<object> {
+  const globals = store();
+  if (!(globals[THROWN] instanceof WeakSet)) {
+    globals[THROWN] = new WeakSet<object>();
+  }
+  return globals[THROWN] as WeakSet<object>;
+}
+
+// Remembered as an object, because a WeakSet holds nothing else: a module that throws a string is
+// failed with an Error that carries it.
+function remember(error: unknown): object {
+  const thrown = typeof error === 'object' && error !== null ? error : new Error(String(error));
+  thrownFromEvaluation().add(thrown);
+  return thrown;
+}
+
+/**
+ * Runs a remote module's factory, and throws the error of any fatal report raised while it runs.
+ * The first report is the one thrown: it is the cause, and anything after it followed from it.
+ */
+export function evaluateRemoteModule<T>(factory: () => T): T {
+  const globals = store();
+  const outer = globals[EVALUATING];
+  const evaluation: Evaluation = {};
+  globals[EVALUATING] = evaluation;
+  try {
+    let exports: T;
+    try {
+      exports = factory();
+    } catch (error) {
+      throw remember(error);
+    }
+    if (evaluation.failure) {
+      throw remember(evaluation.failure.error);
+    }
+    return exports;
+  } finally {
+    globals[EVALUATING] = outer;
+  }
+}
+
+function isThrownFromEvaluation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && thrownFromEvaluation().has(error);
+}
+
 type GlobalErrorHandler = (error: unknown, isFatal?: boolean) => void;
 type ErrorUtilsShape = {
   getGlobalHandler: () => GlobalErrorHandler;
@@ -84,7 +160,16 @@ export function guardHandledRemoteLoadErrors(): void {
   const current: GuardHandler = errorUtils.getGlobalHandler();
   const previous = current[WRAPPED] ?? current;
   const guard: GuardHandler = (error, isFatal) => {
-    if (isHandledRemoteLoadError(error)) {
+    const evaluation = store()[EVALUATING] as Evaluation | undefined;
+    if (evaluation && isFatal) {
+      evaluation.failure ??= { error };
+      console.warn(
+        '[federation] a remote module threw while it was evaluated; the import that asked for it settles without it',
+        error,
+      );
+      return;
+    }
+    if (isHandledRemoteLoadError(error) || isThrownFromEvaluation(error)) {
       // Logged, not swallowed: the reason behind a tab's error state belongs in the console of
       // whoever is looking at it.
       console.warn(

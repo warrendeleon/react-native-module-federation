@@ -8,6 +8,7 @@
 // its initialisation for the life of the process.
 
 type Recorder = {
+  __plugins: { name: string; onLoad: (args: { exposeModuleFactory?: unknown }) => unknown }[];
   __resolvers: [unknown, { key?: string; priority?: number }][];
   __calls: { remotes: { name: string; entry: string }[]; options?: { force?: boolean } }[];
 };
@@ -164,5 +165,36 @@ describe('the launch probe', () => {
     const status = await initializeFederation();
     expect(status.mode).toBe('dev');
     expect(runtime.__calls).toHaveLength(0);
+  });
+});
+
+// --- Every remote module the host imports is evaluated inside the error guard's window. The
+// runtime hands each module's factory to the plugins' onLoad hook, and a function returned from
+// it replaces the factory, so the plugin is asked directly here, the way the runtime asks it. ---
+describe('the evaluation window the host installs', () => {
+  const theWindow = (runtime: Recorder) =>
+    runtime.__plugins.find(plugin => plugin.name === 'evaluation-window')!;
+
+  test('wraps a module factory, and the wrapper hands back what the module exports', () => {
+    const { runtime } = loadFederation(CDN_BASE, '2.0.0');
+    const exports = { default: () => null };
+    const wrapped = theWindow(runtime).onLoad({ exposeModuleFactory: () => exports });
+    expect(typeof wrapped).toBe('function');
+    expect((wrapped as () => unknown)()).toBe(exports);
+  });
+
+  test('fails the import when the module throws as it is evaluated', () => {
+    const { runtime } = loadFederation(CDN_BASE, '2.0.0');
+    const wrapped = theWindow(runtime).onLoad({
+      exposeModuleFactory: () => {
+        throw new Error('PokedexScreen failed to initialise');
+      },
+    }) as () => unknown;
+    expect(wrapped).toThrow('PokedexScreen failed to initialise');
+  });
+
+  test('leaves a load that already has its exports alone', () => {
+    const { runtime } = loadFederation(CDN_BASE, '2.0.0');
+    expect(theWindow(runtime).onLoad({ exposeModuleFactory: undefined })).toBeUndefined();
   });
 });

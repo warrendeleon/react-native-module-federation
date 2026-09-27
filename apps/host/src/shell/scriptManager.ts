@@ -1,8 +1,12 @@
 import { Platform } from 'react-native';
 import { ScriptManager } from '@callstack/repack/client';
-import { registerRemotes } from '@module-federation/runtime';
+import {
+  type ModuleFederationRuntimePlugin,
+  registerPlugins,
+  registerRemotes,
+} from '@module-federation/runtime';
 
-import { guardHandledRemoteLoadErrors } from './federationErrors';
+import { evaluateRemoteModule, guardHandledRemoteLoadErrors } from './federationErrors';
 import {
   type FederationMode,
   parseVersionMap,
@@ -126,6 +130,24 @@ ScriptManager.shared.addResolver(
 // The guard drops that one report so the boundary gets its turn; federationErrors.ts has the
 // order in full. ---
 guardHandledRemoteLoadErrors();
+
+// --- A remote module that throws while it is evaluated is reported as fatal as well, by the
+// guarded require inside the remote's own container, and carries nothing the guard can match. So
+// every remote module is evaluated inside the window federationErrors.ts keeps for it. The runtime
+// passes each module's factory to its plugins' onLoad hook before anything calls it, and a
+// function returned from the hook replaces the factory. This plugin returns one that runs the
+// real factory inside evaluateRemoteModule, and every import of a remote module in the host, the
+// tabs and the boot loads alike, gets that one. ---
+const evaluationWindow: ModuleFederationRuntimePlugin = {
+  name: 'evaluation-window',
+  onLoad({ exposeModuleFactory }) {
+    if (typeof exposeModuleFactory !== 'function') {
+      return undefined;
+    }
+    return () => evaluateRemoteModule(exposeModuleFactory);
+  },
+};
+registerPlugins([evaluationWindow]);
 
 // --- Fetch and read the version map for this app version. Returns null for every kind of
 // failure, because the caller treats them all the same way: an unreachable CDN, a 404 for an app

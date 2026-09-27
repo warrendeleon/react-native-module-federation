@@ -1,4 +1,4 @@
-import { isHandledRemoteLoadError } from '../src/shell/federationErrors';
+import { evaluateRemoteModule, isHandledRemoteLoadError } from '../src/shell/federationErrors';
 
 // The guard decides whether React Native's global handler is allowed to call an error fatal, so
 // what it must never do is match an error the remote runtime has not absorbed. Every case below is
@@ -235,5 +235,115 @@ describe('installing again', () => {
     current(handledFailure(), true);
     expect(original).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalledTimes(1);
+  });
+});
+
+// --- A remote module evaluated inside the window. What is simulated here is what a device runs:
+// the remote container's guarded require catches the module's throw, reports it to the global
+// handler as fatal and returns nothing, and then the host's own guarded require reports the error
+// thrown out of the window a second time. The guard is installed the way the host installs it,
+// and the window is read from the global object, so the evaluateRemoteModule imported at the top
+// of this file and the guard from a freshly evaluated copy of the module share it, as they would
+// after Fast Refresh. ---
+describe('evaluating a remote module', () => {
+  type Handler = (error: unknown, isFatal?: boolean) => void;
+  let handler: Handler;
+  let previous: jest.Mock<void, [unknown, boolean?]>;
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    previous = jest.fn<void, [unknown, boolean?]>();
+    const globals = globalThis as unknown as { ErrorUtils?: unknown };
+    const original = globals.ErrorUtils;
+    globals.ErrorUtils = {
+      getGlobalHandler: () => previous,
+      setGlobalHandler: (installed: Handler) => {
+        handler = installed;
+      },
+    };
+    jest.isolateModules(() => {
+      require('../src/shell/federationErrors').guardHandledRemoteLoadErrors();
+    });
+    globals.ErrorUtils = original;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // What the remote container's guarded require does with a module that throws as it is evaluated.
+  const guardedRequire = (error: unknown) => () => {
+    handler(error, true);
+    return undefined;
+  };
+
+  test('hands back what the module exports when nothing goes wrong', () => {
+    const exports = { default: () => null };
+    expect(evaluateRemoteModule(() => exports)).toBe(exports);
+  });
+
+  test('turns a fatal report during evaluation into a failed load, and never a crash', () => {
+    const thrown = new Error('PokedexScreen failed to initialise');
+    expect(() => evaluateRemoteModule(guardedRequire(thrown))).toThrow(thrown);
+    // The host's own guarded require reports the error that came out of the window, as fatal,
+    // outside it. That report is dropped too.
+    handler(thrown, true);
+    expect(previous).not.toHaveBeenCalled();
+  });
+
+  test('throws the first report, which is the cause', () => {
+    const first = new Error('first');
+    const second = new Error('second');
+    expect(() =>
+      evaluateRemoteModule(() => {
+        handler(first, true);
+        handler(second, true);
+        return undefined;
+      }),
+    ).toThrow(first);
+  });
+
+  test('fails a module that throws something other than an error with an error that carries it', () => {
+    let thrown: unknown;
+    try {
+      evaluateRemoteModule(guardedRequire('not an error'));
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toEqual(new Error('not an error'));
+    handler(thrown, true);
+    expect(previous).not.toHaveBeenCalled();
+  });
+
+  test('lets a report that is not fatal through, and the module still loads', () => {
+    const soft = new Error('a warning of some kind');
+    const exports = {};
+    expect(
+      evaluateRemoteModule(() => {
+        handler(soft, false);
+        return exports;
+      }),
+    ).toBe(exports);
+    expect(previous).toHaveBeenCalledWith(soft, false);
+  });
+
+  // Outside the window the guard is back to what it was: a fatal report that is neither the remote
+  // runtime's nor one that came out of a window reaches the handler underneath, and ends a release
+  // build as it always did.
+  test('closes the window when the module is done, whether it threw or not', () => {
+    expect(() => evaluateRemoteModule(guardedRequire(new Error('inside')))).toThrow('inside');
+    const outside = new Error('outside');
+    handler(outside, true);
+    expect(previous).toHaveBeenCalledWith(outside, true);
+
+    const direct = new Error('thrown straight out');
+    expect(() =>
+      evaluateRemoteModule(() => {
+        throw direct;
+      }),
+    ).toThrow(direct);
+    handler(direct, true);
+    handler(outside, true);
+    expect(previous).toHaveBeenCalledTimes(2);
   });
 });
