@@ -26,10 +26,11 @@ import {
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
 //
-// A chunk that fails — a retired version, a signature that does not verify — is one dead tab and
+// A chunk that fails (a retired version, a signature that does not verify) is one dead tab and
 // nothing more: the boundary in App.tsx renders the design system's error state and the shell and
 // the other tab carry on. Getting there took one non-obvious piece, which is in federationErrors:
-// the failure is reported twice, and the second report is fatal.
+// Re.Pack reports the failure as fatal before React renders the tab, and in a release build that
+// report ends the process.
 //
 // What this app still does NOT have is anywhere else to get a remote from. A dead tab is honest,
 // and it is not a working app. The copy in the binary is the next post's subject. ---
@@ -120,9 +121,10 @@ ScriptManager.shared.addResolver(
   { key: '__signed_resolver__', priority: 100 },
 );
 
-// --- A chunk that fails to load is handled twice over: once by the boundary, which shows the
-// tab's error state, and once by React Native's global handler, which calls it fatal and in a
-// release build ends the process. The second report is the one that has to go. ---
+// --- A chunk that fails to load is reported to React Native's global handler as fatal before the
+// boundary can show the tab's error state, and in a release build that report ends the process.
+// The guard drops that one report so the boundary gets its turn; federationErrors.ts has the
+// order in full. ---
 guardHandledRemoteLoadErrors();
 
 // --- Fetch and read the version map for this app version. Returns null for every kind of

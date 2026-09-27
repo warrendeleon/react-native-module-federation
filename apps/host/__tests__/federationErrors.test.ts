@@ -1,7 +1,7 @@
 import { isHandledRemoteLoadError } from '../src/shell/federationErrors';
 
 // The guard decides whether React Native's global handler is allowed to call an error fatal, so
-// what it must never do is match something the app has not already handled. Every case below is
+// what it must never do is match an error the remote runtime has not absorbed. Every case below is
 // about that boundary rather than about the happy path. The matching messages are copied from
 // real iOS runs, development and release, rather than written to fit the implementation.
 
@@ -94,8 +94,7 @@ describe('isHandledRemoteLoadError', () => {
 
 // --- The installed handler, not just the matcher. What the guard promises is about forwarding:
 // a handled remote failure stops here, and everything else reaches the handler that was there
-// before, with its fatal flag intact. Loaded fresh each time, because installation happens once
-// per module instance. ---
+// before, with its fatal flag intact. Loaded fresh each time, the way Fast Refresh loads it. ---
 describe('the installed global handler', () => {
   type Handler = (error: unknown, isFatal?: boolean) => void;
 
@@ -147,5 +146,94 @@ describe('the installed global handler', () => {
     expect(previous).toHaveBeenCalledWith(error, true);
     handler(error, false);
     expect(previous).toHaveBeenLastCalledWith(error, false);
+  });
+});
+
+// --- Fast Refresh can evaluate the module again in a running app. Each evaluation has to replace
+// the guard it finds rather than wrap it: otherwise every edit adds a guard, and an older guard's
+// matcher keeps running underneath the new one, swallowing what the new one would have passed on.
+// The global handler is kept across evaluations here, as it is in a running app. ---
+describe('installing again', () => {
+  type Handler = ((error: unknown, isFatal?: boolean) => void) & {
+    __federationGuardWrapped?: unknown;
+  };
+
+  let current: Handler;
+  let original: jest.Mock<void, [unknown, boolean?]>;
+  let saved: unknown;
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    original = jest.fn<void, [unknown, boolean?]>();
+    current = original;
+    const globals = globalThis as unknown as { ErrorUtils?: unknown };
+    saved = globals.ErrorUtils;
+    globals.ErrorUtils = {
+      getGlobalHandler: () => current,
+      setGlobalHandler: (handler: Handler) => {
+        current = handler;
+      },
+    };
+  });
+
+  afterEach(() => {
+    (globalThis as unknown as { ErrorUtils?: unknown }).ErrorUtils = saved;
+    jest.restoreAllMocks();
+  });
+
+  function evaluateModule() {
+    jest.isolateModules(() => {
+      require('../src/shell/federationErrors').guardHandledRemoteLoadErrors();
+    });
+  }
+
+  const handledFailure = () =>
+    named(
+      'ChunkLoadError',
+      'Loading chunk __federation_expose_ListStack failed.\nwhile loading "./ListStack" from 77469',
+    );
+
+  test('a re-evaluated module leaves one guard around the original handler', () => {
+    evaluateModule();
+    evaluateModule();
+    evaluateModule();
+    expect(current.__federationGuardWrapped).toBe(original);
+
+    const unrelated = new Error('Cannot read property id of undefined');
+    current(unrelated, true);
+    expect(original).toHaveBeenCalledTimes(1);
+    expect(original).toHaveBeenCalledWith(unrelated, true);
+
+    current(handledFailure(), true);
+    expect(original).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
+
+  // An earlier edit of this file whose matcher swallowed everything. Before the guard replaced
+  // what it found, re-evaluating the corrected module left this one running underneath it.
+  test('an older guard is replaced, so its matcher stops running', () => {
+    const permissive: Handler = () => {};
+    permissive.__federationGuardWrapped = original;
+    current = permissive;
+
+    evaluateModule();
+    const diagnostic = new Error(
+      'a diagnostic that quotes while loading "./ListStack" from 77469',
+    );
+    current(diagnostic, false);
+    expect(original).toHaveBeenCalledWith(diagnostic, false);
+  });
+
+  test('installing twice from one module instance still leaves one guard', () => {
+    jest.isolateModules(() => {
+      const { guardHandledRemoteLoadErrors } = require('../src/shell/federationErrors');
+      guardHandledRemoteLoadErrors();
+      guardHandledRemoteLoadErrors();
+    });
+    expect(current.__federationGuardWrapped).toBe(original);
+
+    current(handledFailure(), true);
+    expect(original).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledTimes(1);
   });
 });
