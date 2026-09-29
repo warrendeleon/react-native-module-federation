@@ -169,8 +169,8 @@ tasks.configureEach {
 // --- The copy in the binary, Android's half. build-cdn stages each remote's embedded version under
 // embed-root/android, the signed bundles and the version's mf-manifest.json, and this task mirrors
 // that tree into the APK's assets at cdn/android, where EmbeddedRemotesModule copies it out at
-// launch. Sync rather than Copy, so a file an earlier build
-// embedded and this one does not is removed instead of shipped.
+// launch. Sync rather than Copy, so a file an earlier build embedded and this one does not is
+// removed instead of shipped.
 //
 // With embed-root missing it warns, embeds nothing, and the build still succeeds. That is the trap:
 // a green release build that carries no copies. Run build-cdn before a release build. ---
@@ -180,7 +180,14 @@ def embeddedAssetsDir = layout.buildDirectory.dir("generated/embedded-remotes").
 def embedRemotes = tasks.register('embedRemotes', Sync) {
     from(embedSource) { include '**/*.bundle', '**/mf-manifest.json' }
     into(file("$embeddedAssetsDir/cdn/android"))
-    doFirst {
+}
+
+// --- A Sync whose source does not exist is skipped as NO-SOURCE, so a warning inside it would
+// never print. Gradle still clears what the task embedded before when its source goes, so no stale
+// copy ships. This task has no inputs or outputs, so it runs on every build, and it is what says
+// so. ---
+def warnIfNothingToEmbed = tasks.register('warnIfNothingToEmbed') {
+    doLast {
         if (!embedSource.exists()) {
             logger.warn("warning: ${embedSource} does not exist, so no remotes are embedded. Run 'node tools/build-cdn.mjs' before a release build.")
         }
@@ -195,4 +202,4 @@ android {
     }
 }
 
-tasks.named('preBuild').configure { dependsOn embedRemotes }
+tasks.named('preBuild').configure { dependsOn embedRemotes, warnIfNothingToEmbed }
