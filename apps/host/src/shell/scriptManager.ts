@@ -9,7 +9,7 @@ import {
 } from '@module-federation/runtime';
 
 import NativeEmbeddedRemotes from '../../specs/NativeEmbeddedRemotesModule';
-import { BUNDLED_VERSIONS, EMBEDDED_MANIFESTS } from './embedded-manifests';
+import { BUNDLED_VERSIONS } from './embedded-versions';
 import { evaluateRemoteModule, guardHandledRemoteLoadErrors } from './federationErrors';
 import {
   embeddedManifestUrl,
@@ -112,16 +112,12 @@ const APP_PATH = SCRIPT_URL?.startsWith('file://')
 
 let embeddedRoot: string | undefined = Platform.OS === 'ios' ? APP_PATH : undefined;
 
-// The copy of each remote this build carries, as tools/build-cdn.mjs recorded it for this
-// platform: which version, and that version's manifest.
+// The version of each remote this build carries a copy of, as tools/build-cdn.mjs recorded it for
+// this platform.
 const bundledVersions: Record<string, string> = BUNDLED_VERSIONS[Platform.OS] ?? {};
 
 function hasEmbeddedCopy(remote: string): boolean {
-  return (
-    embeddedRoot !== undefined &&
-    bundledVersions[remote] !== undefined &&
-    EMBEDDED_MANIFESTS[Platform.OS]?.[remote] !== undefined
-  );
+  return embeddedRoot !== undefined && bundledVersions[remote] !== undefined;
 }
 
 export interface FederationStatus {
@@ -239,14 +235,16 @@ registerPlugins([evaluationWindow]);
 // --- The manifest net. Module Federation fetches a remote's mf-manifest.json before any of its
 // code loads, and it does that on its own, outside React, so no error boundary is anywhere near a
 // manifest that fails. The net sits where the runtime asks instead, in a plugin's `fetch` hook,
-// which the runtime calls for every manifest before falling back to its own fetch:
+// which the runtime calls for every manifest before falling back to its own fetch.
 //
-//   - a remote running from its copy (bundled mode, or one that already fell back) gets the
-//     manifest compiled into the host. React Native's fetch cannot read a file:// URL, so the
-//     manifest is handed over as a Response built in memory, while the remote's code still loads
-//     from the disk through the resolver above.
+// It only acts in a CDN launch. A bundled launch registered every remote at its copy's manifest,
+// and the runtime reads that from the disk like any other: React Native's fetch opens a file://
+// URL, through its file handler on iOS and its blob handler on Android. In a CDN launch:
+//
+//   - a remote that already fell back gets its copy's manifest, whatever URL it is still
+//     registered at.
 //   - a CDN remote gets a real fetch, and on any failure (a 404 for a retired version, a timeout,
-//     a dropped connection) it falls back to its copy and gets the compiled manifest instead.
+//     a dropped connection) it falls back to its copy and gets the copy's manifest instead.
 //   - anything else, and any remote without a copy, is left to the runtime's own fetch.
 //
 // The hook may return a Promise of a Response, or nothing to hand the request back to the
@@ -254,27 +252,20 @@ registerPlugins([evaluationWindow]);
 const embeddedFallback: ModuleFederationRuntimePlugin = {
   name: 'embedded-fallback',
   fetch(url: string) {
-    if (status.mode !== 'cdn' && status.mode !== 'bundled') {
+    if (status.mode !== 'cdn') {
       return undefined;
     }
     const remote = manifestRemote(url, REMOTE_NAMES);
     if (!remote || !hasEmbeddedCopy(remote)) {
       return undefined;
     }
-    if (status.mode === 'bundled' || fallbackRemotes.has(remote)) {
-      return Promise.resolve(embeddedManifestResponse(remote));
+    if (fallbackRemotes.has(remote)) {
+      return fetch(embeddedManifestUrlFor(remote));
     }
     return cdnManifestOrEmbedded(url, remote);
   },
 };
 registerPlugins([embeddedFallback]);
-
-function embeddedManifestResponse(remote: string): Response {
-  return new Response(JSON.stringify(EMBEDDED_MANIFESTS[Platform.OS]?.[remote]), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
 
 // --- A CDN remote's manifest, fetched for real, with the copy behind it. The wait is the probe's
 // own: the map already answered within it, so a manifest that takes longer is treated as a
@@ -294,7 +285,7 @@ async function cdnManifestOrEmbedded(url: string, remote: string): Promise<Respo
     clearTimeout(timer);
   }
   fallBack(remote);
-  return embeddedManifestResponse(remote);
+  return fetch(embeddedManifestUrlFor(remote));
 }
 
 // Record that a remote runs from its copy until the next launch, and put it on the banner.
@@ -416,8 +407,8 @@ async function resolveFederation(): Promise<FederationStatus> {
 }
 
 // --- The launch that never reached a usable map. With copies in the binary it runs from them,
-// every remote registered at its manifest inside the binary so that the one place the runtime
-// reads says where the code now comes from. With none, there is nothing to run. ---
+// every remote registered at its copy's manifest, which the runtime reads from the disk. With none,
+// there is nothing to run. ---
 function runFromCopies(reason: string): FederationStatus {
   const embedded = REMOTE_NAMES.filter(hasEmbeddedCopy);
   if (embedded.length === 0) {

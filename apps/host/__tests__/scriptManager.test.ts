@@ -26,8 +26,8 @@ const CDN_BASE = 'https://cdn.example.com';
 // Where a release build's bundle sits on iOS, and so where the copies in the binary sit.
 const APP_PATH = '/data/Host.app';
 
-// The copies a test build carries: which version of each remote, and that version's manifest. A
-// test that needs a binary with no copy of a remote leaves it out.
+// The copies a test build carries: which version of each remote, and the manifest that version's
+// directory holds on the disk. A test that needs a binary with no copy of a remote leaves it out.
 const COPIES = {
   versions: { listApp: '1.1.0', partyApp: '1.0.0' },
   manifests: {
@@ -39,17 +39,14 @@ const COPIES = {
 interface Build {
   /** The file:// URL a release build's JavaScript bundle loads from; none in a development build. */
   scriptURL?: string;
-  copies?: {
-    versions: Record<string, string>;
-    manifests: Record<string, unknown>;
-  };
+  copies?: { versions: Record<string, string> };
 }
 
 function loadFederation(cdnBase: string, appVersion: string, build: Build = {}) {
   const globals = globalThis as unknown as Record<string, unknown>;
   globals.__MF_CDN_BASE__ = cdnBase;
   globals.__APP_VERSION__ = appVersion;
-  const copies = build.copies ?? { versions: {}, manifests: {} };
+  const copies = build.copies ?? { versions: {} };
 
   let loaded!: typeof import('../src/shell/scriptManager');
   let repack!: Recorder;
@@ -57,9 +54,8 @@ function loadFederation(cdnBase: string, appVersion: string, build: Build = {}) 
   jest.isolateModules(() => {
     const { NativeModules } = require('react-native');
     NativeModules.SourceCode = { scriptURL: build.scriptURL };
-    jest.doMock('../src/shell/embedded-manifests', () => ({
+    jest.doMock('../src/shell/embedded-versions', () => ({
       BUNDLED_VERSIONS: { ios: copies.versions },
-      EMBEDDED_MANIFESTS: { ios: copies.manifests },
     }));
     repack = require('@callstack/repack/client') as unknown as Recorder;
     runtime = require('@module-federation/runtime') as unknown as Recorder;
@@ -79,24 +75,33 @@ function respondWith(body: unknown, ok = true, status = 200) {
   }) as unknown as typeof fetch;
 }
 
-// The CDN as a set of paths: the map for the launch, and whatever manifests a test serves. Any
-// other path is a 404, which is also what a retired version looks like.
-function serveCdn(map: unknown, manifests: Record<string, unknown> = {}) {
-  globalThis.fetch = jest.fn(async (url: string) => {
-    if (url.endsWith('/version-map.json')) {
-      return { ok: true, status: 200, json: async () => map };
-    }
-    if (url in manifests) {
-      return new Response(JSON.stringify(manifests[url]), { status: 200 });
-    }
-    return { ok: false, status: 404, json: async () => ({}) };
-  }) as unknown as typeof fetch;
-}
-
 const cdnManifest = (remote: string, version: string) =>
   `${CDN_BASE}/ios/${remote}/${version}/mf-manifest.json`;
 const embeddedManifest = (remote: string, version: string) =>
   `file://${APP_PATH}/cdn/ios/${remote}/${version}/mf-manifest.json`;
+
+// What fetch finds on the disk of a release build carrying COPIES: each copy's manifest, beside its
+// bundles.
+const DISK = {
+  [embeddedManifest('listApp', '1.1.0')]: COPIES.manifests.listApp,
+  [embeddedManifest('partyApp', '1.0.0')]: COPIES.manifests.partyApp,
+};
+
+// The CDN as a set of paths: the map for the launch, and whatever manifests a test serves, with the
+// copies' manifests on the disk beside it. Any other path is a 404, which is also what a retired
+// version looks like.
+function serveCdn(map: unknown, manifests: Record<string, unknown> = {}) {
+  const files: Record<string, unknown> = { ...DISK, ...manifests };
+  globalThis.fetch = jest.fn(async (url: string) => {
+    if (url.endsWith('/version-map.json')) {
+      return { ok: true, status: 200, json: async () => map };
+    }
+    if (url in files) {
+      return new Response(JSON.stringify(files[url]), { status: 200 });
+    }
+    return { ok: false, status: 404, json: async () => ({}) };
+  }) as unknown as typeof fetch;
+}
 const theFetchHook = (runtime: Recorder) =>
   runtime.__plugins.find(plugin => plugin.name === 'embedded-fallback')!.fetch!;
 
@@ -267,7 +272,7 @@ describe('the copy in the binary', () => {
     respondWith({}, false, 404);
     const { initializeFederation } = loadFederation(CDN_BASE, '2.0.0', {
       ...RELEASE_WITH_COPIES,
-      copies: { versions: { listApp: '1.1.0' }, manifests: { listApp: COPIES.manifests.listApp } },
+      copies: { versions: { listApp: '1.1.0' } },
     });
     const status = await initializeFederation();
     expect(status.mode).toBe('bundled');
@@ -288,16 +293,13 @@ describe('the copy in the binary', () => {
 });
 
 describe('the manifest net', () => {
-  test('serves the copy\'s manifest in bundled mode, without asking the network', async () => {
+  // A bundled launch registered every remote at its copy's manifest, so the runtime's own fetch
+  // reads it from the disk and the hook has nothing to add.
+  test('leaves a bundled launch to the runtime', async () => {
     respondWith({}, false, 404);
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
     await initializeFederation();
-    const requests = (globalThis.fetch as jest.Mock).mock.calls.length;
-
-    const response = await theFetchHook(runtime)(embeddedManifest('listApp', '1.1.0'));
-    expect(response).toBeInstanceOf(Response);
-    await expect(response!.json()).resolves.toEqual(COPIES.manifests.listApp);
-    expect((globalThis.fetch as jest.Mock).mock.calls.length).toBe(requests);
+    expect(theFetchHook(runtime)(embeddedManifest('listApp', '1.1.0'))).toBeUndefined();
   });
 
   test('hands a healthy CDN manifest through as it came', async () => {
@@ -326,7 +328,7 @@ describe('the manifest net', () => {
         const cdn = globalThis.fetch as jest.Mock;
         const map = cdn.getMockImplementation()!;
         cdn.mockImplementation(async (url: string) => {
-          if (url.endsWith('/mf-manifest.json')) {
+          if (url.startsWith(CDN_BASE) && url.endsWith('/mf-manifest.json')) {
             throw new TypeError('Network request failed');
           }
           return map(url);
@@ -344,6 +346,8 @@ describe('the manifest net', () => {
 
     const response = await theFetchHook(runtime)(cdnManifest('listApp', '1.2.0'));
     await expect(response!.json()).resolves.toEqual(COPIES.manifests.listApp);
+    // Read from the copy on the disk, not from anything compiled into the host.
+    expect(globalThis.fetch).toHaveBeenLastCalledWith(embeddedManifest('listApp', '1.1.0'));
 
     expect(getFederationStatus()).toEqual({
       mode: 'cdn',
@@ -362,11 +366,27 @@ describe('the manifest net', () => {
     });
   });
 
+  // Once a remote has fallen back, every later request for its manifest, at whatever URL it is
+  // still registered, is answered from its copy: a reload must not send it back to the CDN.
+  test('keeps a fallen-back remote on its copy\'s manifest', async () => {
+    serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
+    const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
+    await initializeFederation();
+    const hook = theFetchHook(runtime);
+    await hook(cdnManifest('listApp', '1.2.0'));
+    const cdn = globalThis.fetch as jest.Mock;
+    cdn.mockClear();
+
+    const response = await hook(cdnManifest('listApp', '1.2.0'));
+    await expect(response!.json()).resolves.toEqual(COPIES.manifests.listApp);
+    expect(cdn.mock.calls).toEqual([[embeddedManifest('listApp', '1.1.0')]]);
+  });
+
   test('leaves every other request to the runtime', async () => {
     serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', {
       ...RELEASE_WITH_COPIES,
-      copies: { versions: { listApp: '1.1.0' }, manifests: { listApp: COPIES.manifests.listApp } },
+      copies: { versions: { listApp: '1.1.0' } },
     });
     await initializeFederation();
     const hook = theFetchHook(runtime);

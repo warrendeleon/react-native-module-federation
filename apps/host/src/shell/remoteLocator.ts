@@ -174,11 +174,9 @@ export function remoteManifestUrl(
   return `${cdnBase}/${platform}/${remoteName}/${version}/mf-manifest.json`;
 }
 
-// --- The manifest URL a remote is registered at when it runs from the copy in the binary. No file
-// is read at this path: React Native's fetch cannot open file:// URLs, so the manifest itself is
-// compiled into the host and handed to the federation runtime in memory. The URL is still worth
-// registering, because it names the remote, the version and where the code comes from, in the one
-// place the runtime reads. ---
+// --- The manifest URL a remote is registered at when it runs from the copy in the binary. The copy
+// carries the version's mf-manifest.json beside its bundles, and the federation runtime reads it
+// from this file:// URL with React Native's fetch, the way it reads one from the CDN. ---
 export function embeddedManifestUrl(
   embeddedRoot: string,
   platform: string,

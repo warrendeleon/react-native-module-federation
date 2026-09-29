@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # --- The copy in the binary, iOS's half. The last Run Script phase of the Host target copies each
 # remote's embedded version from embed-root/ios into the app, at cdn/ios/<remote>/<version>/ next
-# to main.jsbundle, where the host reads it through absolute file:// URLs.
+# to main.jsbundle, where the host reads it through absolute file:// URLs: the signed bundles and
+# the version's mf-manifest.json.
 #
 # The <remote>/<version>/ directories are kept rather than flattened: two remotes can ship vendor
 # chunks with the same file name, and a flat copy would let one overwrite the other.
@@ -30,5 +31,5 @@ fi
 mkdir -p "$DEST"
 # --delete keeps the app to exactly what embed-root holds, so a version an earlier build embedded
 # does not linger. The bytes are copied as they are: each bundle is signed over them.
-rsync -a --delete --include='*/' --include='*.bundle' --exclude='*' "$SOURCE/" "$DEST/"
-echo "embedded $(find "$DEST" -name '*.bundle' | wc -l | tr -d ' ') remote bundles into $DEST"
+rsync -a --delete --include='*/' --include='*.bundle' --include='mf-manifest.json' --exclude='*' "$SOURCE/" "$DEST/"
+echo "embedded $(find "$DEST" -name '*.bundle' | wc -l | tr -d ' ') remote bundles and $(find "$DEST" -name 'mf-manifest.json' | wc -l | tr -d ' ') manifests into $DEST"

@@ -200,11 +200,11 @@ tree from the lists at the top of the file, so it is the wrong tool for the two 
 ### When the CDN is not there
 
 `tools/build-cdn.mjs` also prepares the copy a release build carries: the version of each remote
-that its app version's map names, staged in `embed-root/`, with each version's manifest written
-into `apps/host/src/shell/embedded-manifests.ts`. The last build phase of the iOS target and a
-Gradle task on Android copy `embed-root/` into the binary byte for byte, so every file still
-verifies against the signing key. Run it before the release build; without `embed-root/` both
-builds warn, succeed, and carry nothing.
+that its app version's map names, its signed bundles and its manifest, staged in `embed-root/`,
+with the versions recorded in `apps/host/src/shell/embedded-versions.ts`. The last build phase of
+the iOS target and a Gradle task on Android copy `embed-root/` into the binary byte for byte, so
+every file still verifies against the signing key. Run it before the release build; without
+`embed-root/` both builds warn, succeed, and carry nothing.
 
 ```sh
 node tools/build-cdn.mjs ios
