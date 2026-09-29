@@ -88,8 +88,9 @@ test('a CDN load that fails drops the remote to its copy without showing the err
   });
 });
 
-// A remote that loaded and then threw has already run its code, and there is no swapping that out
-// mid-session: the error state comes straight away, even from the CDN with a copy on board.
+// A remote that loaded and then threw has already run its code, and the boundary does not swap it
+// for the copy mid-session: the error state comes straight away, even from the CDN with a copy on
+// board.
 test('a remote that loaded and then threw is shown as broken, and Try again renders it again', async () => {
   jest.spyOn(federation, 'canFallBack').mockReturnValue(true);
   const fallBack = jest.spyOn(federation, 'fallBackAndReload').mockImplementation(() => {});

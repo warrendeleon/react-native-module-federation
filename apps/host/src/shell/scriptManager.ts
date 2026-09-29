@@ -233,9 +233,11 @@ const evaluationWindow: ModuleFederationRuntimePlugin = {
 registerPlugins([evaluationWindow]);
 
 // --- The manifest net. Module Federation fetches a remote's mf-manifest.json before any of its
-// code loads, and it does that on its own, outside React, so no error boundary is anywhere near a
-// manifest that fails. The net sits where the runtime asks instead, in a plugin's `fetch` hook,
-// which the runtime calls for every manifest before falling back to its own fetch.
+// code loads. A tab's boundary would hear of that fetch failing, but only once the runtime's own
+// fetch gives up, and the runtime sets no time limit on it. And not every load runs inside a
+// boundary: partyApp's state and styles modules ask for its manifest at boot, from an effect
+// outside every tab. So the net sits where the runtime asks for every manifest, in a plugin's
+// `fetch` hook, which the runtime calls before falling back to its own fetch.
 //
 // It only acts in a CDN launch. A bundled launch registered every remote at its copy's manifest,
 // and the runtime reads that from the disk like any other: React Native's fetch opens a file://
