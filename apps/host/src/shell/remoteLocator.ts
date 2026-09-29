@@ -114,11 +114,11 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
 
 // --- A script from the copy baked into the binary.
 //
-// The URL is an absolute file:// path, for a reason that is easy to miss. Re.Pack can also look a
-// relative path up inside the app, and on iOS that lookup goes through the app bundle's resource
-// search. There, .bundle is a package extension: a directory the system treats as a single item.
-// Every chunk here is a flat file ending in .bundle, and in practice the search does not find it
-// and does not say so. An absolute path skips the search.
+// The URL is an absolute file:// path, for a reason that is easy to miss. Without `absolute`,
+// Re.Pack keeps only the file's name and looks for it at the top level of the app: in the app
+// bundle's resources on iOS, in the APK's assets on Android. The copy keeps each version in its
+// own <remote>/<version>/ directory, because two remotes can ship vendor chunks with the same
+// name, so a lookup by name alone never reaches it. With `absolute`, the path is read as given.
 //
 // Verification stays on. The copy is the same signed bytes the CDN serves, and Re.Pack checks a
 // file on disk exactly as it checks a download, which is also why the copy is never rewritten on
