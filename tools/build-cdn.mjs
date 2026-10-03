@@ -11,8 +11,8 @@
 //
 // Two lists in this file, and the difference between them is the whole idea. REMOTE_VERSIONS is
 // what the CDN holds: every version ever published, kept until nobody is running it.
-// APP_VERSION_MAPS is what each released binary is allowed to load out of that. Shipping a remote
-// to installed apps is a new entry in the first list and one edited line in the second.
+// APP_VERSION_MAPS is what each released binary is allowed to load out of that. On a live CDN,
+// shipping a remote to installed apps is one new version directory and one edited line in a map.
 //
 // It also prepares the copy a release build carries, so the app can start with the CDN out of
 // reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where the script

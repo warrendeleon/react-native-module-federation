@@ -20,7 +20,7 @@ const retryButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
 // stand where loadRemote stands, and the federation calls are spied on rather than run.
 let warn: jest.SpyInstance;
 beforeEach(() => {
-  // Every case fails a load or a render on purpose. The boundary logs each failure, and React also
+  // Most cases fail a load or a render on purpose. The boundary logs each failure, and React also
   // logs every error a boundary catches.
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -55,8 +55,8 @@ test('a load that fails with no copy to try shows the error state, and Try again
   await act(async () => {
     retryButton(tree).props.onPress();
   });
-  // The runtime's record of the failed load was cleared before the second attempt, and the second
-  // attempt was a fresh load: the cached rejection was discarded and the tab recovered.
+  // Try again called forceReloadRemote for listApp before the second attempt, and the second
+  // attempt was a fresh load: React.lazy's cached rejection was discarded and the tab recovered.
   expect(reload).toHaveBeenCalledWith('listApp');
   expect(attempts).toBe(2);
   expect(texts(tree)).not.toContain('This tab could not load');

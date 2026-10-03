@@ -1,11 +1,11 @@
 // --- The decision behind every script the federation loads in production, kept as plain
 // functions so it can be tested without a device, a network or Re.Pack's native side.
 //
-// In development nothing here has an opinion: the dev servers own resolution and every function
-// defers. In CDN mode the host has already been told, by the version map it fetched at launch,
-// which version of each remote this binary may run. From that one fact each script (a remote's
-// container, or any chunk that container later asks for) resolves to a URL inside that version's
-// directory, with signature verification switched on.
+// In dev mode the dev servers own resolution, and resolveRemoteLocator defers every script. In CDN
+// mode the host has already been told, by the version map it fetched at launch, which version of
+// each remote this binary may run. From that one fact each script (a remote's container, or any
+// chunk that container later asks for) resolves to a URL inside that version's directory, with
+// signature verification switched on.
 //
 // The binary also carries a copy of each remote, baked in at build time. A script is served from
 // that copy when the whole launch is running without the CDN (bundled mode), or when that one
@@ -70,9 +70,9 @@ function remoteFor(
 //
 // Deferring hands the script to the next resolver, and for one of this host's remotes the next
 // one is Re.Pack's per-remote resolver: it answers with a URL built from whichever manifest was
-// registered last and no signature check at all. That is the right answer in development, where
+// registered last and no signature check at all. That is the right answer in dev mode, where
 // the dev servers own everything, and for any script that is not one of this host's remotes.
-// Outside development it is never the right answer for a remote. A remote that runs from its copy,
+// Outside dev mode it is never the right answer for a remote. A remote that runs from its copy,
 // in a bundled launch or after it fell back, is located in the copy; any other remote needs the
 // version the map named for it, and without one, deferring would load code from an unversioned
 // URL, unverified. So a remote with no version, or with no copy to read when it runs from one, is
@@ -211,9 +211,10 @@ export function manifestRemote(
 const SAFE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 // --- The version map arrives over the network, so it is treated as a stranger's JSON rather than
-// as a typed object: anything that is not a flat object of known remote names to well-formed
-// versions is refused whole. Refusing the whole map rather than filtering it is deliberate — a
-// half-read map would launch the app on a set of versions nobody published. ---
+// as a typed object. Names this binary does not know are skipped. Anything else that is not a plain
+// object of remote names to well-formed versions is refused whole, and so is a map that names none
+// of this binary's remotes. Refusing the whole map rather than dropping the bad entry is
+// deliberate: a half-read map would launch the app on a set of versions nobody published. ---
 export function parseVersionMap(
   raw: unknown,
   remoteNames: readonly string[],

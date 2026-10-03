@@ -14,16 +14,14 @@ import { store } from '../src/store';
 // test prove the whole boot sequence rather than swallowing a failed load.
 //
 // The sequence gained a step in the version-map post: nothing federated is loaded until
-// initializeFederation has settled, so the state module's load now waits behind the boot gate.
-// That is why this test flushes the render twice: the first pass opens the gate and mounts the
-// shell, the second runs the shell's own effect. A single pass would leave the slice missing,
-// which is the failure this test would report if the gate ever stopped opening.
+// initializeFederation has settled, so the state module's load now waits behind the boot gate, in
+// an effect that App runs once the gate is open. If the gate ever stopped opening, the slice would
+// be missing and this test would say so.
 test('boot readiness: the gate opens, the state module loads, the marker surfaces the slice', async () => {
   let tree!: ReactTestRenderer.ReactTestRenderer;
   await ReactTestRenderer.act(async () => {
     tree = ReactTestRenderer.create(<App />);
   });
-  await ReactTestRenderer.act(async () => {});
 
   // The boot effect's then-chain has run: load resolved, reducer injected,
   // partyStateReady dispatched, so the slice is surfaced in state. If the load

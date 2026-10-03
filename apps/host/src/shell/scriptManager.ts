@@ -127,7 +127,7 @@ export interface FederationStatus {
   mode: FederationMode;
   /** Where the code came from, in the words the banner shows. */
   source: string;
-  /** remote -> the version each remote is running this launch. Empty in development. */
+  /** remote -> the version each remote is running this launch. Empty in dev and unresolved modes. */
   versions: Record<string, string>;
   /** The remotes running from their copy in the binary: all of them in bundled mode. */
   embedded: readonly string[];
@@ -466,7 +466,7 @@ export async function loadRemoteModule<T>(id: string): Promise<T | undefined> {
 // --- For the tab boundary. A CDN remote whose load gets past the manifest net and still fails (a
 // container or chunk that did not arrive or did not verify, a manifest that arrived broken, a
 // module that threw as it was evaluated) can drop to its copy, once. In bundled mode it is already
-// on its copy, and in development the dev servers own it. ---
+// on its copy, and in dev mode the dev servers own it. ---
 export function canFallBack(remote: string): boolean {
   return status.mode === 'cdn' && !fallbackRemotes.has(remote) && hasEmbeddedCopy(remote);
 }

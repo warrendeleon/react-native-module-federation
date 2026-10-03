@@ -78,7 +78,7 @@ registerShellNavigateHandler(shellNavigateHandler);
 // its own record of the remote, which forceReloadRemote clears first.
 //
 // What the error state says depends on how the tab failed and where this launch loads remotes
-// from. In development the likely cause is a dev server that is not running. From the CDN there is
+// from. In dev mode the likely cause is a dev server that is not running. From the CDN there is
 // no dev server: the version could not be downloaded, its signature did not verify, or its code
 // failed as it started, and the boundary cannot tell which, so the message names all three. A
 // relaunch is worth trying because it asks the CDN for the version map again. Running from the

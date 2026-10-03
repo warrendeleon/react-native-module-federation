@@ -253,5 +253,5 @@ flowchart TD
     registry -->|"contracts + ui + the detail view"| party
     party ==>|"shellNavigate('QuickBattle') · awaits the winner's uid"| native
     t1 & t2 -.->|"release build: the versions its map names"| cdn
-    t1 & t2 -.->|"no map at launch, or one remote fails to load:<br/>the manifest net and the tab's boundary drop it here"| copies
+    t1 & t2 -.->|"release build, no usable map: every remote runs from its copy<br/>one remote fails from the CDN: the manifest net<br/>or the tab's boundary drops it here"| copies
 ```

@@ -107,7 +107,7 @@ const theFetchHook = (runtime: Recorder) =>
 
 beforeEach(() => {
   // Some failure cases in this file warn on purpose. Silenced so a run that passes prints nothing,
-  // and spied rather than ignored so a case that stops warning is still a visible change.
+  // and spied so the cases that end unresolved can check that their warning was logged.
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
