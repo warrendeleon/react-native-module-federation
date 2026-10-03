@@ -29,13 +29,14 @@ import {
 //   cdn         the app asks the CDN for the version map written for its own app version, and
 //               loads exactly the remote versions that map names. Shipping a remote is then an
 //               upload and one edited line, with no new binary and no store review.
-//   bundled     the CDN's versions could not be used (the map could not be fetched or read, or
-//               registering its versions failed), and the binary carries its own copy of each
-//               remote, baked in when it was built. The whole launch runs from those copies, read
-//               from the disk and verified exactly like a download.
+//   bundled     the CDN's versions could not be used (no CDN is configured, the map could not
+//               be fetched or read, or registering its versions failed), and the binary carries
+//               its own copy of each remote, baked in when it was built. The whole launch runs
+//               from those copies, read from the disk and verified exactly like a download.
 //   unresolved  the CDN's versions could not be used, and no copy could be registered instead.
 //               There is no version to load anything at, so the resolver refuses every remote
-//               rather than let one load from an unversioned URL unverified, and the banner says so.
+//               rather than let one load from an unversioned URL unverified, and the banner says
+//               so.
 //
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
