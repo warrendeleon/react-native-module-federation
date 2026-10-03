@@ -182,10 +182,10 @@ def embedRemotes = tasks.register('embedRemotes', Sync) {
     into(file("$embeddedAssetsDir/cdn/android"))
 }
 
-// --- A Sync whose source does not exist is skipped as NO-SOURCE, so a warning inside it would
-// never print. Gradle still clears what the task embedded before when its source goes, so no stale
-// copy ships. This task has no inputs or outputs, so it runs on every build, and it prints the
-// warning when embed-root/android is missing. ---
+// --- A Sync with no source skips its actions, so a warning inside it would never print. Gradle
+// still clears what the task embedded before when its source goes, so no stale copy ships. This
+// task has no inputs or outputs, so it runs on every build, and it prints the warning when
+// embed-root/android is missing. ---
 def warnIfNothingToEmbed = tasks.register('warnIfNothingToEmbed') {
     doLast {
         if (!embedSource.exists()) {
