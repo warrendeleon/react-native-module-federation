@@ -21,7 +21,7 @@
 // federated load goes through loadRemoteModule in scriptManager.ts (App.tsx says why), and a load
 // that fails there rejects like any other promise, with no report to the global handler. The
 // matcher stays for any import() added later. Dropping its report is safe only while every such
-// import checks what it settles with as well as catching a rejection: the guarded require can turn
+// import catches a rejection and also checks what it settles with: the guarded require can turn
 // the failure into a fulfilled import with no usable module, which a catch alone never sees.
 //
 // There is a second shape of fatal report, which this file now holds back as well. A remote whose

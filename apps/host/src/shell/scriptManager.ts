@@ -43,8 +43,8 @@ import {
 //
 // Inside a CDN launch one remote can still fail to load: a retired version, a container or chunk
 // that does not arrive, one that does not verify. That remote drops to its own copy for the rest
-// of the session while the others stay on the CDN. Only when there is no copy left to try does its
-// tab show the error state, and even then the process survives it: federationErrors has why. ---
+// of the session while the others stay on the CDN. Its tab shows the error state only when there is
+// no copy left to try, and even then the process survives it: federationErrors.ts has why. ---
 
 const REMOTE_NAMES = ['listApp', 'partyApp'] as const;
 type RemoteName = (typeof REMOTE_NAMES)[number];
@@ -99,8 +99,8 @@ const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : '
 // On iOS they are inside the .app itself, and the JavaScript bundle's own URL points into it: a
 // release build loads file:///…/Host.app/main.jsbundle, and the directory above that file is the
 // .app. A development build loads its bundle from the dev server over http, so there is no
-// directory to derive and no copy to use. On iOS, everything that runs from a copy therefore needs
-// a release build.
+// directory to derive and no copy to use. So on iOS, everything that runs from a copy needs a
+// release build.
 //
 // On Android the copies are packed into the APK's assets, which are not files on disk. A native
 // module copies them out once per installed build and says where it put them, before the first
@@ -181,7 +181,7 @@ let initialization: Promise<FederationStatus> | undefined;
 //
 // Registered here at module scope, so it is in place before anything federated can load, whatever
 // order the launch runs in. Once webpack and the federation runtime have loaded a container or a
-// chunk they do not ask for it again unless the remote is reloaded, as reloadRemote does:
+// chunk they do not ask for it again until the remote is reloaded, as reloadRemote does:
 // registered again with force and its chunk registry cleared. So a resolver added after a script's
 // first load would miss that script. It is handed the fallback set itself rather than a copy, so a
 // remote that falls back is served from its copy on its very next script. ---
@@ -211,11 +211,11 @@ ScriptManager.shared.addResolver(
   { key: '__signed_resolver__', priority: 100 },
 );
 
-// --- An import() of a remote that fails to load is reported to React Native's global handler as
-// fatal before anything can handle it, and in a release build that report ends the process. This
-// host no longer loads a remote with import(): a failed loadRemoteModule rejects with no report.
-// The guard stays for any import() added later, and drops that one report so the code that asked
-// for the module gets its turn; federationErrors.ts has the order in full. ---
+// --- The guard holds back two fatal reports the federation layer has already dealt with, either of
+// which ends the process in a release build. The first comes from a failed import() of a remote;
+// this host no longer loads a remote with import(), so the guard matches it only for any import()
+// added later. The second comes from a remote module that throws while it is evaluated, which is
+// what the evaluation window is for. federationErrors.ts has both in full. ---
 guardHandledRemoteLoadErrors();
 
 // --- A remote module that throws while it is evaluated is reported as fatal as well, by the

@@ -439,7 +439,7 @@ export default function App() {
   // Fire-and-forget: nothing awaits this, so a remote that cannot be reached cannot block boot. A
   // failed load rejects, and the catch logs it, so it never surfaces as an unhandled rejection.
   // The app then runs without the slice, which is the state the tolerant read shape exists for:
-  // reads render honestly, and the add stays disabled rather than pretending.
+  // reads still render, and adding to the party stays disabled.
   useEffect(() => {
     if (!federationReady) {
       return;

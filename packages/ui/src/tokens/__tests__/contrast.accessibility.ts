@@ -165,8 +165,8 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the same secondary token in dark mod
   // Both remotes mount ThemeToggle in their header, so every surface here is one a user reaches.
   // Neither of these carried a `dark:` override, and the enumeration in 'body text on light
   // surfaces' counted light surfaces only, so the design system composed two pairs the matrix had
-  // never measured — the exact rule this file opens with, applied to its own blind spot rather
-  // than to a component's.
+  // never measured. That broke the rule this file opens with, in the matrix itself rather than in a
+  // component.
   test("the card's number line on the dark pill", () => {
     expectColorContrast(colours.lightGrey, composite(colours.white, 0.1, colours.black));
   });
