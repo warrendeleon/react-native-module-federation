@@ -100,7 +100,7 @@ const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : '
 // a release build.
 //
 // On Android the copies are packed into the APK's assets, which are not files on disk. A native
-// module copies them out once per app version and says where it put them, before the first
+// module copies them out once per installed build and says where it put them, before the first
 // federated load (see prepareEmbeddedCopies). ---
 const sourceCode = NativeModules.SourceCode as
   | { scriptURL?: string; getConstants?: () => { scriptURL?: string } }
