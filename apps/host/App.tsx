@@ -45,10 +45,10 @@ registerShellNavigateHandler(shellNavigateHandler);
 // provider's mode is derived from NativeWind's colour-scheme observable — module-level state in
 // the shared styling runtime, not state the host owns — which is what makes one toggle repaint
 // three independently shipped bundles at once.
-// A remote loads the first time its tab is opened, so each tab renders behind a Suspense spinner,
-// inside its own boundary. One boundary per tab is what keeps a failure to that tab: a screen that
-// throws while rendering takes down everything up to the nearest boundary, and without one React
-// unmounts the whole app.
+// A tab's stack loads the first time the tab is opened, so each tab renders behind a Suspense
+// spinner, inside its own boundary. One boundary per tab is what keeps a failure to that tab: a
+// screen that throws while rendering takes down everything up to the nearest boundary, and without
+// one React unmounts the whole app.
 //
 // The tab loads its stack with loadRemoteModule, where earlier posts wrote
 // import('listApp/ListStack'). An import() of a remote compiles into a module of the host's own

@@ -153,9 +153,9 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
     expectColorContrast(colours.darkGrey, colours.offGrey);
   });
 
-  // The empty slot's caption is text-midGrey/70, a different value from the token: composited
-  // over the app background it is 1.88:1. A pair the design system composes and the matrix was
-  // not measuring, which is the fault this file exists to prevent.
+  // The empty slot's caption was text-midGrey/70 until the secondary-text repair: composited over
+  // the app background that was 1.88:1, a pair the design system composed and the matrix did not
+  // measure. It now paints text-darkGrey at full strength, and this is that pair.
   test("the empty slot's caption", () => {
     expectColorContrast(colours.darkGrey, colours.offWhite);
   });
@@ -187,7 +187,8 @@ describe('Project bar — pairs held above what the criteria require', () => {
 });
 
 describe('WCAG 1.4.3 Contrast (Minimum) — text on dark surfaces', () => {
-  // The Party tab is dark, and the same secondary token that fails on white is comfortable here.
+  // The Party tab is dark. Its secondary text is lightGrey, the dark-mode half of the secondary
+  // pair.
   // A token is not accessible or inaccessible on its own; it is one only against a surface.
   test('primary text on navy', () => {
     expectColorContrast(colours.white, colours.navy);
