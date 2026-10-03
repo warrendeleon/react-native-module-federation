@@ -78,7 +78,7 @@ describe('WCAG 1.4.3 Contrast (Minimum) — type colours on the solid fill', () 
 });
 
 describe('WCAG 1.4.3 Contrast (Minimum) — the preset and the token modules agree', () => {
-  // Both halves of every pair are resolved from the preset above, because the preset is what
+  // Both halves of every pair are resolved from the Tailwind preset, because the preset is what
   // paints. The token modules exist for runtime code that needs a hex directly, and their own
   // comments say to keep the two in sync. This is what makes that a check rather than a wish:
   // without it, a colour changed in one file and not the other is invisible to every pair here.
@@ -126,9 +126,9 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
 
   // The party counter's pill, in both remotes' headers. It painted text-darkGreen until the
   // eighth audit: darkGreen is #A6D3A0, the same value as the grass fill, and on lightGreen it
-  // measured 1.53:1 at xs. The pair above was in this file all along and passing; the pill was
-  // simply composing a different one nobody had measured. It now uses the pair above, and the
-  // counter has no colour of its own left to get wrong.
+  // measured 1.53:1 at xs. The pair 'primary text on the pale green' was in this file all along
+  // and passing; the pill was simply composing a different one nobody had measured. It now uses
+  // that pair, and the counter has no colour of its own left to get wrong.
   test('the party counter on its pale green pill', () => {
     expectColorContrast(colours.darkGrey, colours.lightGreen);
   });
@@ -143,7 +143,7 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
   //
   // What stays behind is the disabled Add label, which is exempt rather than parked: 1.4.3's
   // Incidental clause says text "that is part of an inactive user interface component ... has no
-  // contrast requirement". It is filed under *Project bars* below, so a threshold this project
+  // contrast requirement". It is filed in the 'Project bar' block, so a threshold this project
   // chooses is never counted as a result against a criterion.
   test('secondary text on the detail sheet', () => {
     expectColorContrast(colours.darkGrey, colours.offWhite);
@@ -163,9 +163,10 @@ describe('WCAG 1.4.3 Contrast (Minimum) — body text on light surfaces', () => 
 
 describe('WCAG 1.4.3 Contrast (Minimum) — the same secondary token in dark mode', () => {
   // Both remotes mount ThemeToggle in their header, so every surface here is one a user reaches.
-  // Neither of these carried a `dark:` override, and the enumeration above counted light
-  // surfaces only, so the design system composed two pairs the matrix had never measured — the
-  // exact rule this file opens with, applied to its own blind spot rather than to a component's.
+  // Neither of these carried a `dark:` override, and the enumeration in 'body text on light
+  // surfaces' counted light surfaces only, so the design system composed two pairs the matrix had
+  // never measured — the exact rule this file opens with, applied to its own blind spot rather
+  // than to a component's.
   test("the card's number line on the dark pill", () => {
     expectColorContrast(colours.lightGrey, composite(colours.white, 0.1, colours.black));
   });
@@ -297,8 +298,8 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the federation chrome', () => {
   // own, and both carrying text small enough to need the full 4.5:1.
   //
   // The host's banner is a filled pill with a white line on it, and the fill says which mode the
-  // launch resolved to. Its third fill is colours.red, which the status block below already
-  // measures against white, so it is not repeated here.
+  // launch resolved to. This block measures three of its four fills; the fourth, colours.red for an
+  // unresolved launch, is measured against white in the 'status colours' block.
   test('the banner line on the dev-mode fill', () => {
     expectColorContrast(colours.white, colours.darkGrey);
   });
@@ -313,8 +314,8 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the federation chrome', () => {
 
   // The Pokédex header's version chip, beside the party counter and painting the same pill: the
   // neutral surface in light, and in dark the translucent white the counter uses, composited over
-  // the screen's navy. The light half is colours.darkGrey on colours.offGrey, already measured
-  // above with the rest of the neutral surfaces.
+  // the screen's navy. The light half is colours.darkGrey on colours.offGrey, already measured in
+  // the 'body text on light surfaces' block.
   test('the version chip on its dark pill', () => {
     expectColorContrast(colours.lightGrey, composite(colours.white, 0.1, colours.navy));
   });

@@ -2,7 +2,7 @@
 
 Companion code for the blog series **[React Native Module Federation](https://warrendeleon.com/blog/)**. The series builds a federated React Native app from zero, one post at a time, with Re.Pack and Module Federation 2.0.
 
-Most posts have a matching git tag holding that post's finished state, so you can clone the repo, check out the tag for the post you're reading, and run exactly what the post builds. Tags exist where there is a build to run, so the essays carry a dash instead: post 1 opens the series and is not listed below, and post 7 sits in place with no tag of its own.
+Most posts have a matching git tag holding that post's finished state, so you can clone the repo, check out the tag for the post you're reading, and run exactly what the post builds. Tags exist where there is a build to run, so the essays carry a dash instead: post 1 opens the series and has no row in the table, and post 7 sits in place with no tag of its own.
 
 ## Posts and tags
 
@@ -164,8 +164,8 @@ cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 MF_APP_VERSION=2.0.0 npm run an
 ```
 
 An Android emulator reaches the machine at `10.0.2.2` rather than `localhost`, and a release
-build only talks to either over plain http because `res/xml/network_security_config.xml` permits
-those two addresses and nothing else.
+build talks plain http to either only because `res/xml/network_security_config.xml` permits it
+for `localhost`, `127.0.0.1` and `10.0.2.2`, with their subdomains, and nothing else.
 
 ### Shipping a remote version without a new binary
 
@@ -244,7 +244,7 @@ flowchart TD
     party[("party remote<br/>:8083 · PartyStack + partySlice")]
     t1 -.->|"React.lazy · loaded at launch"| list
     t2 -.->|"React.lazy · loaded on first open"| party
-    host -.->|"boot import: partyApp/partySlice"| party
+    host -.->|"boot loads: partyApp/partySlice + partyApp/styles"| party
     list ==>|"injects getPokemonList + getPokemonDetail<br/>dispatches addToParty · reads the count"| store
     party ==>|"injects the party slice + its own getPokemonDetail"| store
     store <-->|"fetches through baseQuery"| pokeapi

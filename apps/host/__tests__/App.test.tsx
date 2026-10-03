@@ -15,7 +15,7 @@ import { store } from '../src/store';
 //
 // The sequence gained a step in the version-map post: nothing federated is loaded until
 // initializeFederation has settled, so the state module's load now waits behind the boot gate.
-// That is why the render is flushed twice below — the first pass opens the gate and mounts the
+// That is why this test flushes the render twice: the first pass opens the gate and mounts the
 // shell, the second runs the shell's own effect. A single pass would leave the slice missing,
 // which is the failure this test would report if the gate ever stopped opening.
 test('boot readiness: the gate opens, the state module loads, the marker surfaces the slice', async () => {

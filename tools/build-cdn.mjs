@@ -9,10 +9,10 @@
 // <base>/ios/listApp/1.2.0/mf-manifest.json, which is the URL the host builds at launch out of
 // the version the map gave it.
 //
-// Two lists below, and the difference between them is the whole idea. REMOTE_VERSIONS is what the
-// CDN holds: every version ever published, kept until nobody is running it. APP_VERSION_MAPS is
-// what each released binary is allowed to load out of that. Shipping a remote to installed apps
-// is a new entry in the first list and one edited line in the second.
+// Two lists in this file, and the difference between them is the whole idea. REMOTE_VERSIONS is
+// what the CDN holds: every version ever published, kept until nobody is running it.
+// APP_VERSION_MAPS is what each released binary is allowed to load out of that. Shipping a remote
+// to installed apps is a new entry in the first list and one edited line in the second.
 //
 // It also prepares the copy a release build carries, so the app can start with the CDN out of
 // reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where the script
@@ -63,11 +63,11 @@ const REMOTE_VERSIONS = {
 // newest release has moved on. An entry is retired when nobody is left on that app version, the
 // same way an old API endpoint is.
 //
-// 2.0.0 pointed at listApp 1.1.0 until the flip; the line below is what changed, and changing it
-// back is the rollback. Editing it here rebuilds the whole tree, which is the wrong tool for that
-// job: the operation the post performs is an edit to the map file already sitting in cdn-root,
-// because that file is what a running app reads. This is the seeding of a CDN, not an operation
-// against one.
+// 2.0.0 pointed at listApp 1.1.0 until the flip; the listApp value in its entry is what changed,
+// and changing it back is the rollback. Editing it here rebuilds the whole tree, which is the wrong
+// tool for that job: the operation the post performs is an edit to the map file already sitting in
+// cdn-root, because that file is what a running app reads. This is the seeding of a CDN, not an
+// operation against one.
 //
 // There is nothing else in the map. No signature over it, no counter, nothing that would let the
 // app tell a map written here from one written by anybody else who can reach the bucket. That is

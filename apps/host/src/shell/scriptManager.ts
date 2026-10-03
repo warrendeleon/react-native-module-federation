@@ -24,8 +24,8 @@ import {
 
 // --- How this app decides, at every launch, which code it is allowed to run.
 //
-//   dev         the two dev servers on :8082 and :8083 own everything. Nothing below changes
-//               resolution; Re.Pack's own handling stands.
+//   dev         the two dev servers on :8082 and :8083 own everything. Nothing in this file
+//               changes resolution; Re.Pack's own handling stands.
 //   cdn         the app asks the CDN for the version map written for its own app version, and
 //               loads exactly the remote versions that map names. Shipping a remote is then an
 //               upload and one edited line, with no new binary and no store review.
@@ -38,7 +38,7 @@ import {
 //               rather than let one load from an unversioned URL unverified, and the banner says
 //               so.
 //
-// The decision is made once, before anything federated is imported, and the result is read back
+// The decision is made once, before anything federated loads, and the result is read back
 // through getFederationStatus for the banner on screen.
 //
 // Inside a CDN launch one remote can still fail to load: a retired version, a container or chunk
@@ -99,8 +99,8 @@ const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : '
 // On iOS they are inside the .app itself, and the JavaScript bundle's own URL points into it: a
 // release build loads file:///…/Host.app/main.jsbundle, and the directory above that file is the
 // .app. A development build loads its bundle from the dev server over http, so there is no
-// directory to derive and no copy to use. Everything in this file that runs from a copy therefore
-// needs a release build.
+// directory to derive and no copy to use. On iOS, everything that runs from a copy therefore needs
+// a release build.
 //
 // On Android the copies are packed into the APK's assets, which are not files on disk. A native
 // module copies them out once per installed build and says where it put them, before the first
@@ -161,9 +161,9 @@ export function subscribeFederationStatus(listener: () => void): () => void {
 }
 
 // --- The remotes that failed from the CDN this session and now run from their copy. In memory on
-// purpose: a failure that was only the network heals at the next launch, which asks the CDN
-// again. Remembering failures across launches, and rolling a bad version back for good, belongs
-// to the next post. ---
+// purpose: a remote runs from its copy only until the next launch, which asks the CDN again, so a
+// failure that was only the network does not keep it there. Remembering failures across launches,
+// and rolling a bad version back permanently, belongs to the next post. ---
 const fallbackRemotes = new Set<string>();
 
 // The in-flight (or finished) initialisation. Held as a promise rather than a boolean, so that a
@@ -179,11 +179,12 @@ let initialization: Promise<FederationStatus> | undefined;
 // front of it either way, so every script of these remotes is decided here: located at its version
 // and verified, or refused.
 //
-// Registered here at module scope, so it is in place before anything federated can be imported,
-// whatever order the launch runs in. Once webpack and the federation runtime have loaded a
-// container or a chunk they never ask for it again, so a resolver added after a script's first
-// load never sees that script. It is handed the fallback set itself rather than a copy, so a
-// remote that falls back is served from its copy on its very next script. ---
+// Registered here at module scope, so it is in place before anything federated can load, whatever
+// order the launch runs in. Once webpack and the federation runtime have loaded a container or a
+// chunk they do not ask for it again unless the remote is registered again with force, as
+// reloadRemote does, so a resolver added after a script's first load would miss that script. It is
+// handed the fallback set itself rather than a copy, so a remote that falls back is served from its
+// copy on its very next script. ---
 ScriptManager.shared.addResolver(
   async (scriptId: string, caller?: string) => {
     const resolution = resolveRemoteLocator({
@@ -377,7 +378,7 @@ async function prepareEmbeddedCopies(): Promise<void> {
 }
 
 // --- Awaited in App.tsx before the navigator mounts, so that every remote is registered at its
-// resolved version before the first React.lazy import can fire. Safe to call more than once and
+// resolved version before the first React.lazy load can start. Safe to call more than once and
 // from more than one place at once: every caller gets the first call's promise. ---
 export function initializeFederation(): Promise<FederationStatus> {
   initialization ??= resolveFederation();

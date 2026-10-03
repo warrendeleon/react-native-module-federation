@@ -312,9 +312,10 @@ const renderPartyTabIcon = (p: { focused: boolean; color: string; size: number }
 
 const Tab = createBottomTabNavigator();
 
-// --- The navigation shell, mounted only once the boot gate has opened. Its tabs are React.lazy
-// federated imports, so mounting it is what starts the first download: it must not happen before
-// initializeFederation has decided where remotes come from and registered them there. ---
+// --- The navigation shell, mounted only once the boot gate has opened. Its tabs load their remotes
+// through React.lazy and loadRemoteModule, so mounting it is what starts the first download: it
+// must not happen before initializeFederation has decided where remotes come from and registered
+// them there. ---
 function Shell({
   navTheme,
   mode,
@@ -392,8 +393,8 @@ export default function App() {
   const [navReady, setNavReady] = useState(false);
 
   // --- The boot gate. Until the launch has decided where remotes load from there is nothing to
-  // resolve a federated import against: the map decides which build of each remote this binary
-  // may load, and an import that fires first would be resolved against the build-time placeholder
+  // resolve a federated load against: the map decides which build of each remote this binary
+  // may load, and a load that starts first would be resolved against the build-time placeholder
   // URLs. The probe has its own timeout; on Android the gate also waits for the copies to be
   // prepared. Both happen behind the splash, so a launch looks the way it always did.
   //
@@ -435,11 +436,10 @@ export default function App() {
   // (inject() notifies nobody on its own), so this placement is the arrangement that made the
   // warning stop, and an effect is where a side effect belongs anyway.
   //
-  // Fire-and-forget: nothing awaits this, so an unreachable party server cannot block boot — the
-  // federation runtime reports the failure on its own and the app runs without the slice, which
-  // is the state the tolerant read shape exists for: reads render honestly, and the add stays
-  // disabled rather than pretending. The catch guards the rejection path so a failed load can
-  // never surface as an unhandled rejection.
+  // Fire-and-forget: nothing awaits this, so a remote that cannot be reached cannot block boot. A
+  // failed load rejects, and the catch logs it, so it never surfaces as an unhandled rejection.
+  // The app then runs without the slice, which is the state the tolerant read shape exists for:
+  // reads render honestly, and the add stays disabled rather than pretending.
   useEffect(() => {
     if (!federationReady) {
       return;

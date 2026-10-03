@@ -17,9 +17,9 @@ import { getFederationStatus, subscribeFederationStatus } from './scriptManager'
 //
 // Host operational chrome rather than part of the design system, so it is plain React Native with
 // its own stylesheet. It still takes its colours from the shared tokens, because a surface with
-// text on it has to clear the same contrast bar as everything else: each fill below carries white
-// text, and every pair is measured in the design system's contrast matrix, which is where every
-// token pairing in this federation is measured. ---
+// text on it has to clear the same contrast bar as everything else: each fill in MODE_FILL carries
+// white text, and every pair is measured in the design system's contrast matrix, which is where
+// every token pairing in this federation is measured. ---
 
 export const FEDERATION_BANNER_HEIGHT = 26;
 

@@ -106,8 +106,8 @@ const theFetchHook = (runtime: Recorder) =>
   runtime.__plugins.find(plugin => plugin.name === 'embedded-fallback')!.fetch!;
 
 beforeEach(() => {
-  // Every failure case below warns on purpose. Silenced so a run that passes prints nothing, and
-  // spied rather than ignored so a case that stops warning is still a visible change.
+  // Every failure case in this file warns on purpose. Silenced so a run that passes prints
+  // nothing, and spied rather than ignored so a case that stops warning is still a visible change.
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
