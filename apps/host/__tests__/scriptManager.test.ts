@@ -477,7 +477,7 @@ describe('reloading a remote', () => {
       options: { force: true },
     });
     expect(globals.rspackChunkListApp).toBeUndefined();
-    // The other remote's chunks are its own business.
+    // Dropping listApp to its copy leaves partyApp's chunk registry in place.
     expect(globals.rspackChunkPartyApp).toBeDefined();
     expect(getFederationStatus().embedded).toEqual(['listApp']);
     expect(listener).toHaveBeenCalledTimes(1);

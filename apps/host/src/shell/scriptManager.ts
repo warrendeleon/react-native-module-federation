@@ -163,7 +163,7 @@ export function subscribeFederationStatus(listener: () => void): () => void {
 // --- The remotes that failed from the CDN this session and now run from their copy. In memory on
 // purpose: a remote runs from its copy only until the next launch, which asks the CDN again, so a
 // failure that was only the network does not keep it there. Remembering failures across launches,
-// and rolling a bad version back permanently, belongs to the next post. ---
+// and rolling a bad version back permanently, belongs to post 17. ---
 const fallbackRemotes = new Set<string>();
 
 // The in-flight (or finished) initialisation. Held as a promise rather than a boolean, so that a
@@ -504,9 +504,9 @@ export function forceReloadRemote(remote: string): void {
 //     installs them all before it fetches anything, so without this a remote dropping to its copy
 //     would run the copy's container over chunks from the CDN. One gap stays open: a chunk the
 //     failed container was still downloading lands in whichever registry exists when it arrives,
-//     and nothing here can cancel the download. Re.Pack also hands a new request for a script
-//     still loading the promise already outstanding. When the copy is the version the CDN was
-//     serving, the default, it is the same bytes either way.
+//     and nothing here can cancel the download. When a script is still loading, Re.Pack also
+//     answers a new request for it with the promise already outstanding. When the copy is the
+//     version the CDN was serving, the default, it is the same bytes either way.
 //
 // Re.Pack's script cache is not a third. Once a resolved script's load settles it keeps no promise
 // to replay, and a download that fails verification is never written to its cache, on either

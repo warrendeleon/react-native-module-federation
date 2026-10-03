@@ -45,10 +45,10 @@ registerShellNavigateHandler(shellNavigateHandler);
 // provider's mode is derived from NativeWind's colour-scheme observable — module-level state in
 // the shared styling runtime, not state the host owns — which is what makes one toggle repaint
 // three independently shipped bundles at once.
-// A remote downloads the first time its tab is opened, so each tab renders behind a Suspense
-// spinner, inside its own boundary. One boundary per tab is what keeps a failure to that tab: a
-// screen that throws while rendering takes down everything up to the nearest boundary, and without
-// one that is the whole navigator.
+// A remote loads the first time its tab is opened, so each tab renders behind a Suspense spinner,
+// inside its own boundary. One boundary per tab is what keeps a failure to that tab: a screen that
+// throws while rendering takes down everything up to the nearest boundary, and without one React
+// unmounts the whole app.
 //
 // The tab loads its stack with loadRemoteModule, where earlier posts wrote
 // import('listApp/ListStack'). An import() of a remote compiles into a module of the host's own
@@ -313,7 +313,7 @@ const renderPartyTabIcon = (p: { focused: boolean; color: string; size: number }
 const Tab = createBottomTabNavigator();
 
 // --- The navigation shell, mounted only once the boot gate has opened. Its tabs load their remotes
-// through React.lazy and loadRemoteModule, so mounting it is what starts the first download: it
+// through React.lazy and loadRemoteModule, so mounting it is what starts the first load: it
 // must not happen before initializeFederation has decided where remotes come from and registered
 // them there. ---
 function Shell({
@@ -422,13 +422,13 @@ export default function App() {
   // even if the user never opens the Party tab. The host triggers the load and knows nothing
   // about what is inside.
   //
-  // Loading at boot is a head start, not a guarantee: the chunk arrives over the network, and
-  // nothing here stops a user reaching an Add button before it lands. So the resolve is made
-  // visible. rootReducer.inject() swaps an entry in a reducer map and rebuilds the combined
-  // reducer; it never dispatches, so the store's state gains no `party` key until the next
-  // action runs. partyStateReady is that action: dispatching it surfaces the injected slice,
-  // and write-side consumers gate the add on `state.party` existing. Until then the button is
-  // disabled; a tap can never dispatch into a store with no reducer for it.
+  // Loading at boot is a head start, not a guarantee: the chunk loads asynchronously, from a server
+  // or from the copy in the binary, and nothing here stops a user reaching an Add button before it
+  // lands. So the resolve is made visible. rootReducer.inject() swaps an entry in a reducer map and
+  // rebuilds the combined reducer; it never dispatches, so the store's state gains no `party` key
+  // until the next action runs. partyStateReady is that action: dispatching it surfaces the
+  // injected slice, and write-side consumers gate the add on `state.party` existing. Until then the
+  // button is disabled; a tap can never dispatch into a store with no reducer for it.
   //
   // It sits in an effect rather than at module scope for an observed reason, not a traced one:
   // at module scope this load produced React's update-on-an-unmounted-component warning on
