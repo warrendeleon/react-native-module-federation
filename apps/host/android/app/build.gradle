@@ -172,8 +172,9 @@ tasks.configureEach {
 // launch. Sync rather than Copy, so a file an earlier build embedded and this one does not is
 // removed instead of shipped.
 //
-// With embed-root missing it warns, embeds nothing, and the build still succeeds. That is the trap:
-// a successful release build that carries no copies. Run build-cdn before a release build. ---
+// With embed-root missing, this task embeds nothing, warnIfNothingToEmbed prints a warning, and the
+// build still succeeds. That is the trap: a successful release build that carries no copies. Run
+// build-cdn before a release build. ---
 def embedSource = file("$rootDir/../../../embed-root/android")
 def embeddedAssetsDir = layout.buildDirectory.dir("generated/embedded-remotes").get().asFile
 
