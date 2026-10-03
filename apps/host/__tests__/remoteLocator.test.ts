@@ -141,8 +141,8 @@ describe('resolveRemoteLocator', () => {
 });
 
 describe('the copy in the binary', () => {
-  // Bundled mode is the launch that never reached the CDN: every remote comes off the disk, at the
-  // version baked in, as an absolute file:// path, still verified.
+  // In bundled mode, the launch that could not use the CDN's versions, every remote comes off the
+  // disk, at the version baked in, as an absolute file:// path, still verified.
   test('sends a container to its baked-in version directory, absolute and verified', () => {
     expect(resolveRemoteLocator(input({ mode: 'bundled' }))).toEqual({
       kind: 'locate',

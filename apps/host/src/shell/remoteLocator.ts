@@ -99,7 +99,7 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
       reason:
         input.mode === 'cdn'
           ? `the version map named no version for ${remoteName}`
-          : `no version map was read at launch, so ${remoteName} has no version to load`,
+          : `this launch could use neither a version map nor a copy, so ${remoteName} has no version to load`,
     };
   }
   return {

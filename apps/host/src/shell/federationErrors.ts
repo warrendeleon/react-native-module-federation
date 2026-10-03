@@ -21,8 +21,8 @@
 // federated load goes through loadRemoteModule in scriptManager.ts (App.tsx says why), and a load
 // that fails there rejects like any other promise, with no report to the global handler. The
 // matcher stays for any import() added later. Dropping its report is safe only while every such
-// import carries its own catch: one added without a catch would have its failure logged here and
-// otherwise go unseen.
+// import checks what it settles with as well as catching a rejection: the guarded require can turn
+// the failure into a fulfilled import with no usable module, which a catch alone never sees.
 //
 // There is a second shape of fatal report, which this file now holds back as well. A remote whose
 // code throws while it is being evaluated (a module that throws at its top level, or one that
@@ -60,8 +60,8 @@ const HANDLED_BY_REMOTE_RUNTIME = /\nwhile loading "[^"\n]+" from \S+$/;
 
 /**
  * Whether an error is a federated module failure that webpack's remote runtime has recorded and
- * turned into a module that throws. The import() that asked for it settles without the module, and
- * its own catch deals with that.
+ * turned into a module that throws. The import() that asked for it can settle without a usable
+ * module rather than reject, so its caller has to check what it received.
  */
 export function isHandledRemoteLoadError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) {

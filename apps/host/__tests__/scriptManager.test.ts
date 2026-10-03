@@ -279,6 +279,37 @@ describe('the copy in the binary', () => {
     expect(status.embedded).toEqual(['listApp']);
   });
 
+  // A map that arrives and reads is not yet a CDN launch: its versions still have to register.
+  // When that fails the launch runs from the copies, and when the copies cannot be registered
+  // either it ends unresolved, with the resolver naming that cause rather than a map never read.
+  test('runs from the copies when the map read but its versions could not be registered', async () => {
+    respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });
+    const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
+    jest
+      .spyOn(runtime as unknown as { registerRemotes: () => void }, 'registerRemotes')
+      .mockImplementationOnce(() => {
+        throw new Error('registration failed');
+      });
+    const status = await initializeFederation();
+    expect(status.mode).toBe('bundled');
+    expect(status.embedded).toEqual(['listApp', 'partyApp']);
+  });
+
+  test('ends unresolved when neither the versions nor the copies can be registered', async () => {
+    respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });
+    const { initializeFederation, runtime, repack } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
+    jest
+      .spyOn(runtime as unknown as { registerRemotes: () => void }, 'registerRemotes')
+      .mockImplementation(() => {
+        throw new Error('registration failed');
+      });
+    const status = await initializeFederation();
+    expect(status.mode).toBe('unresolved');
+    await expect(theResolver(repack)('listApp')).rejects.toThrow(
+      'this launch could use neither a version map nor a copy, so listApp has no version to load',
+    );
+  });
+
   // A development build loads its bundle from the dev server, so there is no .app directory to
   // derive and no copy to run, even when the binary was built with some.
   test('a build whose bundle came over http has no copy to run', async () => {

@@ -7,8 +7,9 @@
 # The <remote>/<version>/ directories are kept rather than flattened: two remotes can ship vendor
 # chunks with the same file name, and a flat copy would let one overwrite the other.
 #
-# It runs in every configuration. A Debug build loads its remotes from the dev servers and never
-# reads the copy, so there it only costs the time the copy takes.
+# It runs in every configuration. A Debug build loads the host's own bundle over http, so it cannot
+# read the copy, and there the copy only costs the time it takes. Its remotes come from the dev
+# servers when no CDN is configured, or from the CDN when one is.
 #
 # With embed-root missing it removes any copy an earlier build left behind, prints a warning and
 # exits 0, and the build succeeds with nothing embedded. That is the trap: run
