@@ -72,8 +72,9 @@ declare const __APP_VERSION__: string;
 const CDN_BASE = typeof __MF_CDN_BASE__ === 'string' ? __MF_CDN_BASE__ : '';
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '1.0.0';
 
-// A CDN was configured for this build. A release build without one has nowhere to load from; a
-// development build without one is the ordinary dev-server setup every earlier post used.
+// A CDN was configured for this build. A release build without one runs from its copies, when it
+// carries any; a development build without one is the ordinary dev-server setup every earlier post
+// used.
 const CDN_CONFIGURED = CDN_BASE.length > 0;
 
 // --- How long the launch waits for the version map. It is a boot gate: everything federated is

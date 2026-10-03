@@ -173,7 +173,7 @@ tasks.configureEach {
 // removed instead of shipped.
 //
 // With embed-root missing it warns, embeds nothing, and the build still succeeds. That is the trap:
-// a green release build that carries no copies. Run build-cdn before a release build. ---
+// a successful release build that carries no copies. Run build-cdn before a release build. ---
 def embedSource = file("$rootDir/../../../embed-root/android")
 def embeddedAssetsDir = layout.buildDirectory.dir("generated/embedded-remotes").get().asFile
 

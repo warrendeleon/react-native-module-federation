@@ -96,13 +96,23 @@ const RENDER_FAILURE_MESSAGE = 'It loaded, then hit an error. Try again.';
 type RemoteModule = { default?: unknown };
 
 // What React can render as a component: a function or a class, or an object React made from one
-// (memo, forwardRef, lazy), which it marks with $$typeof. Checked before React sees the module, so
-// a remote that settles without one fails here, under its own name, rather than as React's
-// "Element type is invalid".
+// with memo, forwardRef or lazy, which it marks with that type's $$typeof symbol. A React element
+// carries $$typeof too, and it is not a component, so the symbol itself is checked rather than its
+// presence. Checked before React sees the module, so a remote that settles without a component
+// fails here, under its own name, as a failed load, rather than as React's "Element type is
+// invalid" once the load has counted as a success.
+const COMPONENT_TYPES = new Set<unknown>([
+  Symbol.for('react.memo'),
+  Symbol.for('react.forward_ref'),
+  Symbol.for('react.lazy'),
+]);
+
 function isComponent(value: unknown): value is React.ComponentType {
   return (
     typeof value === 'function' ||
-    (typeof value === 'object' && value !== null && '$$typeof' in value)
+    (typeof value === 'object' &&
+      value !== null &&
+      COMPONENT_TYPES.has((value as { $$typeof?: unknown }).$$typeof))
   );
 }
 
