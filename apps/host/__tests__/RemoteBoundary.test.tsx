@@ -185,7 +185,7 @@ test.each([
   ['dev', /dev server/],
   ['cdn', /downloaded, verified or started/],
   ['bundled', /own copy/],
-  ['unresolved', /which version/],
+  ['unresolved', /could not prepare/],
 ] as const)('in %s mode the error state says what to try there', async (mode, advice) => {
   jest.spyOn(federation, 'canFallBack').mockReturnValue(false);
   jest

@@ -203,7 +203,7 @@ tree from the lists at the top of the file, so it is the wrong tool for the two 
 that its app version's map names, its signed bundles and its manifest, staged in `embed-root/`,
 with the versions recorded in `apps/host/src/shell/embedded-versions.ts`. The last build phase of
 the iOS target and a Gradle task on Android copy `embed-root/` into the binary byte for byte, so
-every file still verifies against the signing key. Run it before the release build; without
+every bundle keeps the signature it is verified against. Run it before the release build; without
 `embed-root/` both builds warn, succeed, and carry nothing.
 
 ```sh
@@ -218,8 +218,9 @@ cold-start once more: the list's manifest is a 404, so that one remote runs from
 banner reads `cdn · listApp 1.2.0 embedded · partyApp 1.0.0`, while the party still loads from the
 CDN. Move the directory back afterwards.
 
-A copy only needs a release build: a development build loads its own bundle from the dev server,
-so it has no app directory to read a copy from and stays on the dev servers.
+On iOS a copy needs a release build: a development build loads its own bundle from the dev server,
+so there is no app directory to read a copy from. A development build with no CDN configured stays
+on the dev servers on both platforms.
 
 ## Architecture
 

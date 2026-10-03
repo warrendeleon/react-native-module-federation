@@ -29,12 +29,13 @@ import {
 //   cdn         the app asks the CDN for the version map written for its own app version, and
 //               loads exactly the remote versions that map names. Shipping a remote is then an
 //               upload and one edited line, with no new binary and no store review.
-//   bundled     the map could not be fetched or read, and the binary carries its own copy of each
+//   bundled     the CDN's versions could not be used (the map could not be fetched or read, or
+//               registering its versions failed), and the binary carries its own copy of each
 //               remote, baked in when it was built. The whole launch runs from those copies, read
 //               from the disk and verified exactly like a download.
-//   unresolved  the map could not be fetched or read, and there is no copy to run instead. There
-//               is no version to load anything at, so the resolver refuses every remote rather than
-//               let one load from an unversioned URL unverified, and the banner says so.
+//   unresolved  the CDN's versions could not be used, and no copy could be registered instead.
+//               There is no version to load anything at, so the resolver refuses every remote
+//               rather than let one load from an unversioned URL unverified, and the banner says so.
 //
 // The decision is made once, before anything federated is imported, and the result is read back
 // through getFederationStatus for the banner on screen.
@@ -412,8 +413,9 @@ async function resolveFederation(): Promise<FederationStatus> {
   return status;
 }
 
-// --- The launch that never reached a usable map. With copies in the binary it runs from them,
-// every remote registered at its copy's manifest, which the runtime reads from the disk. With none,
+// --- The launch that could not use the CDN: no usable map, no CDN configured, or a registration
+// that failed. With copies in the binary it runs from them, every remote registered at its copy's
+// manifest, which the runtime reads from the disk. With none, or when registering them fails too,
 // there is nothing to run. ---
 function runFromCopies(reason: string): FederationStatus {
   const embedded = REMOTE_NAMES.filter(hasEmbeddedCopy);

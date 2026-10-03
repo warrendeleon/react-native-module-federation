@@ -82,13 +82,14 @@ registerShellNavigateHandler(shellNavigateHandler);
 // no dev server: the version could not be downloaded, its signature did not verify, or its code
 // failed as it started, and the boundary cannot tell which, so the message names all three. A
 // relaunch is worth trying because it asks the CDN for the version map again. Running from the
-// copies, the CDN was out of reach at launch and a relaunch asks again. With no map and no copy
-// there is no version to load, and only a relaunch asks again.
+// copies, the CDN could not be used at launch and a relaunch asks again. With neither the CDN's
+// versions nor a copy that could be registered, there is nothing to load, and only a relaunch asks
+// again.
 const LOAD_FAILURE_MESSAGE: Record<FederationMode, string> = {
   dev: 'The remote did not answer. Check its dev server, then try again.',
   cdn: 'The remote could not be downloaded, verified or started. Try again, or relaunch the app.',
   bundled: "The app's own copy of this remote could not be loaded. Relaunch the app.",
-  unresolved: 'The app could not find out which version of this remote to load. Relaunch the app.',
+  unresolved: 'The app could not prepare this remote to load. Relaunch the app.',
 };
 
 const RENDER_FAILURE_MESSAGE = 'It loaded, then hit an error. Try again.';
@@ -390,11 +391,11 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   const [navReady, setNavReady] = useState(false);
 
-  // --- The boot gate. Until the version map has answered there is nothing to resolve a federated
-  // import against: the map decides which build of each remote this binary may load, and an
-  // import that fires first would be resolved against the build-time placeholder URLs. The wait
-  // is bounded by the probe's own timeout and it happens behind the splash, so a launch looks the
-  // way it always did.
+  // --- The boot gate. Until the launch has decided where remotes load from there is nothing to
+  // resolve a federated import against: the map decides which build of each remote this binary
+  // may load, and an import that fires first would be resolved against the build-time placeholder
+  // URLs. The probe has its own timeout; on Android the gate also waits for the copies to be
+  // prepared. Both happen behind the splash, so a launch looks the way it always did.
   //
   // A failure is not a reason to hold the app back. The gate opens either way; what changes is
   // the mode the banner reports and whether the tabs can load anything at all. ---

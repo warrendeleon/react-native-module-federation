@@ -27,8 +27,8 @@ export const FEDERATION_BANNER_HEIGHT = 26;
 const TAB_BAR_HEIGHT = 49;
 
 // dev is the neutral state, cdn is the one the operational layer exists for, bundled is the app
-// running on its own copies with the CDN out of reach, and unresolved is a failure: no version
-// map and no copy, so no remote can load at all.
+// running on its own copies with the CDN out of reach, and unresolved is a failure: neither the
+// CDN's versions nor a copy could be used, so no remote can load at all.
 const MODE_FILL: Record<FederationMode, string> = {
   dev: colours.darkGrey,
   cdn: colours.blueText,

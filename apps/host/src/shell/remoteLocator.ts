@@ -72,9 +72,11 @@ function remoteFor(
 // one is Re.Pack's per-remote resolver: it answers with a URL built from whichever manifest was
 // registered last and no signature check at all. That is the right answer in development, where
 // the dev servers own everything, and for any script that is not one of this host's remotes.
-// Outside development it is never the right answer for a remote: with no version map, or a map
-// that named no version for this remote, deferring would load code from an unversioned URL,
-// unverified. So those loads are refused, and the refusal surfaces as the tab's error state. ---
+// Outside development it is never the right answer for a remote. A remote that runs from its copy,
+// in a bundled launch or after it fell back, is located in the copy; any other remote needs the
+// version the map named for it, and without one, deferring would load code from an unversioned
+// URL, unverified. So a remote with no version, or with no copy to read when it runs from one, is
+// refused, and the refusal surfaces as the tab's error state. ---
 export function resolveRemoteLocator(input: ResolveInput): Resolution {
   if (input.mode === 'dev') {
     return { kind: 'defer' };
