@@ -31,8 +31,8 @@
 // outermost require in it is guarded as well. The report is fatal, the require returns nothing,
 // and no suffix marks it, because as far as the remote runtime is concerned the load succeeded.
 // Measured on an iOS Release build with a list version that throws at the top of one of its
-// modules: with only the matcher below, the app ended at launch. What marks this report is when it
-// happens, which is what evaluateRemoteModule, below, is for.
+// modules: with only the matcher, the app ended at launch. What marks this report is when it
+// happens, which is what evaluateRemoteModule is for.
 //
 // Everything that is neither of these two shapes is passed to the handler that was there before,
 // unchanged. ---
@@ -85,8 +85,8 @@ export function isHandledRemoteLoadError(error: unknown): boolean {
 // Through an import() it would reach the host's own guarded require, which reports it as fatal a
 // second time, outside the window, so every error thrown from here is remembered, and the guard
 // drops that second report the way it drops the suffix. Both records live on the global object,
-// under names every evaluation of this file knows, for the same Fast Refresh reason as the
-// wrapped handler below. ---
+// under names every evaluation of this file knows, for the same Fast Refresh reason that the guard
+// keeps the handler it wraps on the WRAPPED property. ---
 const EVALUATING = '__federationEvaluating';
 const THROWN = '__federationEvaluationErrors';
 type Evaluation = { failure?: { error: unknown } };

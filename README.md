@@ -189,13 +189,14 @@ line of `cdn-root/ios/maps/2.0.0/version-map.json`:
 
 Relaunch the installed app and it loads the new version. The map is the commit, which is why it is
 written last: a map pointing at a directory that is not there yet is a 404 for every user who
-launches in between. What they get is the copy of that remote their binary carries (see below):
-a working tab, but the version the binary shipped with, not the one being released. Rolling back
-is the same edit in reverse, and it needs no build at all, because the old version's directory
-was never removed.
+launches in between. What they get is the copy of that remote their binary carries (see
+[When the CDN is not there](#when-the-cdn-is-not-there)): a working tab, but the version the binary
+shipped with, not the one being released. Rolling back is the same edit in reverse, and it needs no
+build at all, because the old version's directory was never removed.
 
 `tools/build-cdn.mjs` seeds a CDN rather than operating one. Running it again rebuilds the whole
-tree from the lists at the top of the file, so it is the wrong tool for the two steps above.
+tree from the lists at the top of the file, so it is the wrong tool for adding one version's
+directory or editing a map.
 
 ### When the CDN is not there
 

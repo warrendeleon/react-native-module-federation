@@ -125,7 +125,7 @@ export function resolveRemoteLocator(input: ResolveInput): Resolution {
 // Verification stays on. The copy is the same signed bytes the CDN serves, and Re.Pack checks a
 // file on disk exactly as it checks a download, which is also why the copy is never rewritten on
 // its way into the app. A binary with no copy of this remote, or nowhere to read one from, is
-// refused rather than deferred, for the same reason as above: deferring loads it unverified. ---
+// refused rather than deferred, because deferring would load it unverified. ---
 function locateEmbedded(
   input: ResolveInput,
   remoteName: string,

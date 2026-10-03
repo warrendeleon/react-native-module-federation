@@ -99,8 +99,8 @@ const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : '
 // On iOS they are inside the .app itself, and the JavaScript bundle's own URL points into it: a
 // release build loads file:///…/Host.app/main.jsbundle, and the directory above that file is the
 // .app. A development build loads its bundle from the dev server over http, so there is no
-// directory to derive and no copy to use. Everything below that runs from a copy therefore needs
-// a release build.
+// directory to derive and no copy to use. Everything in this file that runs from a copy therefore
+// needs a release build.
 //
 // On Android the copies are packed into the APK's assets, which are not files on disk. A native
 // module copies them out once per installed build and says where it put them, before the first
@@ -453,7 +453,7 @@ export function getFederationStatus(): FederationStatus {
 // no such module in between, so a retry is a retry.
 //
 // It asks for the module's factory rather than its exports, because the factory is what the
-// evaluation window above wraps: the runtime hands back the plugin's wrapper, and calling it here
+// evaluationWindow plugin wraps: the runtime hands back the plugin's wrapper, and calling it here
 // evaluates the module inside the window, where a module that throws as it is evaluated fails this
 // load instead of ending the app. ---
 export async function loadRemoteModule<T>(id: string): Promise<T | undefined> {

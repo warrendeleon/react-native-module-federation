@@ -416,7 +416,7 @@ export default function App() {
   }, []);
 
   // Screens load on demand; state modules load at boot — where boot now means the moment the
-  // gate above opens, because this is a federated load like any other. Loading
+  // boot gate opens, because this is a federated load like any other. Loading
   // partyApp/partySlice runs the module that injects the party's reducer into the shared store,
   // even if the user never opens the Party tab. The host triggers the load and knows nothing
   // about what is inside.

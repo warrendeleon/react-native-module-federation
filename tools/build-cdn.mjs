@@ -15,8 +15,8 @@
 // is a new entry in the first list and one edited line in the second.
 //
 // It also prepares the copy a release build carries, so the app can start with the CDN out of
-// reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where they are
-// written, below. Run it before the release build that should carry them.
+// reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where the script
+// writes them. Run it before the release build that should carry them.
 //
 // Usage: node tools/build-cdn.mjs [ios|android]     (no argument builds both)
 //
@@ -188,8 +188,8 @@ const bundledVersions = {};
 for (const platform of ALL_PLATFORMS) {
   const cdnDir = join(repoRoot, 'cdn-root', platform);
   const embedDir = join(repoRoot, 'embed-root', platform);
-  // Cleared first, whatever happens next, so a binary never carries a copy the generated file
-  // below does not list.
+  // Cleared first, whatever happens next, so a binary never carries a copy that
+  // embedded-versions.ts does not list.
   rmSync(embedDir, { recursive: true, force: true });
   // A platform that has never been built has no tree to take a copy from.
   if (!existsSync(cdnDir)) {
