@@ -41,7 +41,7 @@ function located(over: Partial<ResolveInput> = {}) {
 }
 
 describe('resolveRemoteLocator', () => {
-  // Deferring returns the dev servers' own resolution, which is the whole of development.
+  // Deferring returns the dev servers' own resolution, which is the whole of dev mode.
   test('defers in dev mode', () => {
     expect(resolveRemoteLocator(input({ mode: 'dev' }))).toEqual({
       kind: 'defer',
@@ -227,8 +227,8 @@ describe('the copy in the binary', () => {
     );
   });
 
-  // The fallback set has no meaning in development, where the dev servers own every load.
-  test('development ignores the fallback set', () => {
+  // The fallback set has no meaning in dev mode, where the dev servers own every load.
+  test('dev mode ignores the fallback set', () => {
     expect(
       resolveRemoteLocator(
         input({ mode: 'dev', fallbackRemotes: new Set(['listApp']) }),

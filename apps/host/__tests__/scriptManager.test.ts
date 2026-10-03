@@ -429,7 +429,7 @@ describe('the manifest net', () => {
     expect(hook(cdnManifest('partyApp', '1.0.0'))).toBeUndefined();
   });
 
-  test('stays out of the way in development', async () => {
+  test('stays out of the way in dev mode', async () => {
     const { initializeFederation, runtime } = loadFederation('', '2.0.0', { copies: COPIES });
     await initializeFederation();
     expect(theFetchHook(runtime)('http://localhost:8082/ios/mf-manifest.json')).toBeUndefined();
