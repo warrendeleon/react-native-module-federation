@@ -1,5 +1,6 @@
 // --- Stands in for @module-federation/runtime under Jest, for the same reason the Re.Pack client
-// is mocked next door: the real runtime is one the bundler creates, and nothing creates one here.
+// is mocked in repack-client.js: the real runtime is one the bundler creates, and nothing creates
+// one here.
 // Calls are recorded rather than dropped, so a test can assert what the host asked of it: which
 // remotes it re-registered and with the force flag, which plugins it installed, which remote
 // modules a tab asked for.

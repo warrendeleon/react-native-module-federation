@@ -20,8 +20,8 @@ const retryButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
 // stand where loadRemote stands, and the federation calls are spied on rather than run.
 let warn: jest.SpyInstance;
 beforeEach(() => {
-  // Every case fails a load or a render on purpose. The boundary logs each failure, and React logs
-  // every error a boundary catches on its own account.
+  // Every case fails a load or a render on purpose. The boundary logs each failure, and React also
+  // logs every error a boundary catches.
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -89,8 +89,8 @@ test('a CDN load that fails drops the remote to its copy without showing the err
 });
 
 // A remote that loaded and then threw has already run its code, and the boundary does not swap it
-// for the copy mid-session: the error state comes straight away, even from the CDN with a copy on
-// board.
+// for the copy mid-session: the error state comes straight away, even from the CDN when the binary
+// carries a copy.
 test('a remote that loaded and then threw is shown as broken, and Try again renders it again', async () => {
   jest.spyOn(federation, 'canFallBack').mockReturnValue(true);
   const fallBack = jest.spyOn(federation, 'fallBackAndReload').mockImplementation(() => {});
@@ -139,8 +139,9 @@ test('a remote that settles without a component fails as a load, under its own n
 });
 
 // A React element carries $$typeof as well, and it is not a component: React cannot render it as a
-// type. A remote whose export is one never produced a component, so it fails as a load and, with a
-// copy on board, drops to the copy instead of being shown as a remote that broke while rendering.
+// type. A remote whose export is one never produced a component, so it fails as a load and, when
+// the binary carries a copy, drops to the copy instead of being shown as a remote that broke while
+// rendering.
 test('a remote that exports an element rather than a component fails as a load and drops to its copy', async () => {
   let droppedToCopy = false;
   jest.spyOn(federation, 'canFallBack').mockImplementation(() => !droppedToCopy);

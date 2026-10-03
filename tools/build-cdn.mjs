@@ -47,11 +47,11 @@ const ALL_PLATFORMS = ['ios', 'android'];
 // left alone: installed apps are loading those exact files, so a rebuild of a published version
 // is a silent change to code somebody is already running. New work gets a new number.
 //
-// listApp has three because this post ships two releases of it. 1.0.0 and 1.1.0 are the same
+// listApp has three because post 15 ships two releases of it. 1.0.0 and 1.1.0 are the same
 // screen with different stamps on it, which is what the two-binaries demo needs; 1.2.0 is the
 // build that added the party counter's full state, and it is the one the flip ships. This tool
 // builds every version from the source in front of it, so rebuilt from the finished tree all three
-// carry that state: the post builds 1.0.0 and 1.1.0 before making the change, which is what keeps
+// carry that state: post 15 builds 1.0.0 and 1.1.0 before making the change, which is what keeps
 // them without it. ---
 const REMOTE_VERSIONS = {
   listApp: ['1.0.0', '1.1.0', '1.2.0'],
@@ -65,7 +65,7 @@ const REMOTE_VERSIONS = {
 //
 // 2.0.0 pointed at listApp 1.1.0 until the flip; the listApp value in its entry is what changed,
 // and changing it back is the rollback. Editing it here rebuilds the whole tree, which is the wrong
-// tool for that job: the operation the post performs is an edit to the map file already sitting in
+// tool for that job: the operation post 15 performs is an edit to the map file already sitting in
 // cdn-root, because that file is what a running app reads. This is the seeding of a CDN, not an
 // operation against one.
 //
@@ -91,7 +91,7 @@ if (platformArg && !ALL_PLATFORMS.includes(platformArg)) {
 }
 const platforms = platformArg ? [platformArg] : ALL_PLATFORMS;
 
-// --- A map naming a version the CDN does not hold is the failure the post demonstrates by hand,
+// --- A map naming a version the CDN does not hold is the failure post 15 demonstrates by hand,
 // and it is worth catching here rather than at a user's launch. Checked before anything is built,
 // so a typo costs a second instead of two bundle runs. ---
 const unknownRemotes = Object.keys(REMOTE_VERSIONS).filter(remote => !REMOTE_APPS[remote]);

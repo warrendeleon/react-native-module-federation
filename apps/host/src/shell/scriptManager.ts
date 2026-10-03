@@ -181,10 +181,10 @@ let initialization: Promise<FederationStatus> | undefined;
 //
 // Registered here at module scope, so it is in place before anything federated can load, whatever
 // order the launch runs in. Once webpack and the federation runtime have loaded a container or a
-// chunk they do not ask for it again unless the remote is registered again with force, as
-// reloadRemote does, so a resolver added after a script's first load would miss that script. It is
-// handed the fallback set itself rather than a copy, so a remote that falls back is served from its
-// copy on its very next script. ---
+// chunk they do not ask for it again unless the remote is reloaded, as reloadRemote does:
+// registered again with force and its chunk registry cleared. So a resolver added after a script's
+// first load would miss that script. It is handed the fallback set itself rather than a copy, so a
+// remote that falls back is served from its copy on its very next script. ---
 ScriptManager.shared.addResolver(
   async (scriptId: string, caller?: string) => {
     const resolution = resolveRemoteLocator({
@@ -211,10 +211,11 @@ ScriptManager.shared.addResolver(
   { key: '__signed_resolver__', priority: 100 },
 );
 
-// --- A chunk that fails to load is reported to React Native's global handler as fatal before the
-// boundary can show the tab's error state, and in a release build that report ends the process.
-// The guard drops that one report so the boundary gets its turn; federationErrors.ts has the
-// order in full. ---
+// --- An import() of a remote that fails to load is reported to React Native's global handler as
+// fatal before anything can handle it, and in a release build that report ends the process. This
+// host no longer loads a remote with import(): a failed loadRemoteModule rejects with no report.
+// The guard stays for any import() added later, and drops that one report so the code that asked
+// for the module gets its turn; federationErrors.ts has the order in full. ---
 guardHandledRemoteLoadErrors();
 
 // --- A remote module that throws while it is evaluated is reported as fatal as well, by the
@@ -493,7 +494,7 @@ export function forceReloadRemote(remote: string): void {
 }
 
 // --- Make a remote's next load start from nothing. After a load that failed, two records of the
-// remote outlive the failure, and a retry that leaves either behind replays it:
+// remote outlive the failure, and a retry that leaves either behind goes wrong in its own way:
 //
 //   - the federation runtime keeps the remote's entry, the manifest it read and the container it
 //     loaded, and a container load that failed, which it hands back to every later request.

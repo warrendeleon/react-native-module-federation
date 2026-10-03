@@ -337,9 +337,9 @@ describe('WCAG 1.4.3 Contrast (Minimum) — the scrim class and its alpha agree'
   // The component paints a class; the contrast map is computed from a number. Nothing else ties
   // them together, so a badge changed to bg-white/5 would leave every check here green while the
   // real surface moved four types below AA. This check proves the two constants agree with each
-  // other; that the component still uses them rather than a literal is proved next door, in
-  // components.accessibility.tsx, because both constants are exported from the same module and
-  // neither of them notices the component walking away.
+  // other; that the component still uses them rather than a literal is proved in
+  // src/components/__tests__/components.accessibility.tsx, because both constants are exported
+  // from the same module and neither of them changes when the component stops using them.
   test('the class TypeBadge paints encodes the alpha the map was computed against', () => {
     expect(HERO_SCRIM_CLASS).toBe(`bg-white/${Math.round(HERO_SCRIM_ALPHA * 100)}`);
   });

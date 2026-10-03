@@ -40,7 +40,7 @@ registerShellNavigateHandler(shellNavigateHandler);
 // store: consumers read the one shared cache the host provides, but the host never sees their
 // endpoints at build time.
 //
-// As of this post the host also owns the design system's runtime: GluestackUIProvider is mounted
+// Since post 11 the host also owns the design system's runtime: GluestackUIProvider is mounted
 // once, here, and every remote renders against it through the shared @pokedex/ui singleton. The
 // provider's mode is derived from NativeWind's colour-scheme observable — module-level state in
 // the shared styling runtime, not state the host owns — which is what makes one toggle repaint
