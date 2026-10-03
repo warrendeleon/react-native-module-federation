@@ -33,8 +33,9 @@ module.exports = {
   // transformIgnorePatterns lists react-native, jest-react-native, @react-native and
   // @react-native-community, and nothing else. Add these too, or every test file that imports one
   // fails before its tests run. @pokedex/ui joins them because its main entry is an ES module
-  // build. So do three packages it pulls in: @gluestack-ui ships ES modules, @expo/html-elements
-  // ships its TypeScript source, and react-native-css-interop ships JSX in a .js file.
+  // build. So do four packages it pulls in: @gluestack-ui/core and @gluestack-ui/utils ship ES
+  // modules, @expo/html-elements ships its TypeScript source, and react-native-css-interop ships
+  // JSX in a .js file.
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-redux|immer|@pokedex/ui|react-native-css-interop|@gluestack-ui|@expo/html-elements)/)',
   ],
