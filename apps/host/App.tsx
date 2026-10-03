@@ -66,10 +66,11 @@ registerShellNavigateHandler(shellNavigateHandler);
 //     component. From the CDN, the remote drops to its copy in the binary and the tab loads it
 //     behind the loading state, so the swap is invisible. Only a load with no copy left to try
 //     shows the error state.
-//   - the remote rendered and then threw. The user has seen the tab and its code has run in this
-//     session, so the boundary does not swap it for the copy, which would replace a screen already
-//     in use with a different version of it. The tab shows the error state straight away, and Try
-//     again renders it again, which recovers an error that does not repeat.
+//   - the load returned a component, and the component threw as it rendered, on its first render
+//     or a later one: the boundary records that the code arrived, not whether the screen was ever
+//     shown. That code has run in this session, so the boundary keeps the version rather than swap
+//     it for the copy. The tab shows the error state straight away, and Try again renders it
+//     again, which recovers an error that does not repeat.
 //
 // Try again has to get past two caches. React.lazy keeps the promise it was given and the result it
 // settled with, a rejection included, so the same lazy component can only ever fail again: a retry

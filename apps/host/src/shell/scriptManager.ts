@@ -245,8 +245,11 @@ registerPlugins([evaluationWindow]);
 //
 //   - a remote that already fell back gets its copy's manifest, whatever URL it is still
 //     registered at.
-//   - a CDN remote gets a real fetch, and on any failure (a 404 for a retired version, a timeout,
-//     a dropped connection) it falls back to its copy and gets the copy's manifest instead.
+//   - a CDN remote gets a real fetch, and on a failed request (an error status such as a 404 for
+//     a retired version, a timeout, a dropped connection) it falls back to its copy and gets the
+//     copy's manifest instead. A manifest that arrives with a success status is returned as it
+//     is; if it cannot be read, the runtime fails on it later: inside the tab's boundary for a
+//     tab's load, and in App.tsx's catch for partyApp's boot loads.
 //   - anything else, and any remote without a copy, is left to the runtime's own fetch.
 //
 // The hook may return a Promise of a Response, or nothing to hand the request back to the
@@ -488,18 +491,21 @@ export function forceReloadRemote(remote: string): void {
 // remote outlive the failure, and a retry that leaves either behind replays it:
 //
 //   - the federation runtime keeps the remote's entry, the manifest it read and the container it
-//     loaded, and after a failure the failed attempt itself, which it hands back to every later
-//     request. Registering the remote again with force removes all of it, the container's global
-//     included, and points the next load at `entry`.
+//     loaded, and a container load that failed, which it hands back to every later request.
+//     Registering the remote again with force removes all of it, the container's global included,
+//     and points the next load at `entry`.
 //   - the remote's chunk registry keeps every chunk the last container fetched. A new container
 //     installs them all before it fetches anything, so without this a remote dropping to its copy
 //     would run the copy's container over chunks from the CDN. One gap stays open: a chunk the
 //     failed container was still downloading lands in whichever registry exists when it arrives,
-//     and nothing here can cancel the download. When the copy is the version the CDN was serving,
-//     the default, it is the same bytes either way.
+//     and nothing here can cancel the download. Re.Pack also hands a new request for a script
+//     still loading the promise already outstanding. When the copy is the version the CDN was
+//     serving, the default, it is the same bytes either way.
 //
-// Re.Pack's script cache is not a third. Once a load settles it keeps no promise to replay, and a
-// download that fails verification is never written to its cache, on either platform. ---
+// Re.Pack's script cache is not a third. Once a resolved script's load settles it keeps no promise
+// to replay, and a download that fails verification is never written to its cache, on either
+// platform. A refusal from the resolver comes before that cleanup and is kept, but the resolver
+// here refuses only a remote it has no version or copy for. ---
 function reloadRemote(remote: RemoteName, entry: string): void {
   try {
     registerRemotes([{ name: remote, entry }], { force: true });
