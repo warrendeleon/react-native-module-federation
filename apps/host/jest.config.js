@@ -30,11 +30,11 @@ module.exports = {
   // modules. react-redux and immer ship CommonJS as well, but React Native's Jest environment
   // resolves packages with the "react-native" export condition, and both point that condition at an
   // ES module build. The base preset only sends React Native's own packages through Babel: its
-  // transformIgnorePatterns lists react-native, @react-native and @react-native-community, and
-  // nothing else. Add these too, or every test file that imports one fails before its tests run.
-  // @pokedex/ui joins them because it ships raw source through its "react-native" entry, and so do
-  // three packages it pulls in: @gluestack-ui and @expo/html-elements ship ES modules, and
-  // react-native-css-interop ships JSX in a .js file.
+  // transformIgnorePatterns lists react-native, jest-react-native, @react-native and
+  // @react-native-community, and nothing else. Add these too, or every test file that imports one
+  // fails before its tests run. @pokedex/ui joins them because its main entry is an ES module
+  // build. So do three packages it pulls in: @gluestack-ui ships ES modules, @expo/html-elements
+  // ships its TypeScript source, and react-native-css-interop ships JSX in a .js file.
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-redux|immer|@pokedex/ui|react-native-css-interop|@gluestack-ui|@expo/html-elements)/)',
   ],
