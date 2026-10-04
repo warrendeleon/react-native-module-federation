@@ -108,7 +108,7 @@ const PROBE_TIMEOUT_MS = 1500;
 // to verify against: that key is embedded in the iOS Info.plist and in Android's strings.xml, and
 // nowhere else. On those two platforms it is strict, which means a chunk whose signature does not
 // match the key, or which carries no signature at all, is rejected before it executes. The version
-// map is signed with a different key, which lives in version-map-public-key.ts. ---
+// map is checked against a different key, whose public half is in version-map-public-key.ts. ---
 const SIGNED_PLATFORMS = ['ios', 'android'];
 const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : 'off';
 
