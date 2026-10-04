@@ -12,6 +12,13 @@ import NativeEmbeddedRemotes from '../../specs/NativeEmbeddedRemotesModule';
 import { BUNDLED_VERSIONS } from './embedded-versions';
 import { evaluateRemoteModule, guardHandledRemoteLoadErrors } from './federationErrors';
 import {
+  FAILURE_THRESHOLD,
+  nextHealthOnFailure,
+  nextHealthOnSuccess,
+  type RemoteHealth,
+  shouldRollBack,
+} from './remoteHealth';
+import {
   embeddedManifestUrl,
   type FederationMode,
   manifestRemote,
@@ -21,6 +28,9 @@ import {
   versionMapUrl,
   type VerifyMode,
 } from './remoteLocator';
+import { remoteHealthKey, storage, VERSION_MAP_SEQ_KEY } from './storage';
+import { VERSION_MAP_PUBLIC_KEY } from './version-map-public-key';
+import { verifyVersionMap } from './versionMapVerify';
 
 // --- How this app decides, at every launch, which code it is allowed to run.
 //
@@ -131,6 +141,12 @@ export interface FederationStatus {
   versions: Record<string, string>;
   /** The remotes running from their copy in the binary: all of them in bundled mode. */
   embedded: readonly string[];
+  /**
+   * The remotes this launch sent to their copy before trying the CDN, because the version the map
+   * names has failed FAILURE_THRESHOLD launches in a row. A subset of `embedded`; empty outside a
+   * CDN launch.
+   */
+  rolledBack: readonly string[];
 }
 
 let status: FederationStatus = {
@@ -138,6 +154,7 @@ let status: FederationStatus = {
   source: 'dev servers',
   versions: {},
   embedded: [],
+  rolledBack: [],
 };
 
 // The versions the map named, kept apart from status.versions, which changes as remotes fall back.
@@ -160,11 +177,68 @@ export function subscribeFederationStatus(listener: () => void): () => void {
   };
 }
 
-// --- The remotes that failed from the CDN this session and now run from their copy. In memory on
-// purpose: a remote runs from its copy only until the next launch, which asks the CDN again, so a
-// failure that was only the network does not keep it there. Remembering failures across launches,
-// and rolling a bad version back permanently, belongs to post 17. ---
+// --- The remotes that run from their copy this session: the ones that failed from the CDN and
+// dropped to it, and the ones the launch sent there before trying, because the version the map
+// names has kept failing. In memory on purpose: a remote runs from its copy only until the next
+// launch, which asks the CDN again, so a failure that was only the network does not keep it there.
+// What does survive the launch is the record of how often a version has failed, below. ---
 const fallbackRemotes = new Set<string>();
+
+// --- The record that survives the launch: per remote, which CDN version last failed and how many
+// launches in a row. It is read in the boot gate, before the remotes register, and a remote whose
+// named version is at the threshold is sent to its copy for the whole launch without trying the
+// CDN first. It is written at the two moments the launch learns something about the version:
+// when the remote drops to its copy, and when the remote's own component has rendered from the
+// CDN. The decisions are in remoteHealth.ts; this is the storage around them. ---
+function readHealth(remote: string): RemoteHealth | null {
+  const raw = storage.getString(remoteHealthKey(remote));
+  if (!raw) {
+    return null;
+  }
+  try {
+    const health = JSON.parse(raw) as Partial<RemoteHealth>;
+    return typeof health.version === 'string' && typeof health.fails === 'number'
+      ? { version: health.version, fails: health.fails }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeHealth(remote: string, health: RemoteHealth): void {
+  storage.set(remoteHealthKey(remote), JSON.stringify(health));
+}
+
+// A remote dropped to its copy: the version the map named for it failed this launch.
+function recordRemoteFailure(remote: string): void {
+  const version = mapVersions[remote];
+  if (!version) {
+    return;
+  }
+  const health = nextHealthOnFailure(readHealth(remote), version);
+  writeHealth(remote, health);
+  console.warn(
+    `[federation] ${remote} ${version} has failed ${health.fails} launch${health.fails === 1 ? '' : 'es'} in a row`,
+  );
+}
+
+// --- For the tab boundary, once the remote's own component has rendered: the version loaded and
+// ran, so its count of failed launches goes back to zero. Only a render of the CDN version counts.
+// A remote on its copy rendered the copy, which says nothing about the version the map names, so
+// its record is left as it is: that is what lets a broken version reach the threshold at all. ---
+export function markRemoteLoadSuccess(remote: string): void {
+  if (!isRemoteName(remote)) {
+    return;
+  }
+  const health = nextHealthOnSuccess(
+    readHealth(remote),
+    mapVersions[remote],
+    fallbackRemotes.has(remote),
+  );
+  if (health) {
+    writeHealth(remote, health);
+  }
+}
 
 // The in-flight (or finished) initialisation. Held as a promise rather than a boolean, so that a
 // second caller arriving while the probe is still in the air waits for the same answer instead of
@@ -305,6 +379,7 @@ function fallBack(remote: string): void {
   }
   fallbackRemotes.add(remote);
   console.warn(`[federation] ${remote} failed from the CDN; running its copy from the binary`);
+  recordRemoteFailure(remote);
   setStatus({
     ...status,
     versions: { ...status.versions, [remote]: bundledVersions[remote] },
@@ -312,10 +387,17 @@ function fallBack(remote: string): void {
   });
 }
 
-// --- Fetch and read the version map for this app version. Returns null for every kind of
+// --- Fetch, verify and read the version map for this app version. Returns null for every kind of
 // failure, because the caller treats them all the same way: an unreachable CDN, a 404 for an app
-// version nobody published a map for, a timeout, and a map that does not parse all end with this
-// binary running its copies, or nothing if it has none. ---
+// version nobody published a map for, a timeout, a map that does not parse, and a map that
+// arrives whole and cannot be believed all end with this binary running its copies, or nothing if
+// it has none. A CDN the app cannot trust is treated like a CDN that is not there.
+//
+// The map is believed in two steps, and the order matters. versionMapVerify checks the signature
+// and the release counter over the map as a whole, every remote it names included, because that
+// is what was signed. parseVersionMap then reads out the remotes this binary knows and checks each
+// version is safe to put in a URL. Only once both have passed is the counter remembered, so a map
+// that fails any check leaves the device where it was. ---
 async function fetchVersionMap(): Promise<Record<string, string> | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
@@ -331,12 +413,26 @@ async function fetchVersionMap(): Promise<Record<string, string> | null> {
       console.warn(`[federation] version map returned ${response.status}`);
       return null;
     }
-    const versions = parseVersionMap((await response.json()) as unknown, REMOTE_NAMES);
+    const highestAcceptedSeq = storage.getNumber(VERSION_MAP_SEQ_KEY) ?? 0;
+    const verified = verifyVersionMap(
+      (await response.json()) as unknown,
+      VERSION_MAP_PUBLIC_KEY,
+      highestAcceptedSeq,
+    );
+    if (!verified.ok) {
+      // The failures that are nobody's network and nobody's outage: the file was served and could
+      // not be believed. Said out loud, with the check that failed, because the alternative is an
+      // app that launches on its copies and offers no reason.
+      console.warn(`[federation] version map refused: ${verified.reason}`);
+      return null;
+    }
+    const versions = parseVersionMap(verified.map.versions, REMOTE_NAMES);
     if (!versions) {
-      // The one failure that is nobody's network and nobody's outage: the file was served and
-      // could not be believed. Said out loud, because the alternative is an app that launches,
-      // loads nothing and offers no reason.
       console.warn('[federation] version map was served but could not be read');
+      return null;
+    }
+    if (verified.map.seq > highestAcceptedSeq) {
+      storage.set(VERSION_MAP_SEQ_KEY, verified.map.seq);
     }
     return versions;
   } catch (error) {
@@ -358,7 +454,11 @@ function registerCdnRemotes(versions: Record<string, string>): void {
   registerRemotes(
     REMOTE_NAMES.filter(name => versions[name]).map(name => ({
       name,
-      entry: remoteManifestUrl(CDN_BASE, Platform.OS, name, versions[name]),
+      // A remote already sent to its copy is registered there, the way a remote that drops to it
+      // mid-session is re-registered there, so the runtime reads the copy's manifest from the disk.
+      entry: fallbackRemotes.has(name)
+        ? embeddedManifestUrlFor(name)
+        : remoteManifestUrl(CDN_BASE, Platform.OS, name, versions[name]),
     })),
     { force: true },
   );
@@ -388,7 +488,7 @@ export function initializeFederation(): Promise<FederationStatus> {
 
 async function resolveFederation(): Promise<FederationStatus> {
   if (!CDN_CONFIGURED && __DEV__) {
-    setStatus({ mode: 'dev', source: 'dev servers', versions: {}, embedded: [] });
+    setStatus({ mode: 'dev', source: 'dev servers', versions: {}, embedded: [], rolledBack: [] });
     return status;
   }
 
@@ -405,7 +505,27 @@ async function resolveFederation(): Promise<FederationStatus> {
   // versions on the banner while every load went to the build-time placeholder URL: an app that
   // says it is running 1.2.0 and is running nothing.
   mapVersions = versions;
-  setStatus({ mode: 'cdn', source: CDN_BASE, versions, embedded: [] });
+  // A remote whose named version has failed the last FAILURE_THRESHOLD launches is sent to its copy
+  // now, before anything registers, so the resolver and the manifest net serve the copy from the
+  // first script. It is marked rolled back rather than embedded: the banner says which remotes
+  // failed this session and which the launch gave up on. Only a remote with a copy can be sent
+  // there; one without is tried from the CDN, since there is nothing else to run.
+  const rolledBack = REMOTE_NAMES.filter(
+    name => hasEmbeddedCopy(name) && shouldRollBack(readHealth(name), versions[name]),
+  );
+  rolledBack.forEach(name => {
+    fallbackRemotes.add(name);
+    console.warn(
+      `[federation] ${name} ${versions[name]} failed the last ${FAILURE_THRESHOLD} launches; running its copy from the binary without trying the CDN`,
+    );
+  });
+  setStatus({
+    mode: 'cdn',
+    source: CDN_BASE,
+    versions: { ...versions, ...Object.fromEntries(rolledBack.map(name => [name, bundledVersions[name]])) },
+    embedded: rolledBack,
+    rolledBack,
+  });
   try {
     registerCdnRemotes(versions);
   } catch (error) {
@@ -423,11 +543,11 @@ async function resolveFederation(): Promise<FederationStatus> {
 function runFromCopies(reason: string): FederationStatus {
   const embedded = REMOTE_NAMES.filter(hasEmbeddedCopy);
   if (embedded.length === 0) {
-    setStatus({ mode: 'unresolved', source: reason, versions: {}, embedded: [] });
+    setStatus({ mode: 'unresolved', source: reason, versions: {}, embedded: [], rolledBack: [] });
     return status;
   }
   const versions = Object.fromEntries(embedded.map(name => [name, bundledVersions[name]]));
-  setStatus({ mode: 'bundled', source: 'the copy in the binary', versions, embedded });
+  setStatus({ mode: 'bundled', source: 'the copy in the binary', versions, embedded, rolledBack: [] });
   try {
     registerRemotes(
       embedded.map(name => ({ name, entry: embeddedManifestUrlFor(name) })),
@@ -435,7 +555,13 @@ function runFromCopies(reason: string): FederationStatus {
     );
   } catch (error) {
     console.warn('[federation] the copies could not be registered', error);
-    setStatus({ mode: 'unresolved', source: 'remotes could not be registered', versions: {}, embedded: [] });
+    setStatus({
+      mode: 'unresolved',
+      source: 'remotes could not be registered',
+      versions: {},
+      embedded: [],
+      rolledBack: [],
+    });
   }
   return status;
 }

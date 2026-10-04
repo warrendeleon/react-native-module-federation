@@ -13,7 +13,9 @@ import { getFederationStatus, subscribeFederationStatus } from './scriptManager'
 // something you can photograph.
 //
 // It follows the status as it changes, not only as it was at launch: a remote that drops to its
-// copy in the binary mid-session is marked on the line the moment it does.
+// copy in the binary mid-session is marked on the line the moment it does, and a remote the launch
+// sent to its copy without trying the CDN, because its version kept failing, is marked as rolled
+// back from the start.
 //
 // Host operational chrome rather than part of the design system, so it is plain React Native with
 // its own stylesheet. It still takes its colours from the shared tokens, because a surface with
@@ -38,19 +40,21 @@ const MODE_FILL: Record<FederationMode, string> = {
 
 export function FederationBanner() {
   const insets = useSafeAreaInsets();
-  const { mode, source, versions, embedded } = useSyncExternalStore(
+  const { mode, source, versions, embedded, rolledBack } = useSyncExternalStore(
     subscribeFederationStatus,
     getFederationStatus,
   );
 
   const names = Object.keys(versions).sort();
   // In bundled mode every remote runs from its copy and the mode already says so. In a CDN launch
-  // a remote that dropped to its copy is the exception, so it is the one that gets marked.
-  const pairs = names.map(name =>
-    mode === 'cdn' && embedded.includes(name)
-      ? `${name} ${versions[name]} embedded`
-      : `${name} ${versions[name]}`,
-  );
+  // a remote on its copy is the exception, so it is the one that gets marked, and the mark says
+  // how it got there: rolled back by the launch, or dropped there after a failure this session.
+  const pairs = names.map(name => {
+    if (mode !== 'cdn' || !embedded.includes(name)) {
+      return `${name} ${versions[name]}`;
+    }
+    return `${name} ${versions[name]} ${rolledBack.includes(name) ? 'rolled back' : 'embedded'}`;
+  });
   const detail = pairs.length > 0 ? pairs.join(' · ') : source;
   // Spoken separately from what is drawn. The middle dot is a visual separator: a screen reader
   // announces it as a word, as a pause, or not at all, none of which is the sentence intended.

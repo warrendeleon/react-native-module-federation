@@ -66,6 +66,7 @@ test('bundled mode says so in its own colour, with the versions the binary carri
     source: 'the copy in the binary',
     versions: { listApp: '1.1.0', partyApp: '1.0.0' },
     embedded: ['listApp', 'partyApp'],
+    rolledBack: [],
   };
   const tree = await mount();
   expect(line(tree)).toBe('bundled · listApp 1.1.0 · partyApp 1.0.0');
@@ -78,6 +79,7 @@ test('a remote that drops to its copy mid-session is marked the moment it does',
     source: 'https://cdn.example.com',
     versions: { listApp: '1.2.0', partyApp: '1.0.0' },
     embedded: [],
+    rolledBack: [],
   };
   const tree = await mount();
   expect(line(tree)).toBe('cdn · listApp 1.2.0 · partyApp 1.0.0');
@@ -92,4 +94,24 @@ test('a remote that drops to its copy mid-session is marked the moment it does',
   expect(
     tree.root.findAll(n => n.props.accessibilityLabel !== undefined)[0].props.accessibilityLabel,
   ).toBe('Federation mode cdn. listApp 1.1.0 embedded, partyApp 1.0.0');
+});
+
+// A remote the launch sent to its copy because its version kept failing is marked as rolled back
+// from the first render, and the mark survives the other remote dropping to its copy later.
+test('a remote rolled back at launch is marked as such, apart from one that dropped mid-session', async () => {
+  current = {
+    mode: 'cdn',
+    source: 'https://cdn.example.com',
+    versions: { listApp: '1.1.0', partyApp: '1.0.0' },
+    embedded: ['listApp'],
+    rolledBack: ['listApp'],
+  };
+  const tree = await mount();
+  expect(line(tree)).toBe('cdn · listApp 1.1.0 rolled back · partyApp 1.0.0');
+
+  current = { ...current, embedded: ['listApp', 'partyApp'] };
+  await act(async () => {
+    notify();
+  });
+  expect(line(tree)).toBe('cdn · listApp 1.1.0 rolled back · partyApp 1.0.0 embedded');
 });

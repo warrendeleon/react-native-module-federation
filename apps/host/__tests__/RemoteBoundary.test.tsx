@@ -191,7 +191,7 @@ test.each([
   jest.spyOn(federation, 'canFallBack').mockReturnValue(false);
   jest
     .spyOn(federation, 'getFederationStatus')
-    .mockReturnValue({ mode, source: '', versions: {}, embedded: [] });
+    .mockReturnValue({ mode, source: '', versions: {}, embedded: [], rolledBack: [] });
   const tree = await mount(
     <RemoteBoundary remote="listApp" load={() => Promise.reject(new Error('refused'))} />,
   );
@@ -201,5 +201,42 @@ test.each([
   }
   await act(async () => {
     tree.unmount();
+  });
+});
+
+// The beacon reports a render, not a load: it fires once the remote's component has rendered, and
+// not for a load that failed or a component that threw as it first rendered.
+test('the boundary reports a rendered remote once, and never a failed one', async () => {
+  jest.spyOn(federation, 'canFallBack').mockReturnValue(false);
+  const success = jest.spyOn(federation, 'markRemoteLoadSuccess').mockImplementation(() => {});
+
+  const failed = await mount(
+    <RemoteBoundary remote="listApp" load={() => Promise.reject(new Error('refused'))} />,
+  );
+  expect(texts(failed)).toContain('This tab could not load');
+  expect(success).not.toHaveBeenCalled();
+  await act(async () => {
+    failed.unmount();
+  });
+
+  const Broken = () => {
+    throw new Error('render failed');
+  };
+  const threw = await mount(
+    <RemoteBoundary remote="listApp" load={() => Promise.resolve({ default: Broken })} />,
+  );
+  expect(texts(threw)).toContain('This tab stopped working');
+  expect(success).not.toHaveBeenCalled();
+  await act(async () => {
+    threw.unmount();
+  });
+
+  const rendered = await mount(
+    <RemoteBoundary remote="partyApp" load={() => Promise.resolve({ default: () => <></> })} />,
+  );
+  expect(success).toHaveBeenCalledTimes(1);
+  expect(success).toHaveBeenCalledWith('partyApp');
+  await act(async () => {
+    rendered.unmount();
   });
 });

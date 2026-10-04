@@ -18,7 +18,10 @@
 // reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where the script
 // writes them. Run it before the release build that should carry them.
 //
-// Usage: node tools/build-cdn.mjs [ios|android]     (no argument builds both)
+// Every map it writes is signed, and carries the release counter MF_RELEASE_SEQ names. The counter
+// has no default: see tools/version-map-signing.mjs for why the tool refuses to run without it.
+//
+// Usage: MF_RELEASE_SEQ=<n> node tools/build-cdn.mjs [ios|android]     (no argument builds both)
 //
 // Then serve it and point the host at it (an Android emulator reaches this machine at 10.0.2.2,
 // so the Android build gets that address instead of localhost):
@@ -38,6 +41,12 @@ import {
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import {
+  readVersionMapPrivateKey,
+  releaseSeqFromEnv,
+  signVersionMap,
+} from './version-map-signing.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REMOTE_APPS = { listApp: 'list', partyApp: 'party' };
@@ -69,9 +78,11 @@ const REMOTE_VERSIONS = {
 // cdn-root, because that file is what a running app reads. This is the seeding of a CDN, not an
 // operation against one.
 //
-// There is nothing else in the map. No signature over it, no counter, nothing that would let the
-// app tell a map written here from one written by anybody else who can reach the bucket. That is
-// a real hole and it is left open on purpose: it is the subject of the last post in the series. ---
+// The map is no longer only these two lines. Written to the CDN it is `{ seq, versions, sig }`:
+// the versions below, the release counter, and a signature over both, so an installed app can tell
+// a map written by the holder of the signing key from one written by anybody else who can reach
+// the bucket, and a map published today from one published last month. The signing is in
+// tools/version-map-signing.mjs; the checks are in the host's versionMapVerify.ts. ---
 const APP_VERSION_MAPS = {
   '1.0.0': { listApp: '1.0.0', partyApp: '1.0.0' },
   '2.0.0': { listApp: '1.2.0', partyApp: '1.0.0' },
@@ -90,6 +101,20 @@ if (platformArg && !ALL_PLATFORMS.includes(platformArg)) {
   process.exit(1);
 }
 const platforms = platformArg ? [platformArg] : ALL_PLATFORMS;
+
+// --- The counter and the key, both checked before anything is built, for the same reason the
+// map is checked below: a publish that cannot be signed should cost a second, not two bundle
+// runs. ---
+const { seq: RELEASE_SEQ, error: seqError } = releaseSeqFromEnv();
+if (seqError) {
+  console.error(`\n${seqError}\n`);
+  process.exit(1);
+}
+const { key: mapSigningKey, error: keyError } = readVersionMapPrivateKey(repoRoot);
+if (keyError) {
+  console.error(`\n${keyError}\n`);
+  process.exit(1);
+}
 
 // --- A map naming a version the CDN does not hold is the failure post 15 demonstrates by hand,
 // and it is worth catching here rather than at a user's launch. Checked before anything is built,
@@ -155,8 +180,9 @@ for (const platform of platforms) {
   for (const [appVersion, versions] of Object.entries(APP_VERSION_MAPS)) {
     const dir = join(repoRoot, 'cdn-root', platform, 'maps', appVersion);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'version-map.json'), `${JSON.stringify(versions, null, 2)}\n`);
-    console.log(`wrote     -> cdn-root/${platform}/maps/${appVersion}/version-map.json`);
+    const signed = signVersionMap(RELEASE_SEQ, versions, mapSigningKey);
+    writeFileSync(join(dir, 'version-map.json'), `${JSON.stringify(signed, null, 2)}\n`);
+    console.log(`signed    -> cdn-root/${platform}/maps/${appVersion}/version-map.json (seq ${RELEASE_SEQ})`);
   }
 }
 

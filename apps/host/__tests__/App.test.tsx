@@ -40,7 +40,13 @@ test('boot readiness: the gate opens, the state module loads, the marker surface
 // only as the previous test failing for an unrelated-looking reason.
 test('the boot gate settles on dev mode when no CDN is configured', async () => {
   const status = await initializeFederation();
-  expect(status).toEqual({ mode: 'dev', source: 'dev servers', versions: {}, embedded: [] });
+  expect(status).toEqual({
+    mode: 'dev',
+    source: 'dev servers',
+    versions: {},
+    embedded: [],
+    rolledBack: [],
+  });
   expect(getFederationStatus()).toBe(status);
 });
 

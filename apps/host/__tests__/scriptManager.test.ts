@@ -7,6 +7,49 @@
 // Federation runtime, which record what they were handed. Each case loads the module fresh, with
 // the build-time literals defined first, because the module reads them once at import and holds
 // its initialisation for the life of the process.
+//
+// Every map a launch is served here is signed, with a key made for this test run and its public
+// half handed to the host in place of the embedded one, because from the signing post on a map
+// the host cannot verify is a map it refuses. The cases about believing the map are at the end.
+
+import { generateKeyPairSync, sign } from 'node:crypto';
+
+const { publicKey: TEST_PUBLIC_KEY, privateKey: TEST_PRIVATE_KEY } = generateKeyPairSync('ed25519');
+const PUBLIC_KEY = (TEST_PUBLIC_KEY.export({ format: 'jwk' }) as { x: string }).x;
+
+/** A map as the publishing tools write it: the versions, the release counter, and the signature. */
+function signed(versions: Record<string, string>, seq = 1, privateKey = TEST_PRIVATE_KEY) {
+  const pairs = Object.keys(versions)
+    .sort()
+    .map(name => `${name}@${versions[name]}`)
+    .join(',');
+  const sig = sign(null, Buffer.from(`${seq}|${pairs}`, 'utf8'), privateKey);
+  return { seq, versions, sig: sig.toString('base64') };
+}
+
+// --- What the host remembers between launches, as a stand-in for the device's storage: a test
+// that spans launches hands the same one to each load, and a test that does not gets a fresh one.
+// ---
+type Device = {
+  getString: (key: string) => string | undefined;
+  getNumber: (key: string) => number | undefined;
+  set: (key: string, value: string | number | boolean) => void;
+  remove: (key: string) => boolean;
+  contains: (key: string) => boolean;
+};
+
+function freshDevice(): Device {
+  const values = new Map<string, string | number | boolean>();
+  return {
+    getString: key => (typeof values.get(key) === 'string' ? (values.get(key) as string) : undefined),
+    getNumber: key => (typeof values.get(key) === 'number' ? (values.get(key) as number) : undefined),
+    set: (key, value) => {
+      values.set(key, value);
+    },
+    remove: key => values.delete(key),
+    contains: key => values.has(key),
+  };
+}
 
 type Registration = { name: string; entry: string };
 type Recorder = {
@@ -40,6 +83,8 @@ interface Build {
   /** The file:// URL a release build's JavaScript bundle loads from; none in a development build. */
   scriptURL?: string;
   copies?: { versions: Record<string, string> };
+  /** The device's storage, to carry between launches; a fresh one when left out. */
+  device?: Device;
 }
 
 function loadFederation(cdnBase: string, appVersion: string, build: Build = {}) {
@@ -56,6 +101,14 @@ function loadFederation(cdnBase: string, appVersion: string, build: Build = {}) 
     NativeModules.SourceCode = { scriptURL: build.scriptURL };
     jest.doMock('../src/shell/embedded-versions', () => ({
       BUNDLED_VERSIONS: { ios: copies.versions },
+    }));
+    jest.doMock('../src/shell/version-map-public-key', () => ({
+      VERSION_MAP_PUBLIC_KEY: PUBLIC_KEY,
+    }));
+    const device = build.device ?? freshDevice();
+    jest.doMock('../src/shell/storage', () => ({
+      ...jest.requireActual('../src/shell/storage'),
+      storage: device,
     }));
     repack = require('@callstack/repack/client') as unknown as Recorder;
     runtime = require('@module-federation/runtime') as unknown as Recorder;
@@ -142,7 +195,7 @@ const theResolver = (repack: Recorder) => repack.__resolvers[0][0] as Resolver;
 
 describe('what the resolver answers after the launch', () => {
   test('locates a mapped remote, verified, and refuses one the map did not name', async () => {
-    respondWith({ listApp: '1.2.0' });
+    respondWith(signed({ listApp: '1.2.0' }));
     const { initializeFederation, repack } = loadFederation(CDN_BASE, '2.0.0');
     await initializeFederation();
     const resolve = theResolver(repack);
@@ -179,7 +232,7 @@ describe('what the resolver answers after the launch', () => {
 
 describe('the launch probe', () => {
   test('re-registers every mapped remote at its versioned manifest, with force', async () => {
-    respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });
+    respondWith(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0');
 
     const status = await initializeFederation();
@@ -197,7 +250,7 @@ describe('the launch probe', () => {
   });
 
   test('asks for the map written for this binary, and asks for it uncached', async () => {
-    respondWith({ listApp: '1.0.0', partyApp: '1.0.0' });
+    respondWith(signed({ listApp: '1.0.0', partyApp: '1.0.0' }));
     const { initializeFederation } = loadFederation(CDN_BASE, '1.0.0');
     await initializeFederation();
 
@@ -211,7 +264,7 @@ describe('the launch probe', () => {
   // app claiming a CDN launch it never had.
   test.each([
     ['the map is missing', () => respondWith({}, false, 404)],
-    ['the map does not parse', () => respondWith({ listApp: '../../..' })],
+    ['the map does not parse', () => respondWith(signed({ listApp: '../../..' }))],
     ['the CDN is unreachable', () => {
       globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
     }],
@@ -247,6 +300,7 @@ describe('the copy in the binary', () => {
       source: 'the copy in the binary',
       versions: { listApp: '1.1.0', partyApp: '1.0.0' },
       embedded: ['listApp', 'partyApp'],
+      rolledBack: [],
     });
     // Registered at the manifests inside the binary, so the one place the runtime reads says where
     // the code now comes from.
@@ -283,7 +337,7 @@ describe('the copy in the binary', () => {
   // When that fails the launch runs from the copies, and when the copies cannot be registered
   // either it ends unresolved, with the resolver naming that cause rather than a map never read.
   test('runs from the copies when the map read but its versions could not be registered', async () => {
-    respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });
+    respondWith(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
     jest
       .spyOn(runtime as unknown as { registerRemotes: () => void }, 'registerRemotes')
@@ -296,7 +350,7 @@ describe('the copy in the binary', () => {
   });
 
   test('ends unresolved when neither the versions nor the copies can be registered', async () => {
-    respondWith({ listApp: '1.2.0', partyApp: '1.0.0' });
+    respondWith(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const { initializeFederation, runtime, repack } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
     jest
       .spyOn(runtime as unknown as { registerRemotes: () => void }, 'registerRemotes')
@@ -335,7 +389,7 @@ describe('the manifest net', () => {
 
   test('hands a healthy CDN manifest through as it came', async () => {
     const manifest = { id: 'listApp', from: 'the CDN' };
-    serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' }, { [cdnManifest('listApp', '1.2.0')]: manifest });
+    serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }), { [cdnManifest('listApp', '1.2.0')]: manifest });
     const { initializeFederation, runtime, getFederationStatus } = loadFederation(
       CDN_BASE,
       '2.0.0',
@@ -351,11 +405,11 @@ describe('the manifest net', () => {
   // A retired version answers 404; a CDN that goes away mid-session does not answer at all. Either
   // way the one remote drops to its copy and the launch carries on around it.
   test.each([
-    ['answers 404', () => serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' })],
+    ['answers 404', () => serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }))],
     [
       'cannot be reached',
       () => {
-        serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
+        serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
         const cdn = globalThis.fetch as jest.Mock;
         const map = cdn.getMockImplementation()!;
         cdn.mockImplementation(async (url: string) => {
@@ -385,6 +439,7 @@ describe('the manifest net', () => {
       source: CDN_BASE,
       versions: { listApp: '1.1.0', partyApp: '1.0.0' },
       embedded: ['listApp'],
+      rolledBack: [],
     });
     // The fallen-back remote now resolves to its copy; the other one is still on the CDN.
     const resolve = theResolver(repack);
@@ -400,7 +455,7 @@ describe('the manifest net', () => {
   // Once a remote has fallen back, every later request for its manifest, at whatever URL it is
   // still registered, is answered from its copy: a reload must not send it back to the CDN.
   test('keeps a fallen-back remote on its copy\'s manifest', async () => {
-    serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
+    serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
     await initializeFederation();
     const hook = theFetchHook(runtime);
@@ -414,7 +469,7 @@ describe('the manifest net', () => {
   });
 
   test('leaves every other request to the runtime', async () => {
-    serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
+    serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', {
       ...RELEASE_WITH_COPIES,
       copies: { versions: { listApp: '1.1.0' } },
@@ -438,7 +493,7 @@ describe('the manifest net', () => {
 
 describe('reloading a remote', () => {
   async function cdnLaunch() {
-    serveCdn({ listApp: '1.2.0', partyApp: '1.0.0' });
+    serveCdn(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
     const federation = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
     await federation.initializeFederation();
     return federation;
@@ -578,5 +633,213 @@ describe('the evaluation window the host installs', () => {
   test('leaves a load that already has its exports alone', () => {
     const { runtime } = loadFederation(CDN_BASE, '2.0.0');
     expect(theWindow(runtime).onLoad({ exposeModuleFactory: undefined })).toBeUndefined();
+  });
+});
+
+// --- Believing the map. The signature and the release counter are checked before the versions
+// are read, the device remembers the highest counter it has accepted, and every refusal lands the
+// launch on its copies with the reason in the log. ---
+describe('believing the map', () => {
+  const VERSIONS = { listApp: '1.2.0', partyApp: '1.0.0' };
+
+  test('accepts a signed map and remembers its release counter', async () => {
+    const device = freshDevice();
+    respondWith(signed(VERSIONS, 7));
+    const { initializeFederation } = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device });
+    const status = await initializeFederation();
+    expect(status.mode).toBe('cdn');
+    expect(status.versions).toEqual(VERSIONS);
+    expect(device.getNumber('mf.versionMap.seq')).toBe(7);
+  });
+
+  test.each([
+    ['one version was edited after signing', () => ({ ...signed(VERSIONS), versions: { ...VERSIONS, listApp: '9.9.9' } }), 'signature does not verify'],
+    ['it was signed by another key', () => signed(VERSIONS, 1, generateKeyPairSync('ed25519').privateKey), 'signature does not verify'],
+    ['it carries no signature', () => ({ seq: 1, versions: VERSIONS }), 'no signature'],
+    ['it carries no release counter', () => ({ versions: VERSIONS, sig: 'x' }), 'no release counter'],
+    ['it is the shape post 15 wrote', () => VERSIONS, 'no release counter'],
+  ])('runs from the copies when %s', async (_case, map, reason) => {
+    const device = freshDevice();
+    respondWith(map());
+    const { initializeFederation } = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device });
+    const status = await initializeFederation();
+    expect(status.mode).toBe('bundled');
+    expect(console.warn).toHaveBeenCalledWith(`[federation] version map refused: ${reason}`);
+    // Nothing was accepted, so nothing was remembered.
+    expect(device.getNumber('mf.versionMap.seq')).toBeUndefined();
+  });
+
+  test('refuses a map older than the last one accepted, and keeps what it remembered', async () => {
+    const device = freshDevice();
+    respondWith(signed(VERSIONS, 5));
+    await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+
+    respondWith(signed({ ...VERSIONS, listApp: '1.1.0' }, 4));
+    const status = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    expect(status.mode).toBe('bundled');
+    expect(console.warn).toHaveBeenCalledWith(
+      '[federation] version map refused: release counter is older than the last one accepted',
+    );
+    expect(device.getNumber('mf.versionMap.seq')).toBe(5);
+  });
+
+  test('accepts the same release counter again: a re-fetched map is not a replay', async () => {
+    const device = freshDevice();
+    respondWith(signed(VERSIONS, 5));
+    await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    const status = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    expect(status.mode).toBe('cdn');
+    expect(device.getNumber('mf.versionMap.seq')).toBe(5);
+  });
+
+  // The counter orders publishes, not versions: a deliberate rollback is a newer publish that
+  // names older versions, and the device takes it.
+  test('accepts a higher counter that names older versions', async () => {
+    const device = freshDevice();
+    respondWith(signed(VERSIONS, 5));
+    await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+
+    respondWith(signed({ ...VERSIONS, listApp: '1.1.0' }, 6));
+    const status = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    expect(status.mode).toBe('cdn');
+    expect(status.versions.listApp).toBe('1.1.0');
+    expect(device.getNumber('mf.versionMap.seq')).toBe(6);
+  });
+
+  // The signature covers every remote the map names, this binary's or not; the host reads out its
+  // own afterwards. A map that verifies and then names nothing this binary can run is refused as
+  // unreadable, and the counter is not advanced for a map that was not used.
+  test('reads only its own remotes out of a verified map, and remembers nothing from one it cannot read', async () => {
+    const device = freshDevice();
+    respondWith(signed({ ...VERSIONS, otherApp: '3.0.0' }, 2));
+    const status = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    expect(status.versions).toEqual(VERSIONS);
+    expect(device.getNumber('mf.versionMap.seq')).toBe(2);
+
+    const unreadable = freshDevice();
+    respondWith(signed({ listApp: '../../..' }, 3));
+    const refused = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device: unreadable }).initializeFederation();
+    expect(refused.mode).toBe('bundled');
+    expect(unreadable.getNumber('mf.versionMap.seq')).toBeUndefined();
+  });
+});
+
+// --- Remembering failures. A remote that drops to its copy counts one failed launch against the
+// version the map named; at the threshold the next launch sends it to its copy before trying the
+// CDN; a render of the CDN version clears the count, a render of the copy does not. ---
+describe('remembering failures', () => {
+  const VERSIONS = { listApp: '1.2.0', partyApp: '1.0.0' };
+  const health = (device: Device, remote: string) => JSON.parse(device.getString(`mf.health.${remote}`) ?? 'null');
+
+  async function cdnLaunch(device: Device) {
+    serveCdn(signed(VERSIONS));
+    const federation = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device });
+    await federation.initializeFederation();
+    return federation;
+  }
+
+  test('a remote that drops to its copy counts one failed launch of the version the map named', async () => {
+    const device = freshDevice();
+    const { fallBackAndReload } = await cdnLaunch(device);
+    fallBackAndReload('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 1 });
+    expect(health(device, 'partyApp')).toBeNull();
+    // Dropping again in the same session is the same failure, not a second launch.
+    fallBackAndReload('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 1 });
+  });
+
+  test('the manifest net counts a failure the same way', async () => {
+    const device = freshDevice();
+    const { runtime } = await cdnLaunch(device);
+    await theFetchHook(runtime)(cdnManifest('listApp', '1.2.0'));
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 1 });
+  });
+
+  test('after two failed launches the third runs that remote from its copy without asking the CDN', async () => {
+    const device = freshDevice();
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 2 });
+
+    const { getFederationStatus, runtime, repack, canFallBack } = await cdnLaunch(device);
+    expect(getFederationStatus()).toEqual({
+      mode: 'cdn',
+      source: CDN_BASE,
+      versions: { listApp: '1.1.0', partyApp: '1.0.0' },
+      embedded: ['listApp'],
+      rolledBack: ['listApp'],
+    });
+    // Registered at the copy's manifest from the start, resolved to the copy, and nothing of
+    // listApp was asked of the CDN.
+    expect(runtime.__calls.at(-1)!.remotes).toEqual([
+      { name: 'listApp', entry: embeddedManifest('listApp', '1.1.0') },
+      { name: 'partyApp', entry: cdnManifest('partyApp', '1.0.0') },
+    ]);
+    await expect(theResolver(repack)('listApp')).resolves.toMatchObject({
+      url: `file://${APP_PATH}/cdn/ios/listApp/1.1.0/listApp.container.js.bundle`,
+    });
+    expect((globalThis.fetch as jest.Mock).mock.calls.map(([url]) => url)).not.toContain(
+      cdnManifest('listApp', '1.2.0'),
+    );
+    // It is already on its copy, so there is nowhere further to drop.
+    expect(canFallBack('listApp')).toBe(false);
+    expect(canFallBack('partyApp')).toBe(true);
+  });
+
+  test('a render of the CDN version clears the count', async () => {
+    const device = freshDevice();
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+    const { markRemoteLoadSuccess } = await cdnLaunch(device);
+    markRemoteLoadSuccess('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 0 });
+  });
+
+  test('a render of the copy does not clear the count', async () => {
+    const device = freshDevice();
+    const first = await cdnLaunch(device);
+    first.fallBackAndReload('listApp');
+    first.markRemoteLoadSuccess('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 1 });
+
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+    const rolledBack = await cdnLaunch(device);
+    expect(rolledBack.getFederationStatus().rolledBack).toEqual(['listApp']);
+    rolledBack.markRemoteLoadSuccess('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.2.0', fails: 2 });
+  });
+
+  test('a new version starts the count over, and a bundled launch counts nothing', async () => {
+    const device = freshDevice();
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+    (await cdnLaunch(device)).fallBackAndReload('listApp');
+
+    serveCdn(signed({ ...VERSIONS, listApp: '1.3.0' }, 2));
+    const fixed = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device });
+    const status = await fixed.initializeFederation();
+    expect(status.rolledBack).toEqual([]);
+    expect(status.versions.listApp).toBe('1.3.0');
+    fixed.fallBackAndReload('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.3.0', fails: 1 });
+
+    respondWith({}, false, 404);
+    const bundled = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device });
+    await bundled.initializeFederation();
+    bundled.markRemoteLoadSuccess('listApp');
+    expect(health(device, 'listApp')).toEqual({ version: '1.3.0', fails: 1 });
+  });
+
+  test('a remote with no copy is tried from the CDN however often it failed', async () => {
+    const device = freshDevice();
+    device.set('mf.health.partyApp', JSON.stringify({ version: '1.0.0', fails: 9 }));
+    serveCdn(signed(VERSIONS));
+    const { initializeFederation } = loadFederation(CDN_BASE, '2.0.0', {
+      ...RELEASE_WITH_COPIES,
+      copies: { versions: { listApp: '1.1.0' } },
+      device,
+    });
+    const status = await initializeFederation();
+    expect(status.rolledBack).toEqual([]);
+    expect(status.versions.partyApp).toBe('1.0.0');
   });
 });
