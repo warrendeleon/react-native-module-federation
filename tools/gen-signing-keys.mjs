@@ -42,7 +42,7 @@ const OWNER_ONLY = 0o600;
 const der = key => key.export({ type: 'spki', format: 'der' });
 
 // --- One keypair: present, derived, mismatched, orphaned or new. The same five outcomes for
-// both keys, so the rules above hold for each of them the same way. ---
+// both keys, so the key rules in this file's header hold for each of them the same way. ---
 function ensureKeypair({ label, algorithm, privatePath, publicPath, generate, privateExport }) {
   if (existsSync(privatePath)) {
     // The mode is re-applied on every run, because a copy or an earlier tool may have left it wider.

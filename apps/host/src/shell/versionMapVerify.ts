@@ -9,8 +9,9 @@ import { SAFE_VERSION } from './remoteLocator';
 // Post 15 made the map the deploy commit: one file on the CDN says which version of each remote
 // an installed app may load. Post 14's chunk signing protects the content of every chunk, and
 // none of it protects the choice: anybody who can write to the bucket, or sit between the app and
-// it, can serve a map that names other versions, each one validly signed, each one old. So the map
-// now carries two more fields and the app checks them before it trusts a single version in it:
+// it, can serve a map that names other versions the bucket holds, each one validly signed: an old
+// one, or one not yet released. So the map now carries two more fields and the app checks them
+// before it trusts a single version in it:
 //
 //   sig   an Ed25519 signature made by the key that tools/gen-signing-keys.mjs keeps on the
 //         publishing machine, checked here against the public half compiled into the binary. A

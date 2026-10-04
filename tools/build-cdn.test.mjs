@@ -2,9 +2,9 @@
 // build-cdn.mjs and version-map-signing.mjs copied into tools/ beside a code-signing/ key, two
 // stand-in remote apps whose bundle script writes a container and a manifest instead of compiling
 // one, and a host whose node_modules is the real host's, so the generated file is formatted the way
-// the real tool formats it. What they prove is the wiring the unit tests cannot: the counter is
-// checked before anything is built, and every map the tool writes is signed for its platform and
-// app version.
+// the real tool formats it. They prove the wiring the unit tests cannot: the counter is checked
+// before anything is built, and every map the tool writes is signed for its platform and app
+// version.
 // Run: node --test tools/build-cdn.test.mjs
 
 import assert from 'node:assert/strict';

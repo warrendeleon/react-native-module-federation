@@ -105,8 +105,8 @@ if (platformArg && !ALL_PLATFORMS.includes(platformArg)) {
 const platforms = platformArg ? [platformArg] : ALL_PLATFORMS;
 
 // --- The counter and the key, both checked before anything is built, for the same reason the
-// map is checked below: a publish that cannot be signed should cost a second, not a bundle run
-// for every version of every remote. ---
+// map's versions are checked against REMOTE_VERSIONS before the build: a publish that cannot be
+// signed should cost a second, not a bundle run for every version of every remote. ---
 const { seq: RELEASE_SEQ, error: seqError } = releaseSeqFromEnv();
 if (seqError) {
   console.error(`\n${seqError}\n`);

@@ -4,9 +4,9 @@
 // in by the one command a fresh clone runs before it builds. The value is the raw 32-byte Ed25519
 // key in base64url, the form a JWK carries it in.
 //
-// It can only verify, never sign, so it is safe to compile into every binary. What it is not safe
-// to do is regenerate it for an app that is already installed: a map signed by a new key does not
-// verify against the key those installs carry, and they treat every map as untrusted from then on.
+// It can only verify, never sign, so it is safe to compile into every binary. Regenerating it for
+// an app that is already installed is not safe: a map signed by a new key does not verify against
+// the key those installs carry, and they treat every map as untrusted from then on.
 // ---
 
 export const VERSION_MAP_PUBLIC_KEY = '';

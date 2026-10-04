@@ -29,7 +29,13 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 
 ## Dependency advisories
 
-`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites. What remained up to `post-16-fallbacks` was a single upstream advisory pair on `image-size`, reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins. At `post-17-signing-rollback` npm reports more, all in the same position: `adm-zip`, `brace-expansion`, `braces`, `decode-uri-component`, `fast-uri`, `fastify`, `joi`, `js-yaml`, `qs` and `undici` beside `image-size`, reached through the React Native CLI, ESLint, Jest, Re.Pack, `@module-federation/enhanced`, Tailwind CSS, and React Navigation's `query-string`, and identical in the apps this post did not touch. `npm audit fix` declines to move them: the in-range bumps it proposes pull `react-native-reanimated` 4.7, which wants React Native 0.86. Three of the four `packages/` workspaces report some of the same ones, through their Jest and Metro tooling: `brace-expansion`, `braces` and `js-yaml` in `ui` and `detail`, and `brace-expansion` and `braces` in `a11y-testing`. `contracts` reports none. All of it except `decode-uri-component` is build-time tooling that runs on the developer's machine and ships nothing into the app bundle; `decode-uri-component` ships with React Navigation, through `query-string`, which uses it to parse deep-link paths. The fixes arrive with upstream releases of those tools rather than overrides handing them an API they were not built against.
+`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites.
+
+Up to `post-16-fallbacks` a single upstream advisory pair remained, on `image-size`, reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins.
+
+At `post-17-signing-rollback` npm reports more, all in the same position: `adm-zip`, `brace-expansion`, `braces`, `decode-uri-component`, `fast-uri`, `fastify`, `joi`, `js-yaml`, `qs` and `undici` beside `image-size`, reached through the React Native CLI, ESLint, Jest, Re.Pack, `@module-federation/enhanced`, Tailwind CSS, and React Navigation's `query-string`, and identical in the apps this post did not touch. `npm audit fix` declines to move them: the in-range bumps it proposes pull `react-native-reanimated` 4.7, which wants React Native 0.86. Three of the four `packages/` workspaces report some of the same ones, through their Jest and Metro tooling: `brace-expansion`, `braces` and `js-yaml` in `ui` and `detail`, and `brace-expansion` and `braces` in `a11y-testing`. `contracts` reports none.
+
+All of it except `decode-uri-component` is build-time tooling that runs on the developer's machine and ships nothing into the app bundle; `decode-uri-component` ships with React Navigation, through `query-string`, which uses it to parse deep-link paths. The fixes arrive with upstream releases of those tools rather than overrides handing them an API they were not built against.
 
 ## Layout
 
@@ -214,11 +220,12 @@ installed app and it loads the new version. The map is the commit, which is why 
 signed last: a map pointing at a directory that is not there yet is a 404 for every user who
 launches in between. What they get is the copy of that remote their binary carries (see
 [When the CDN is not there](#when-the-cdn-is-not-there)): a working tab, but the version the binary
-shipped with, not the one being released. Rolling back is the same edit in reverse, signed with
-the next counter again, and it needs no build at all, because the old version's directory was
-never removed. The counter always goes up, rollbacks included: it orders publishes, not versions,
-and that is what lets an app tell a rollback you published from an old map somebody served it (see
-[The signed map and the counter](#the-signed-map-and-the-counter)).
+shipped with, not the one being released. A device that launches twice in that window also counts
+two failed launches of the new version and stays on the copy after the directory arrives, until
+the map names a different version (see [When a version keeps failing](#when-a-version-keeps-failing)).
+Rolling back is the same edit in reverse, signed with the next counter again, and it needs no
+build at all, because the old version's directory was never removed. The counter rule is in
+[The signed map and the counter](#the-signed-map-and-the-counter).
 
 `tools/build-cdn.mjs` seeds a CDN rather than operating one. Running it again rebuilds the whole
 tree from the lists at the top of the file, so it is the wrong tool for adding one version's
@@ -259,16 +266,18 @@ signature over the two of them and over what the map is for, made with the key
 compiled into the host. The bytes that are signed are not the JSON but a string rebuilt from the
 values on both sides, `<platform>|<appVersion>|<seq>|` then every `name@version` sorted by name, so
 key order and whitespace cannot break a signature, and so the map written for app 1.0.0 does not
-verify when it is served at app 2.0.0's URL. Remote names are letters, digits and underscores, and
-versions letters, digits, dots, dashes and underscores: a name holding `@` or `,` could make two
-different maps sign to the same string, so both tools refuse one before signing and the host
-refuses one before verifying.
+verify when it is served at app 2.0.0's URL.
+
+Remote names are letters, digits and underscores, and versions letters, digits, dots, dashes and
+underscores: a name holding `@` or `,` could make two different maps sign to the same string, so
+both tools refuse one before signing and the host refuses one before verifying.
 
 The device remembers the highest counter it has accepted. A map it cannot verify is refused, and so
 is a map whose counter is lower than that: an old map served again, however good its signature.
 Equal is accepted, because the same map fetched twice is not an attack. Every refusal is logged
-with its reason and the launch runs from the copies, as it would with no CDN at all. To see each
-one, with the server running:
+with its reason, and the launch goes on as it would with the CDN unreachable: a release build runs
+from its copies, and a debug build on iOS, which has none, refuses every remote. To see each one,
+with the server running:
 
 ```sh
 # edit one version string in cdn-root/ios/maps/2.0.0/version-map.json and cold-start:
@@ -278,12 +287,14 @@ one, with the server running:
 # sign that map with the next counter, naming listApp 1.1.0: accepted, and the app loads 1.1.0
 ```
 
-Three rules are easy to miss. The counter always goes up, rollbacks included, and it is one counter
-for the whole CDN: a device keeps the highest it accepted on any app version, and keeps it across a
-binary update, so `sign-version-map` refuses a counter that does not move past every map under
-`cdn-root/`. Never regenerate the map-signing key for an app that is installed: those installs trust
-the key they were built with and refuse every map signed by another. And neither private key enters
-the repository: `code-signing/` is ignored before the generator is ever run.
+Three rules are easy to miss. The counter always goes up, rollbacks included: it orders publishes,
+not versions, and that is what lets an app tell a rollback you published from an old map somebody
+served it. It is also one counter for the whole CDN: a device keeps the highest it accepted on any
+app version, and keeps it across a binary update, so `sign-version-map` refuses a counter that
+does not move past every map under `cdn-root/`. Never regenerate the map-signing key for an app
+that is installed: those installs trust the key they were built with and refuse every map signed
+by another. And neither private key enters the repository: `code-signing/` is ignored before the
+generator is ever run.
 
 ### When a version keeps failing
 

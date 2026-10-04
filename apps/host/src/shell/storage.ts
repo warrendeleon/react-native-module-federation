@@ -3,9 +3,9 @@ import { createMMKV } from 'react-native-mmkv';
 // --- What the host remembers between launches. Two things, both from the federation layer and
 // both small: the highest release counter it has accepted, and a per-remote record of how many
 // launches the version the map names has failed since it last rendered from the CDN. Both are
-// read during the boot gate, before anything federated loads, so the store has to answer
-// synchronously: a promise-based store would add an await to a path the splash screen is
-// already waiting on.
+// read during the boot gate, before anything federated loads, and written from the failure and
+// render hooks, so a store that answers synchronously keeps all three paths free of extra
+// awaits.
 //
 // MMKV is that store: a key-value file read and written synchronously through JSI, with one
 // instance for the whole host and each consumer under its own key prefix. A test process has no

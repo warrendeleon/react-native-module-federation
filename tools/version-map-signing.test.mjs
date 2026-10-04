@@ -62,8 +62,9 @@ test('the release counter is required and must be a positive whole number', () =
   assert.deepEqual(releaseSeqFromEnv({ MF_RELEASE_SEQ: '12' }), { seq: 12 });
 });
 
-// --- sign-version-map.mjs against a temporary tree: tools/ copied beside a code-signing/ key and
-// a cdn-root/ holding one map, the way the repository holds them. ---
+// --- sign-version-map.mjs against a temporary tree: sign-version-map.mjs and
+// version-map-signing.mjs copied into tools/ beside a code-signing/ key, and a cdn-root/ holding
+// one map, the way the repository holds them. ---
 function sandbox(map) {
   const root = mkdtempSync(join(tmpdir(), 'sign-version-map-'));
   mkdirSync(join(root, 'tools'));

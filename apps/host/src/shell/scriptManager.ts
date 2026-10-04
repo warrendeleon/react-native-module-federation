@@ -184,7 +184,7 @@ export function subscribeFederationStatus(listener: () => void): () => void {
 // names has kept failing. In memory on purpose: the set is rebuilt at every launch. A remote
 // that dropped to its copy is tried from the CDN again at the next launch, so a failure that was
 // only the network does not keep it there. A version that has kept failing is sent back to its
-// copy by the record below, not by this set. ---
+// copy by its health record (readHealth, in the boot gate), not by this set. ---
 const fallbackRemotes = new Set<string>();
 
 // --- The record that survives the launch: per remote, which CDN version it is counting and how
@@ -457,9 +457,8 @@ async function fetchVersionMap(): Promise<AcceptedMap | null> {
       readHighestAcceptedSeq(),
     );
     if (!verified.ok) {
-      // The failures that are nobody's network and nobody's outage: the file was served and could
-      // not be believed. Said out loud, with the check that failed, because the alternative is an
-      // app that launches on its copies and offers no reason.
+      // Here the file arrived and failed a check. The warning names the check, so a launch that
+      // runs on its copies says why.
       console.warn(`[federation] version map refused: ${verified.reason}`);
       return null;
     }

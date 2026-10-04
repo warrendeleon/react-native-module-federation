@@ -7,7 +7,7 @@
 // signed, current and wrong, pointing at a version that fails to load on every launch, because its
 // manifest, container or chunks do not arrive or verify, or because it throws as it is evaluated.
 // Post 16's nets catch that failure once per session and run the copy, then the next launch asks
-// the CDN again and fails the same way. The record below is what turns that into a decision. It
+// the CDN again and fails the same way. The RemoteHealth record turns that into a decision. It
 // counts only failures the nets catch: a version that loads and then throws as it renders keeps
 // its tab's error state, as post 16 decided, and is never counted. ---
 
@@ -24,7 +24,8 @@ export interface RemoteHealth {
 
 // --- How many failed launches it takes, counted since the version last rendered from the CDN.
 // One failure is weather: a dropped connection, a CDN edge that was slow once. Two is a pattern.
-// Three would strand users on a broken version for one more launch to gain little confidence. ---
+// Three would make users wait through one more failed attempt, up to the probe timeout, to gain
+// little confidence. ---
 export const FAILURE_THRESHOLD = 2;
 
 /** The record after a failed load. The same version counts up; a different one starts at one. */
@@ -37,10 +38,9 @@ export function nextHealthOnFailure(previous: RemoteHealth | null, version: stri
 // --- The record after the remote rendered, or null when there is nothing to write. The count is
 // cleared only by a render of the CDN version: a remote that fell back is rendering its copy, so
 // what rendered is not the version the count is about, and clearing it would reset a consistently
-// broken version every launch and let it never reach the threshold. Surviving on the copy is not
-// the same as the version being healthy. Null also when there is no version, as in bundled and dev
-// mode, and when the record already names this version with a zero count, so the caller can skip
-// a write that changes nothing. ---
+// broken version every launch and let it never reach the threshold. Null also when there is no
+// version, as in bundled and dev mode, and when the record already names this version with a zero
+// count, so the caller can skip a write that changes nothing. ---
 export function nextHealthOnSuccess(
   previous: RemoteHealth | null,
   version: string | undefined,
