@@ -18,11 +18,12 @@
 //
 // The public halves are then written into the files the app reads them from: the chunk key into
 // the iOS Info.plist and Android's res/values/strings.xml, where Re.Pack's native verifier looks
-// for it, and the map key into src/shell/version-map-public-key.ts, where the host's own verifier
-// imports it. This tutorial does that here, when the keys are made, rather than in a build step:
-// the value in those files is what a binary is compiled with, and writing it once means a fresh
-// clone is ready to build after one command. A build step that generated them before compilation
-// would work too; it would need the keys present on every machine that builds.
+// for it, and the map key into src/shell/version-map-public-key.ts, which scriptManager.ts imports
+// and hands to the host's own verifier. This tutorial does that here, when the keys are made,
+// rather than in a build step: the value in those files is what a binary is compiled with, and
+// writing it once means a fresh clone is ready to build after one command. A build step that
+// generated them before compilation would work too; it would need the keys present on every
+// machine that builds.
 //
 // Usage: node tools/gen-signing-keys.mjs
 

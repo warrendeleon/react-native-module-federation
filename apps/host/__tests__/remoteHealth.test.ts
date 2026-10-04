@@ -82,15 +82,18 @@ describe('deciding to roll back', () => {
 });
 
 describe('across launches', () => {
-  test('exactly FAILURE_THRESHOLD failed launches in a row roll the version back, not fewer', () => {
-    let health: RemoteHealth | null = null;
-    for (let launch = 1; launch < FAILURE_THRESHOLD; launch++) {
+  test(
+    'exactly FAILURE_THRESHOLD failed launches with no CDN render between roll it back, not fewer',
+    () => {
+      let health: RemoteHealth | null = null;
+      for (let launch = 1; launch < FAILURE_THRESHOLD; launch++) {
+        health = nextHealthOnFailure(health, '1.2.0');
+        expect(shouldRollBack(health, '1.2.0')).toBe(false);
+      }
       health = nextHealthOnFailure(health, '1.2.0');
-      expect(shouldRollBack(health, '1.2.0')).toBe(false);
-    }
-    health = nextHealthOnFailure(health, '1.2.0');
-    expect(shouldRollBack(health, '1.2.0')).toBe(true);
-  });
+      expect(shouldRollBack(health, '1.2.0')).toBe(true);
+    },
+  );
 
   test('a render of the CDN version in between starts the count again', () => {
     let health: RemoteHealth | null = nextHealthOnFailure(null, '1.2.0');

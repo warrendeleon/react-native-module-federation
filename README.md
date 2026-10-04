@@ -29,7 +29,7 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 
 ## Dependency advisories
 
-`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites. What remained up to `post-16-fallbacks` was a single upstream advisory pair on `image-size`, reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins. At `post-17-signing-rollback` npm reports more, all in the same position: `adm-zip`, `brace-expansion`, `braces`, `decode-uri-component`, `fast-uri`, `fastify`, `joi`, `js-yaml`, `qs` and `undici` beside `image-size`, every one reached through the React Native CLI, ESLint's configuration packages or Re.Pack, and identical in the apps this post did not touch. `npm audit fix` declines to move them: the in-range bumps it proposes pull `react-native-reanimated` 4.7, which wants React Native 0.86. None of the four `packages/` workspaces reports any. All of it is build-time tooling that runs on the developer's machine and ships nothing into the app bundle; the fixes arrive with upstream releases of those tools rather than overrides handing them an API they were not built against.
+`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites. What remained up to `post-16-fallbacks` was a single upstream advisory pair on `image-size`, reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins. At `post-17-signing-rollback` npm reports more, all in the same position: `adm-zip`, `brace-expansion`, `braces`, `decode-uri-component`, `fast-uri`, `fastify`, `joi`, `js-yaml`, `qs` and `undici` beside `image-size`, reached through the React Native CLI, ESLint, Jest, Re.Pack, `@module-federation/enhanced`, Tailwind CSS, and React Navigation's `query-string`, and identical in the apps this post did not touch. `npm audit fix` declines to move them: the in-range bumps it proposes pull `react-native-reanimated` 4.7, which wants React Native 0.86. Three of the four `packages/` workspaces report some of the same ones, through their Jest and Metro tooling: `brace-expansion`, `braces` and `js-yaml` in `ui` and `detail`, and `brace-expansion` and `braces` in `a11y-testing`. `contracts` reports none. All of it except `decode-uri-component` is build-time tooling that runs on the developer's machine and ships nothing into the app bundle; `decode-uri-component` ships with React Navigation, through `query-string`, which uses it to parse deep-link paths. The fixes arrive with upstream releases of those tools rather than overrides handing them an API they were not built against.
 
 ## Layout
 
@@ -134,8 +134,10 @@ The first command writes two keypairs: the one that signs every production chunk
 half goes into `apps/host/ios/Host/Info.plist` and
 `apps/host/android/app/src/main/res/values/strings.xml`, where the host's native verifier reads it
 from, and the one that signs the version map, whose public half goes into
-`apps/host/src/shell/version-map-public-key.ts`, where the host's own verifier imports it. The second builds every published version of both remotes and writes one signed version map
-per released app version, each carrying the release counter `MF_RELEASE_SEQ` names:
+`apps/host/src/shell/version-map-public-key.ts`, which `scriptManager.ts` imports and hands to the
+host's own verifier. The second builds every published version of both remotes and writes one
+signed version map per released app version, each carrying the release counter `MF_RELEASE_SEQ`
+names:
 
 ```
 cdn-root/ios/listApp/1.0.0/      cdn-root/ios/maps/1.0.0/version-map.json
@@ -199,7 +201,8 @@ line of `cdn-root/ios/maps/2.0.0/version-map.json`, the listApp entry under `ver
 ```
 
 The map is signed, so the edit is not yet a publish: the file now fails the signature check and
-every launch that fetches it runs from the copies instead. Sign it, with a release counter higher
+every launch that fetches it refuses it, so a release build runs from its copies and a debug build
+on iOS, which has none, refuses every remote. Sign it, with a release counter higher
 than the last one published:
 
 ```sh
@@ -288,10 +291,10 @@ A signed map can be current, valid and wrong: it can name a version that fails t
 launch, because its manifest, container or chunks do not arrive or verify, or because it throws as
 it is evaluated. The nets catch that once per session and run the copy, and the next launch asks
 the CDN again and fails the same way. So the host keeps one small record per remote between
-launches, in MMKV: which CDN version last failed and how many launches it has failed since it last
-rendered from the CDN. A remote that drops to its copy counts one failed launch against the version
-the map named. At two the next launch sends that remote to its copy before trying the CDN, and the
-banner marks it:
+launches, in MMKV: which CDN version it is counting and how many launches that version has failed
+since it last rendered from the CDN. A remote that drops to its copy counts one failed launch
+against the version the map named. At two the next launch sends that remote to its copy before
+trying the CDN, and the banner marks it:
 
 ```
 cdn · listApp 1.2.0 rolled back · partyApp 1.0.0

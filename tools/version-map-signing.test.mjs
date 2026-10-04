@@ -174,7 +174,7 @@ test('refuses a file that is not a map of remotes to versions', () => {
     try {
       const r = s.run('1');
       assert.equal(r.status, 1, JSON.stringify(bad));
-      assert.match(r.stderr, /nothing to sign/);
+      assert.match(r.stderr, /cannot be signed/);
     } finally {
       s.cleanup();
     }

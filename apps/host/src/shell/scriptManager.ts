@@ -187,13 +187,13 @@ export function subscribeFederationStatus(listener: () => void): () => void {
 // copy by the record below, not by this set. ---
 const fallbackRemotes = new Set<string>();
 
-// --- The record that survives the launch: per remote, which CDN version last failed and how many
-// launches it has failed since it last rendered from the CDN. It is read in the boot gate, before
-// the remotes register, and a remote whose named version is at the threshold is sent to its copy
-// for the whole launch without trying the CDN first. It is written at the two moments the launch
-// learns something about the version: when the remote drops to its copy, and when the remote's own
-// component has rendered from the CDN. The decisions are in remoteHealth.ts; this is the storage
-// around them. ---
+// --- The record that survives the launch: per remote, which CDN version it is counting and how
+// many launches that version has failed since it last rendered from the CDN. It is read in the
+// boot gate, before the remotes register, and a remote whose named version is at the threshold is
+// sent to its copy for the whole launch without trying the CDN first. It is written at the two
+// moments the launch learns something about the version: when the remote drops to its copy, and
+// when the remote's own component has rendered from the CDN. The decisions are in
+// remoteHealth.ts; this is the storage around them. ---
 //
 // The store is read and written behind a guard: a record that cannot be read is no record, and a
 // write that fails is logged and dropped. Nothing on the boot path threw before this post, and a

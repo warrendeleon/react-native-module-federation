@@ -280,7 +280,7 @@ describe('the launch probe', () => {
   // app claiming a CDN launch it never had.
   test.each([
     ['the map is missing', () => respondWith({}, false, 404)],
-    ['the map does not parse', () => respondWith(signed({ listApp: '../../..' }))],
+    ['the map names a version that cannot go in a URL', () => respondWith(signed({ listApp: '../../..' }))],
     ['the CDN is unreachable', () => {
       globalThis.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
     }],
@@ -784,18 +784,23 @@ describe('believing the map', () => {
     expect(status.versions).toEqual(VERSIONS);
     expect(device.getNumber('mf.versionMap.seq')).toBe(2);
 
-    // A map that names none of this binary's remotes verifies and is then unreadable, and so is
-    // one that names one of them at a version that cannot go in a URL; neither moves the counter.
-    const unreadableMaps: Record<string, string>[] = [
-      { otherApp: '3.0.0' },
-      { listApp: '1.2.0', partyApp: '../../..' },
+    // A map that names none of this binary's remotes verifies and is then unreadable. A map that
+    // names one of them at a version that cannot go in a URL is refused before the signature is
+    // checked. Neither moves the counter.
+    const unusableMaps: [Record<string, string>, string][] = [
+      [{ otherApp: '3.0.0' }, '[federation] version map was served but could not be read'],
+      [
+        { listApp: '1.2.0', partyApp: '../../..' },
+        '[federation] version map refused: a remote name or version is not allowed',
+      ],
     ];
-    for (const versions of unreadableMaps) {
+    for (const [versions, warning] of unusableMaps) {
+      jest.mocked(console.warn).mockClear();
       const unreadable = freshDevice();
       respondWith(signed(versions, 3));
       const refused = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device: unreadable }).initializeFederation();
       expect(refused.mode).toBe('bundled');
-      expect(console.warn).toHaveBeenCalledWith('[federation] version map was served but could not be read');
+      expect(console.warn).toHaveBeenCalledWith(warning);
       expect(unreadable.getNumber('mf.versionMap.seq')).toBeUndefined();
     }
   });

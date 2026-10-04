@@ -1,9 +1,10 @@
-// --- Regression tests for build-cdn.mjs, run as a child process against a temporary tree: tools/
-// copied beside a code-signing/ key, two stand-in remote apps whose bundle script writes a
-// container and a manifest instead of compiling one, and a host whose node_modules is the real
-// host's, so the generated file is formatted the way the real tool formats it. What they prove is
-// the wiring the unit tests cannot: the counter is checked before anything is built, and every
-// map the tool writes is signed for its platform and app version.
+// --- Regression tests for build-cdn.mjs, run as a child process against a temporary tree:
+// build-cdn.mjs and version-map-signing.mjs copied into tools/ beside a code-signing/ key, two
+// stand-in remote apps whose bundle script writes a container and a manifest instead of compiling
+// one, and a host whose node_modules is the real host's, so the generated file is formatted the way
+// the real tool formats it. What they prove is the wiring the unit tests cannot: the counter is
+// checked before anything is built, and every map the tool writes is signed for its platform and
+// app version.
 // Run: node --test tools/build-cdn.test.mjs
 
 import assert from 'node:assert/strict';
@@ -27,7 +28,7 @@ const { mkdirSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 const remote = process.env.REMOTE_NAME;
 const version = process.env.MF_REMOTE_VERSION;
-const dir = join('cdn', 'ios', remote, version);
+const dir = join('cdn', process.env.BUNDLE_PLATFORM, remote, version);
 mkdirSync(dir, { recursive: true });
 writeFileSync(join(dir, remote + '.container.js.bundle'), 'container ' + version);
 writeFileSync(join(dir, 'main.chunk.bundle'), 'chunk ' + version);
@@ -47,7 +48,13 @@ function sandbox({ withKey = true } = {}) {
     writeFileSync(join(dir, 'bundle.cjs'), BUNDLE_SCRIPT);
     writeFileSync(
       join(dir, 'package.json'),
-      JSON.stringify({ name: app, scripts: { 'bundle:ios:prod': `REMOTE_NAME=${remote} node bundle.cjs` } }),
+      JSON.stringify({
+        name: app,
+        scripts: {
+          'bundle:ios:prod': `REMOTE_NAME=${remote} BUNDLE_PLATFORM=ios node bundle.cjs`,
+          'bundle:android:prod': `REMOTE_NAME=${remote} BUNDLE_PLATFORM=android node bundle.cjs`,
+        },
+      }),
     );
   }
   const host = join(root, 'apps', 'host');
@@ -66,9 +73,10 @@ function sandbox({ withKey = true } = {}) {
       cwd: root,
       env: { ...process.env, MF_RELEASE_SEQ: '', ...env },
     });
-  const readMap = appVersion => JSON.parse(readFileSync(join(root, 'cdn-root', 'ios', 'maps', appVersion, 'version-map.json'), 'utf8'));
-  const verifies = (signed, appVersion) =>
-    verify(null, Buffer.from(versionMapSigningInput('ios', appVersion, signed.seq, signed.versions)), publicKey, Buffer.from(signed.sig, 'base64'));
+  const readMap = (appVersion, platform = 'ios') =>
+    JSON.parse(readFileSync(join(root, 'cdn-root', platform, 'maps', appVersion, 'version-map.json'), 'utf8'));
+  const verifies = (signed, appVersion, platform = 'ios') =>
+    verify(null, Buffer.from(versionMapSigningInput(platform, appVersion, signed.seq, signed.versions)), publicKey, Buffer.from(signed.sig, 'base64'));
   return { root, run, readMap, verifies, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
@@ -119,6 +127,27 @@ test('writes every map signed for its platform and app version, at the counter g
     assert.ok(!published.some(file => file.endsWith('.map')));
     assert.ok(existsSync(join(s.root, 'embed-root', 'ios', 'listApp', '1.2.0', 'mf-manifest.json')));
     assert.match(readFileSync(join(s.root, 'apps', 'host', 'src', 'shell', 'embedded-versions.ts'), 'utf8'), /listApp: '1\.2\.0'/);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('with no platform named it builds both, and signs each platform\'s maps for that platform', () => {
+  const s = sandbox();
+  try {
+    const r = s.run({ MF_RELEASE_SEQ: '3' }, []);
+    assert.equal(r.status, 0, r.stderr + r.stdout);
+    for (const platform of ['ios', 'android']) {
+      const signed = s.readMap('2.0.0', platform);
+      assert.equal(signed.seq, 3);
+      assert.ok(s.verifies(signed, '2.0.0', platform), `${platform} verifies as itself`);
+      const other = platform === 'ios' ? 'android' : 'ios';
+      assert.equal(s.verifies(signed, '2.0.0', other), false, `${platform} does not verify as ${other}`);
+      assert.ok(existsSync(join(s.root, 'embed-root', platform, 'partyApp', '1.0.0', 'mf-manifest.json')));
+    }
+    const generated = readFileSync(join(s.root, 'apps', 'host', 'src', 'shell', 'embedded-versions.ts'), 'utf8');
+    assert.match(generated, /ios: \{ listApp: '1\.2\.0', partyApp: '1\.0\.0' \}/);
+    assert.match(generated, /android: \{ listApp: '1\.2\.0', partyApp: '1\.0\.0' \}/);
   } finally {
     s.cleanup();
   }

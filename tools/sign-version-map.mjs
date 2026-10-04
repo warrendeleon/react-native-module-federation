@@ -71,7 +71,7 @@ const isObject = value => typeof value === 'object' && value !== null && !Array.
 const versions = isObject(raw) && 'versions' in raw ? raw.versions : raw;
 const problem = versionsProblem(versions);
 if (problem) {
-  console.error(`${mapPath} cannot be signed: ${problem}, so there is nothing to sign.`);
+  console.error(`${mapPath} cannot be signed: ${problem}.`);
   process.exit(1);
 }
 // --- The counter has to move past every map on the CDN, not only this one. Installed apps keep
