@@ -449,8 +449,10 @@ async function fetchVersionMap(): Promise<AcceptedMap | null> {
     const response = await fetch(versionMapUrl(CDN_BASE, Platform.OS, APP_VERSION), {
       signal: controller.signal,
       // The map is the one file on the CDN that must never be served from a cache: it is the
-      // record of what is current, and a stale copy is a silently undone deploy. Every other file
-      // the app fetches carries its version in the URL and can be cached forever.
+      // record of what is current. A stale copy keeps a device that has not seen the new map on
+      // the old versions, and a device that has accepted a higher counter refuses it and runs its
+      // copies. Every other file the app fetches carries its version in the URL and can be cached
+      // forever.
       headers: { 'cache-control': 'no-cache' },
     });
     if (!response.ok) {
