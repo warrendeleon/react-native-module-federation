@@ -409,7 +409,8 @@ async function cdnManifestOrEmbedded(url: string, remote: string): Promise<Respo
   return fetch(embeddedManifestUrlFor(remote));
 }
 
-// Record that a remote runs from its copy until the next launch, and put it on the banner.
+// Run a remote from its copy for the rest of this launch, count one failed launch against the
+// version the map named (the count is stored, so it outlives the launch), and put it on the banner.
 function fallBack(remote: string): void {
   if (fallbackRemotes.has(remote)) {
     return;
