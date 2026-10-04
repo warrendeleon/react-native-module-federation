@@ -84,10 +84,11 @@ registerShellNavigateHandler(shellNavigateHandler);
 // so it mounts in the same commit as the remote's first render and never before: a load that
 // fails throws to the boundary and nothing in the Suspense commits, and so does a component that
 // throws as it first renders. The beacon reports that the remote painted, not that the screen is
-// correct; a component that renders and then fails later has already reported. The beacon lives
-// here, in the host, rather than in each remote, because health is the host's concern and a
-// remote that knew about it could clear its own record: the remotes stay ignorant of how the host
-// judges them.
+// correct; a component that renders and then fails later has already reported.
+//
+// The beacon lives here, in the host, rather than in each remote, because health is the host's
+// concern and a remote that knew about it could clear its own record: the remotes stay ignorant
+// of how the host judges them.
 //
 // What the error state says depends on how the tab failed and where this launch loads remotes
 // from. In dev mode the likely cause is a dev server that is not running. From the CDN there is

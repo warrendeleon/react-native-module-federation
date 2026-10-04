@@ -95,13 +95,13 @@ ensureKeypair(chunkKey);
 ensureKeypair(mapKey);
 
 // --- Put the public halves where the app reads them. The chunk key reaches two platforms in two
-// shapes: iOS parses PEM, so it gets the file verbatim; Android strips the header, the footer and
-// the line breaks before it decodes, so it is given the base64 body alone, on one line. The map key
-// goes to the host's TypeScript as the raw 32 bytes in base64url, which is the `x` of the key's
-// JWK form and what the verifier decodes. ---
+// shapes: iOS parses PEM, so it gets the whole PEM text, header and footer included; Android strips
+// the header, the footer and the line breaks before it decodes, so it is given the base64 body
+// alone, on one line. The map key goes to the host's TypeScript as the raw 32 bytes in base64url,
+// which is the `x` of the key's JWK form and what the verifier decodes. ---
 // Line endings are normalised before either shape is built, so a public key that has been through
 // a tool or an editor that writes CRLF embeds exactly the values one saved with LF does. It still
-// matches its private key either way: the check above compares DER bytes, not text.
+// matches its private key either way: ensureKeypair compares the keys as DER bytes, not text.
 const publicPem = readFileSync(chunkKey.publicPath, 'utf8').replace(/\r\n/g, '\n').trim();
 const publicBase64 = publicPem
   .split('\n')

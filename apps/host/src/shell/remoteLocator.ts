@@ -9,7 +9,7 @@
 //
 // The binary also carries a copy of each remote, baked in at build time. A script is served from
 // that copy when the whole launch is running without the CDN (bundled mode), or when that one
-// remote has already failed from the CDN this session and fallen back. ---
+// remote has failed from the CDN this session or was sent to its copy at launch. ---
 
 export type FederationMode = 'dev' | 'cdn' | 'bundled' | 'unresolved';
 export type VerifyMode = 'strict' | 'off';
@@ -39,7 +39,9 @@ export interface ResolveInput {
   versions: Record<string, string>;
   /** remote -> version of the copy baked into this binary. */
   bundledVersions: Record<string, string>;
-  /** Remotes that failed from the CDN this session and now load from the baked-in copy. */
+  /** Remotes that load from the baked-in copy in a CDN launch: the ones that failed from the CDN
+   *  this session, and the ones the launch sent there before trying, because their version kept
+   *  failing. */
   fallbackRemotes: ReadonlySet<string>;
   /** The directory the baked-in copies sit under on the device; undefined when there is none. */
   embeddedRoot: string | undefined;
@@ -73,10 +75,10 @@ function remoteFor(
 // registered last and no signature check at all. That is the right answer in dev mode, where
 // the dev servers own everything, and for any script that is not one of this host's remotes.
 // Outside dev mode it is never the right answer for a remote. A remote that runs from its copy,
-// in a bundled launch or after it fell back, is located in the copy; any other remote needs the
-// version the map named for it, and without one, deferring would load code from an unversioned
-// URL, unverified. So a remote with no version, or with no copy to read when it runs from one, is
-// refused, and the refusal surfaces as the tab's error state. ---
+// in a bundled launch, after it fell back, or when the launch sent it there, is located in the
+// copy; any other remote needs the version the map named for it, and without one, deferring would
+// load code from an unversioned URL, unverified. So a remote with no version, or with no copy to
+// read when it runs from one, is refused, and the refusal surfaces as the tab's error state. ---
 export function resolveRemoteLocator(input: ResolveInput): Resolution {
   if (input.mode === 'dev') {
     return { kind: 'defer' };

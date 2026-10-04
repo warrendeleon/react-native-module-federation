@@ -77,8 +77,8 @@ if (problem) {
 // --- The counter has to move past every map on the CDN, not only this one. Installed apps keep
 // one counter for every map they ever accepted, on any app version, so a map for another app
 // version published at a higher seq would make them refuse this one as a replay. And they accept
-// a map at the seq they already hold, so two maps signed at one seq could be served in place of
-// each other. One signed with a lower seq is refused as a replay. ---
+// a map at the seq they already hold, so two signings of this map at one seq could be served in
+// place of each other. One signed with a lower seq is refused as a replay. ---
 const highest = highestPublishedSeq(repoRoot);
 if (seq <= highest) {
   console.error(

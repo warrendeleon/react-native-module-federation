@@ -222,7 +222,9 @@ launches in between. What they get is the copy of that remote their binary carri
 [When the CDN is not there](#when-the-cdn-is-not-there)): a working tab, but the version the binary
 shipped with, not the one being released. A device that launches twice in that window also counts
 two failed launches of the new version and stays on the copy after the directory arrives, until
-the map names a different version (see [When a version keeps failing](#when-a-version-keeps-failing)).
+the map names a different version (see
+[When a version keeps failing](#when-a-version-keeps-failing)).
+
 Rolling back is the same edit in reverse, signed with the next counter again, and it needs no
 build at all, because the old version's directory was never removed. The counter rule is in
 [The signed map and the counter](#the-signed-map-and-the-counter).

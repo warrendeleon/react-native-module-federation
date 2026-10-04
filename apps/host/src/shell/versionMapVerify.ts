@@ -32,9 +32,10 @@ import { SAFE_VERSION } from './remoteLocator';
 //
 // The string has separators, so what goes between them is restricted to the same two shapes the
 // tools accept: a remote name of letters, digits and underscores starting with a letter, and the
-// version shape the URL builder already requires. A name holding "@" or "," could otherwise make two
-// different maps produce the same string, and an edit that moved a boundary would keep the
-// signature valid. Such a map is refused before the verifier sees it.
+// version shape parseVersionMap in remoteLocator.ts already requires before a version goes into a
+// URL. A name holding "@" or "," could otherwise make two different maps produce the same string,
+// and an edit that moved a boundary would keep the signature valid. Such a map is refused before
+// the verifier sees it.
 //
 // Ed25519 is verified in JavaScript, with @noble/ed25519, because Hermes has no WebCrypto. The
 // library ships without a hash of its own and its synchronous path needs one, so @noble/hashes'

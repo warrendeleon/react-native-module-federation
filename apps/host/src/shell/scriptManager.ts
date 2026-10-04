@@ -56,7 +56,12 @@ import { verifyVersionMap } from './versionMapVerify';
 // Inside a CDN launch one remote can still fail to load: a retired version, a container or chunk
 // that does not arrive, one that does not verify. That remote drops to its own copy for the rest
 // of the session while the others stay on the CDN. Its tab shows the error state only when there is
-// no copy left to try, and even then the process survives it: federationErrors.ts has why. ---
+// no copy left to try, and even then the process survives it: federationErrors.ts has why.
+//
+// A remote can also skip the CDN from the start. If the version the map names has failed
+// FAILURE_THRESHOLD launches since it last rendered from the CDN, and the remote has a copy, the
+// launch sends it to that copy before anything registers (remoteHealth.ts has the count). The
+// banner marks it rolled back. ---
 
 const REMOTE_NAMES = ['listApp', 'partyApp'] as const;
 type RemoteName = (typeof REMOTE_NAMES)[number];
@@ -99,10 +104,11 @@ const CDN_CONFIGURED = CDN_BASE.length > 0;
 // does not exist in React Native's fetch, so the controller and the timer are wired by hand. ---
 const PROBE_TIMEOUT_MS = 1500;
 
-// --- Signature verification is only meaningful where there is a public key to verify against:
-// the key is embedded in the iOS Info.plist and in Android's strings.xml, and nowhere else. On
-// those two platforms it is strict, which means a chunk whose signature does not match the key,
-// or which carries no signature at all, is rejected before it executes. ---
+// --- Chunk signature verification is only meaningful where there is a chunk-signing public key
+// to verify against: that key is embedded in the iOS Info.plist and in Android's strings.xml, and
+// nowhere else. On those two platforms it is strict, which means a chunk whose signature does not
+// match the key, or which carries no signature at all, is rejected before it executes. The version
+// map is signed with a different key, which lives in version-map-public-key.ts. ---
 const SIGNED_PLATFORMS = ['ios', 'android'];
 const VERIFY: VerifyMode = SIGNED_PLATFORMS.includes(Platform.OS) ? 'strict' : 'off';
 
@@ -534,7 +540,7 @@ async function resolveFederation(): Promise<FederationStatus> {
   }
   const { versions } = accepted;
 
-  // The status is set before the registration because the resolver reads it, and then rolled back
+  // The status is set before the registration because the resolver reads it, and then replaced
   // if the registration throws. Claiming CDN mode after a failed re-registration would put the
   // versions on the banner while every load went to the build-time placeholder URL: an app that
   // says it is running 1.2.0 and is running nothing.
