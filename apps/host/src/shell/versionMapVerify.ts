@@ -4,7 +4,7 @@ import { sha512 } from '@noble/hashes/sha2.js';
 import { SAFE_VERSION } from './remoteLocator';
 
 // --- Whether a version map can be believed, decided as plain functions so it can be tested with
-// a key made for the test and no device in sight.
+// a key made for the test and without a device.
 //
 // Post 15 made the map the deploy commit: one file on the CDN says which version of each remote
 // an installed app may load. Post 14's chunk signing protects the content of every chunk, and
