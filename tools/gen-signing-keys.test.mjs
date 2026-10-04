@@ -255,8 +255,8 @@ test('a fresh run also writes an owner-only Ed25519 key for the map, and embeds 
     // The saved public key is the private key's own, not a key from somewhere else.
     assert.deepEqual(derSpki(createPublicKey(readFileSync(s.mapPub))), derSpki(createPublicKey(createPrivateKey(readFileSync(s.mapPriv)))));
 
-    // The host gets the raw key in base64url, the `x` of its JWK form: 32 bytes, 43 characters,
-    // no padding, nothing a TypeScript string literal needs escaping for.
+    // The host gets the raw key in base64url, the `x` field of its JSON Web Key (JWK) form: 32
+    // bytes, 43 characters, no padding, nothing a TypeScript string literal needs escaping for.
     const embedded = embeddedKey(s.read(MAP_KEY), MAP_PUBLIC_KEY);
     const jwk = createPublicKey(readFileSync(s.mapPub)).export({ format: 'jwk' });
     assert.equal(embedded, jwk.x);

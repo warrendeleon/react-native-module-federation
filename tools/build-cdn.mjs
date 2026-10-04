@@ -82,9 +82,9 @@ const REMOTE_VERSIONS = {
 // A map on the CDN is no longer only the remote-to-version pairs listed here. Written to the CDN
 // it is `{ seq, versions, sig }`: the versions listed here, the release counter, and a signature
 // over both, so an installed app can tell a map written by the holder of the signing key from one
-// written by anybody else who can reach the bucket, and a map published today from one published
-// last month. The signing is in tools/version-map-signing.mjs; the checks are in the host's
-// versionMapVerify.ts. ---
+// written by anybody else who can reach the bucket, and can refuse a map whose counter is lower
+// than one it has already accepted. The signing is in tools/version-map-signing.mjs; the checks
+// are in the host's versionMapVerify.ts. ---
 const APP_VERSION_MAPS = {
   '1.0.0': { listApp: '1.0.0', partyApp: '1.0.0' },
   '2.0.0': { listApp: '1.2.0', partyApp: '1.0.0' },

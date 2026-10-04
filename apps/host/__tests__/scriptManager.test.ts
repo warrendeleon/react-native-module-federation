@@ -21,8 +21,8 @@ const PUBLIC_KEY = (TEST_PUBLIC_KEY.export({ format: 'jwk' }) as { x: string }).
 
 /**
  * A map as the publishing tools write it: the versions, the release counter, and the signature,
- * bound to the platform and app version it is published for. The tests launch an iOS binary at
- * app version 2.0.0 except where a test says otherwise.
+ * bound to the platform and app version it is published for. The tests model an iOS host at app
+ * version 2.0.0 except where a test says otherwise.
  */
 function signed(
   versions: Record<string, string>,

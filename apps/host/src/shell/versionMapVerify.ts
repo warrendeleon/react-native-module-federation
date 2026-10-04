@@ -85,7 +85,7 @@ export function versionMapSigningInput(
 }
 
 // atob exists in Hermes and in Node, and takes standard base64. The public key arrives in base64url,
-// the form a JWK carries a raw key in, so it is turned into standard base64 first.
+// the form a JSON Web Key (JWK) carries a raw key in, so it is turned into standard base64 first.
 function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
