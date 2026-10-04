@@ -8,10 +8,11 @@
 // the build-time literals defined first, because the module reads them once at import and holds
 // its initialisation for the life of the process.
 //
-// Every map a launch is served here is signed, with a key made for this test run and its public
-// half handed to the host in place of the embedded one, because from the signing post on a map
-// the host cannot verify is a map it refuses. The cases about believing the map are under
-// "believing the map", and the failure record under "remembering failures".
+// Every map a launch is meant to accept is signed, with a key made for this test run and its
+// public half handed to the host in place of the embedded one, because from the signing post on a
+// map the host cannot verify is a map it refuses. The maps it refuses are served on purpose under
+// "believing the map", and one under "the launch probe", where there is no copy to fall back to.
+// The failure record is under "remembering failures".
 
 import { generateKeyPairSync, sign } from 'node:crypto';
 
