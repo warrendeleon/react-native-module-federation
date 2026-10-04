@@ -38,11 +38,13 @@ import { verifyVersionMap } from './versionMapVerify';
 //               changes resolution; Re.Pack's own handling stands.
 //   cdn         the app asks the CDN for the version map written for its own app version, and
 //               loads exactly the remote versions that map names. Shipping a remote is then an
-//               upload and one edited line, with no new binary and no store review.
+//               upload, one edited line in the map and a re-sign with a higher counter, with no
+//               new binary and no store review.
 //   bundled     the CDN's versions could not be used (no CDN is configured, the map could not
-//               be fetched or read, or registering its versions failed), and the binary carries
-//               its own copy of each remote, baked in when it was built. The whole launch runs
-//               from those copies, read from the disk and verified exactly like a download.
+//               be fetched, read or believed, or registering its versions failed), and the
+//               binary carries its own copy of each remote, baked in when it was built. The whole
+//               launch runs from those copies, read from the disk and verified exactly like a
+//               download.
 //   unresolved  the CDN's versions could not be used, and no copy could be registered instead.
 //               There is no version to load anything at, so the resolver refuses every remote
 //               rather than let one load from an unversioned URL unverified, and the banner says
@@ -143,8 +145,8 @@ export interface FederationStatus {
   embedded: readonly string[];
   /**
    * The remotes this launch sent to their copy before trying the CDN, because the version the map
-   * names has failed FAILURE_THRESHOLD launches in a row. A subset of `embedded`; empty outside a
-   * CDN launch.
+   * names has failed FAILURE_THRESHOLD launches since it last rendered from the CDN. A subset of
+   * `embedded`; empty outside a CDN launch.
    */
   rolledBack: readonly string[];
 }
@@ -179,34 +181,63 @@ export function subscribeFederationStatus(listener: () => void): () => void {
 
 // --- The remotes that run from their copy this session: the ones that failed from the CDN and
 // dropped to it, and the ones the launch sent there before trying, because the version the map
-// names has kept failing. In memory on purpose: a remote runs from its copy only until the next
-// launch, which asks the CDN again, so a failure that was only the network does not keep it there.
-// What does survive the launch is the record of how often a version has failed, below. ---
+// names has kept failing. In memory on purpose: the set is rebuilt at every launch. A remote
+// that dropped to its copy is tried from the CDN again at the next launch, so a failure that was
+// only the network does not keep it there. A version that has kept failing is sent back to its
+// copy by the record below, not by this set. ---
 const fallbackRemotes = new Set<string>();
 
 // --- The record that survives the launch: per remote, which CDN version last failed and how many
-// launches in a row. It is read in the boot gate, before the remotes register, and a remote whose
-// named version is at the threshold is sent to its copy for the whole launch without trying the
-// CDN first. It is written at the two moments the launch learns something about the version:
-// when the remote drops to its copy, and when the remote's own component has rendered from the
-// CDN. The decisions are in remoteHealth.ts; this is the storage around them. ---
+// launches it has failed since it last rendered from the CDN. It is read in the boot gate, before
+// the remotes register, and a remote whose named version is at the threshold is sent to its copy
+// for the whole launch without trying the CDN first. It is written at the two moments the launch
+// learns something about the version: when the remote drops to its copy, and when the remote's own
+// component has rendered from the CDN. The decisions are in remoteHealth.ts; this is the storage
+// around them. ---
+//
+// The store is read and written behind a guard: a record that cannot be read is no record, and a
+// write that fails is logged and dropped. Nothing on the boot path threw before this post, and a
+// storage failure is not a reason for a launch to refuse every remote or for a rendered tab to
+// show its error state.
 function readHealth(remote: string): RemoteHealth | null {
-  const raw = storage.getString(remoteHealthKey(remote));
-  if (!raw) {
-    return null;
-  }
   try {
+    const raw = storage.getString(remoteHealthKey(remote));
+    if (!raw) {
+      return null;
+    }
     const health = JSON.parse(raw) as Partial<RemoteHealth>;
     return typeof health.version === 'string' && typeof health.fails === 'number'
       ? { version: health.version, fails: health.fails }
       : null;
-  } catch {
+  } catch (error) {
+    console.warn(`[federation] the health record of ${remote} could not be read`, error);
     return null;
   }
 }
 
 function writeHealth(remote: string, health: RemoteHealth): void {
-  storage.set(remoteHealthKey(remote), JSON.stringify(health));
+  try {
+    storage.set(remoteHealthKey(remote), JSON.stringify(health));
+  } catch (error) {
+    console.warn(`[federation] the health record of ${remote} could not be written`, error);
+  }
+}
+
+function readHighestAcceptedSeq(): number {
+  try {
+    return storage.getNumber(VERSION_MAP_SEQ_KEY) ?? 0;
+  } catch (error) {
+    console.warn('[federation] the release counter could not be read', error);
+    return 0;
+  }
+}
+
+function writeHighestAcceptedSeq(seq: number): void {
+  try {
+    storage.set(VERSION_MAP_SEQ_KEY, seq);
+  } catch (error) {
+    console.warn('[federation] the release counter could not be written', error);
+  }
 }
 
 // A remote dropped to its copy: the version the map named for it failed this launch.
@@ -218,7 +249,7 @@ function recordRemoteFailure(remote: string): void {
   const health = nextHealthOnFailure(readHealth(remote), version);
   writeHealth(remote, health);
   console.warn(
-    `[federation] ${remote} ${version} has failed ${health.fails} launch${health.fails === 1 ? '' : 'es'} in a row`,
+    `[federation] ${remote} ${version} has failed ${health.fails} launch${health.fails === 1 ? '' : 'es'} since it last rendered from the CDN`,
   );
 }
 
@@ -395,10 +426,16 @@ function fallBack(remote: string): void {
 //
 // The map is believed in two steps, and the order matters. versionMapVerify checks the signature
 // and the release counter over the map as a whole, every remote it names included, because that
-// is what was signed. parseVersionMap then reads out the remotes this binary knows and checks each
-// version is safe to put in a URL. Only once both have passed is the counter remembered, so a map
-// that fails any check leaves the device where it was. ---
-async function fetchVersionMap(): Promise<Record<string, string> | null> {
+// is what was signed, and checks it against this platform and app version, because that is what
+// the signature binds the map to. parseVersionMap then reads out the remotes this binary knows.
+// The counter is not remembered here: that waits until the map's versions have registered, in
+// resolveFederation, so a map that fails any step leaves the device where it was. ---
+interface AcceptedMap {
+  versions: Record<string, string>;
+  seq: number;
+}
+
+async function fetchVersionMap(): Promise<AcceptedMap | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
@@ -413,11 +450,11 @@ async function fetchVersionMap(): Promise<Record<string, string> | null> {
       console.warn(`[federation] version map returned ${response.status}`);
       return null;
     }
-    const highestAcceptedSeq = storage.getNumber(VERSION_MAP_SEQ_KEY) ?? 0;
     const verified = verifyVersionMap(
       (await response.json()) as unknown,
       VERSION_MAP_PUBLIC_KEY,
-      highestAcceptedSeq,
+      { platform: Platform.OS, appVersion: APP_VERSION },
+      readHighestAcceptedSeq(),
     );
     if (!verified.ok) {
       // The failures that are nobody's network and nobody's outage: the file was served and could
@@ -431,10 +468,7 @@ async function fetchVersionMap(): Promise<Record<string, string> | null> {
       console.warn('[federation] version map was served but could not be read');
       return null;
     }
-    if (verified.map.seq > highestAcceptedSeq) {
-      storage.set(VERSION_MAP_SEQ_KEY, verified.map.seq);
-    }
-    return versions;
+    return { versions, seq: verified.map.seq };
   } catch (error) {
     console.warn('[federation] version map could not be fetched', error);
     return null;
@@ -454,8 +488,8 @@ function registerCdnRemotes(versions: Record<string, string>): void {
   registerRemotes(
     REMOTE_NAMES.filter(name => versions[name]).map(name => ({
       name,
-      // A remote already sent to its copy is registered there, the way a remote that drops to it
-      // mid-session is re-registered there, so the runtime reads the copy's manifest from the disk.
+      // A remote the launch already sent to its copy is registered there from the start, so the
+      // runtime reads the copy's manifest from the disk.
       entry: fallbackRemotes.has(name)
         ? embeddedManifestUrlFor(name)
         : remoteManifestUrl(CDN_BASE, Platform.OS, name, versions[name]),
@@ -492,31 +526,33 @@ async function resolveFederation(): Promise<FederationStatus> {
     return status;
   }
 
-  const [versions] = await Promise.all([
+  const [accepted] = await Promise.all([
     CDN_CONFIGURED ? fetchVersionMap() : Promise.resolve(null),
     prepareEmbeddedCopies(),
   ]);
-  if (!versions) {
+  if (!accepted) {
     return runFromCopies(CDN_CONFIGURED ? 'no usable version map' : 'no CDN configured');
   }
+  const { versions } = accepted;
 
   // The status is set before the registration because the resolver reads it, and then rolled back
   // if the registration throws. Claiming CDN mode after a failed re-registration would put the
   // versions on the banner while every load went to the build-time placeholder URL: an app that
   // says it is running 1.2.0 and is running nothing.
   mapVersions = versions;
-  // A remote whose named version has failed the last FAILURE_THRESHOLD launches is sent to its copy
-  // now, before anything registers, so the resolver and the manifest net serve the copy from the
-  // first script. It is marked rolled back rather than embedded: the banner says which remotes
-  // failed this session and which the launch gave up on. Only a remote with a copy can be sent
-  // there; one without is tried from the CDN, since there is nothing else to run.
+  // A remote whose named version has failed FAILURE_THRESHOLD launches since it last rendered from
+  // the CDN is sent to its copy now, before anything registers, so the resolver and the manifest
+  // net serve the copy from the first script. It is marked both rolled back and embedded, so the
+  // banner can say which remotes failed this session and which the launch gave up on. Only a
+  // remote with a copy can be sent there; one without is tried from the CDN, since there is
+  // nothing else to run.
   const rolledBack = REMOTE_NAMES.filter(
     name => hasEmbeddedCopy(name) && shouldRollBack(readHealth(name), versions[name]),
   );
   rolledBack.forEach(name => {
     fallbackRemotes.add(name);
     console.warn(
-      `[federation] ${name} ${versions[name]} failed the last ${FAILURE_THRESHOLD} launches; running its copy from the binary without trying the CDN`,
+      `[federation] ${name} ${versions[name]} failed ${FAILURE_THRESHOLD} launches since it last rendered from the CDN; running its copy from the binary without trying the CDN`,
     );
   });
   setStatus({
@@ -532,6 +568,12 @@ async function resolveFederation(): Promise<FederationStatus> {
     console.warn('[federation] remotes could not be re-registered', error);
     mapVersions = {};
     return runFromCopies('remotes could not be registered');
+  }
+  // The map has been verified, read and its versions registered: now, and not before, it is the
+  // map this launch runs on, and its counter is the one later launches measure against. A map
+  // whose registration failed left the device's counter where it was.
+  if (accepted.seq > readHighestAcceptedSeq()) {
+    writeHighestAcceptedSeq(accepted.seq);
   }
   return status;
 }

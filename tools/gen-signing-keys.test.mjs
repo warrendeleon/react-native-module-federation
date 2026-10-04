@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -17,7 +17,7 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 // The three files the script embeds into are copied from the repository rather than written as
 // fixtures here, so these tests fail if the real Info.plist, strings.xml or the host's key module
-// loses the entry the script looks for — which is the way that entry would actually go missing.
+// loses the entry the script looks for, which is how that entry would actually go missing.
 const PLIST = join('apps', 'host', 'ios', 'Host', 'Info.plist');
 const STRINGS = join('apps', 'host', 'android', 'app', 'src', 'main', 'res', 'values', 'strings.xml');
 const MAP_KEY = join('apps', 'host', 'src', 'shell', 'version-map-public-key.ts');
@@ -39,7 +39,7 @@ function sandbox() {
   return { root, run, priv, pub, mapPriv, mapPub, read, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-/** The value of a native file's RepackPublicKey entry, or undefined if the entry is gone. */
+/** The value of an embed target's public-key entry, or undefined if the entry is gone. */
 function embeddedKey(contents, pattern) {
   return pattern.exec(contents)?.[1];
 }
@@ -58,6 +58,9 @@ const base64Body = pem =>
 
 const mode = p => statSync(p).mode & 0o777;
 
+/** A public key as DER bytes, which is how two keys are compared. */
+const derSpki = key => key.export({ type: 'spki', format: 'der' });
+
 test('a fresh run writes an owner-only private key and a matching public key', () => {
   const s = sandbox();
   try {
@@ -65,6 +68,7 @@ test('a fresh run writes an owner-only private key and a matching public key', (
     assert.equal(r.status, 0, r.stderr);
     assert.equal(mode(s.priv), 0o600);
     assert.match(readFileSync(s.pub, 'utf8'), /BEGIN PUBLIC KEY/);
+    assert.deepEqual(derSpki(createPublicKey(readFileSync(s.pub))), derSpki(createPublicKey(createPrivateKey(readFileSync(s.priv)))));
   } finally {
     s.cleanup();
   }
@@ -182,8 +186,8 @@ test('the public key is embedded where each platform reads it', () => {
     // iOS parses PEM, so the whole file goes in, header and footer included.
     assert.equal(embeddedKey(s.read(PLIST), PLIST_KEY), pem);
 
-    // Android strips the header and footer and decodes what is left without removing line
-    // breaks, so a wrapped key would reach the decoder with newlines still in it.
+    // Android removes the PEM markers and the platform's line separators before it decodes, and
+    // the generator supplies the base64 body on one line, so no wrapping reaches the decoder at all.
     const android = embeddedKey(s.read(STRINGS), STRINGS_KEY);
     assert.equal(android, base64Body(pem));
     assert.ok(!android.includes('\n'), 'the Android value must be one line');
@@ -246,7 +250,10 @@ test('a fresh run also writes an owner-only Ed25519 key for the map, and embeds 
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /generated an Ed25519 map-signing keypair/);
     assert.equal(mode(s.mapPriv), 0o600);
+    assert.equal(createPrivateKey(readFileSync(s.mapPriv)).asymmetricKeyType, 'ed25519');
     assert.equal(createPublicKey(readFileSync(s.mapPub)).asymmetricKeyType, 'ed25519');
+    // The saved public key is the private key's own, not a key from somewhere else.
+    assert.deepEqual(derSpki(createPublicKey(readFileSync(s.mapPub))), derSpki(createPublicKey(createPrivateKey(readFileSync(s.mapPriv)))));
 
     // The host gets the raw key in base64url, the `x` of its JWK form: 32 bytes, 43 characters,
     // no padding, nothing a TypeScript string literal needs escaping for.
@@ -279,12 +286,16 @@ test('a map public key from another pair stops the script before anything is emb
   const s = sandbox();
   try {
     s.run();
+    const embeddedBefore = s.read(MAP_KEY);
+    const plistBefore = s.read(PLIST);
     const other = generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' });
     writeFileSync(s.mapPub, other);
     const r = s.run();
     assert.equal(r.status, 1);
     assert.match(r.stderr, /version-map-public\.pem does not match/);
     assert.equal(readFileSync(s.mapPub, 'utf8'), other);
+    assert.equal(s.read(MAP_KEY), embeddedBefore);
+    assert.equal(s.read(PLIST), plistBefore);
   } finally {
     s.cleanup();
   }
@@ -299,6 +310,53 @@ test('a host key module with no VERSION_MAP_PUBLIC_KEY entry fails loudly', () =
     assert.match(r.stderr, /no VERSION_MAP_PUBLIC_KEY entry in src\/shell\/version-map-public-key\.ts/);
     // The other two targets were still embedded.
     assert.equal(embeddedKey(s.read(PLIST), PLIST_KEY), readFileSync(s.pub, 'utf8').trim());
+    assert.equal(embeddedKey(s.read(STRINGS), STRINGS_KEY), base64Body(readFileSync(s.pub, 'utf8')));
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a missing map public key is derived from the map private key', () => {
+  const s = sandbox();
+  try {
+    s.run();
+    const original = readFileSync(s.mapPub, 'utf8');
+    rmSync(s.mapPub);
+    const r = s.run();
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /map-signing private key present; public key derived from it/);
+    assert.equal(readFileSync(s.mapPub, 'utf8'), original);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a map public key on its own is never overwritten by a fresh pair', () => {
+  const s = sandbox();
+  try {
+    s.run();
+    const pub = readFileSync(s.mapPub, 'utf8');
+    const embedded = s.read(MAP_KEY);
+    rmSync(s.mapPriv);
+    const r = s.run();
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /version-map-public\.pem exists but .* does not/);
+    assert.equal(readFileSync(s.mapPub, 'utf8'), pub);
+    assert.equal(s.read(MAP_KEY), embedded);
+    assert.throws(() => statSync(s.mapPriv));
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a widened map private-key mode is tightened on the next run', () => {
+  const s = sandbox();
+  try {
+    s.run();
+    spawnSync('chmod', ['644', s.mapPriv]);
+    const r = s.run();
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(mode(s.mapPriv), 0o600);
   } finally {
     s.cleanup();
   }

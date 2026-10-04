@@ -10,20 +10,31 @@
 //
 // Every map a launch is served here is signed, with a key made for this test run and its public
 // half handed to the host in place of the embedded one, because from the signing post on a map
-// the host cannot verify is a map it refuses. The cases about believing the map are at the end.
+// the host cannot verify is a map it refuses. The cases about believing the map are under
+// "believing the map", and the failure record under "remembering failures".
 
 import { generateKeyPairSync, sign } from 'node:crypto';
 
 const { publicKey: TEST_PUBLIC_KEY, privateKey: TEST_PRIVATE_KEY } = generateKeyPairSync('ed25519');
 const PUBLIC_KEY = (TEST_PUBLIC_KEY.export({ format: 'jwk' }) as { x: string }).x;
 
-/** A map as the publishing tools write it: the versions, the release counter, and the signature. */
-function signed(versions: Record<string, string>, seq = 1, privateKey = TEST_PRIVATE_KEY) {
+/**
+ * A map as the publishing tools write it: the versions, the release counter, and the signature,
+ * bound to the platform and app version it is published for. The tests launch an iOS binary at
+ * app version 2.0.0 unless they say otherwise.
+ */
+function signed(
+  versions: Record<string, string>,
+  seq = 1,
+  privateKey = TEST_PRIVATE_KEY,
+  identity = { platform: 'ios', appVersion: '2.0.0' },
+) {
   const pairs = Object.keys(versions)
     .sort()
     .map(name => `${name}@${versions[name]}`)
     .join(',');
-  const sig = sign(null, Buffer.from(`${seq}|${pairs}`, 'utf8'), privateKey);
+  const input = `${identity.platform}|${identity.appVersion}|${seq}|${pairs}`;
+  const sig = sign(null, Buffer.from(input, 'utf8'), privateKey);
   return { seq, versions, sig: sig.toString('base64') };
 }
 
@@ -250,7 +261,12 @@ describe('the launch probe', () => {
   });
 
   test('asks for the map written for this binary, and asks for it uncached', async () => {
-    respondWith(signed({ listApp: '1.0.0', partyApp: '1.0.0' }));
+    respondWith(
+      signed({ listApp: '1.0.0', partyApp: '1.0.0' }, 1, TEST_PRIVATE_KEY, {
+        platform: 'ios',
+        appVersion: '1.0.0',
+      }),
+    );
     const { initializeFederation } = loadFederation(CDN_BASE, '1.0.0');
     await initializeFederation();
 
@@ -337,8 +353,13 @@ describe('the copy in the binary', () => {
   // When that fails the launch runs from the copies, and when the copies cannot be registered
   // either it ends unresolved, with the resolver naming that cause rather than a map never read.
   test('runs from the copies when the map read but its versions could not be registered', async () => {
-    respondWith(signed({ listApp: '1.2.0', partyApp: '1.0.0' }));
-    const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', RELEASE_WITH_COPIES);
+    const device = freshDevice();
+    device.set('mf.versionMap.seq', 4);
+    respondWith(signed({ listApp: '1.2.0', partyApp: '1.0.0' }, 9));
+    const { initializeFederation, runtime } = loadFederation(CDN_BASE, '2.0.0', {
+      ...RELEASE_WITH_COPIES,
+      device,
+    });
     jest
       .spyOn(runtime as unknown as { registerRemotes: () => void }, 'registerRemotes')
       .mockImplementationOnce(() => {
@@ -347,6 +368,9 @@ describe('the copy in the binary', () => {
     const status = await initializeFederation();
     expect(status.mode).toBe('bundled');
     expect(status.embedded).toEqual(['listApp', 'partyApp']);
+    // The map was verified and read, and it was not the map this launch ran on: the counter it
+    // carried is not remembered, so the device is left where it was.
+    expect(device.getNumber('mf.versionMap.seq')).toBe(4);
   });
 
   test('ends unresolved when neither the versions nor the copies can be registered', async () => {
@@ -706,6 +730,50 @@ describe('believing the map', () => {
     expect(device.getNumber('mf.versionMap.seq')).toBe(6);
   });
 
+  // The CDN holds one map per app version per platform, all signed with the same key. The map
+  // written for another binary carries a valid signature over the wrong binary, and this one
+  // refuses it as if it were forged.
+  test.each([
+    ['another app version', { platform: 'ios', appVersion: '1.0.0' }],
+    ['the other platform', { platform: 'android', appVersion: '2.0.0' }],
+  ])('runs from the copies when served the map signed for %s', async (_case, identity) => {
+    const device = freshDevice();
+    respondWith(signed({ ...VERSIONS, listApp: '1.0.0' }, 3, TEST_PRIVATE_KEY, identity));
+    const status = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device }).initializeFederation();
+    expect(status.mode).toBe('bundled');
+    expect(console.warn).toHaveBeenCalledWith('[federation] version map refused: signature does not verify');
+    expect(device.getNumber('mf.versionMap.seq')).toBeUndefined();
+  });
+
+  // The device's storage is read behind a guard: a store that throws counts as a device that
+  // remembers nothing, and the launch goes on rather than refusing every remote.
+  test('a storage that throws is treated as remembering nothing, and the launch goes on', async () => {
+    const broken: Device = {
+      getString: () => {
+        throw new Error('storage unavailable');
+      },
+      getNumber: () => {
+        throw new Error('storage unavailable');
+      },
+      set: () => {
+        throw new Error('storage unavailable');
+      },
+      remove: () => false,
+      contains: () => false,
+    };
+    respondWith(signed(VERSIONS, 2));
+    const federation = loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device: broken });
+    const status = await federation.initializeFederation();
+    expect(status.mode).toBe('cdn');
+    expect(status.rolledBack).toEqual([]);
+    federation.fallBackAndReload('listApp');
+    federation.markRemoteLoadSuccess('partyApp');
+    expect(console.warn).toHaveBeenCalledWith(
+      '[federation] the release counter could not be written',
+      expect.any(Error),
+    );
+  });
+
   // The signature covers every remote the map names, this binary's or not; the host reads out its
   // own afterwards. A map that verifies and then names nothing this binary can run is refused as
   // unreadable, and the counter is not advanced for a map that was not used.
@@ -716,11 +784,20 @@ describe('believing the map', () => {
     expect(status.versions).toEqual(VERSIONS);
     expect(device.getNumber('mf.versionMap.seq')).toBe(2);
 
-    const unreadable = freshDevice();
-    respondWith(signed({ listApp: '../../..' }, 3));
-    const refused = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device: unreadable }).initializeFederation();
-    expect(refused.mode).toBe('bundled');
-    expect(unreadable.getNumber('mf.versionMap.seq')).toBeUndefined();
+    // A map that names none of this binary's remotes verifies and is then unreadable, and so is
+    // one that names one of them at a version that cannot go in a URL; neither moves the counter.
+    const unreadableMaps: Record<string, string>[] = [
+      { otherApp: '3.0.0' },
+      { listApp: '1.2.0', partyApp: '../../..' },
+    ];
+    for (const versions of unreadableMaps) {
+      const unreadable = freshDevice();
+      respondWith(signed(versions, 3));
+      const refused = await loadFederation(CDN_BASE, '2.0.0', { ...RELEASE_WITH_COPIES, device: unreadable }).initializeFederation();
+      expect(refused.mode).toBe('bundled');
+      expect(console.warn).toHaveBeenCalledWith('[federation] version map was served but could not be read');
+      expect(unreadable.getNumber('mf.versionMap.seq')).toBeUndefined();
+    }
   });
 });
 
@@ -779,9 +856,12 @@ describe('remembering failures', () => {
     await expect(theResolver(repack)('listApp')).resolves.toMatchObject({
       url: `file://${APP_PATH}/cdn/ios/listApp/1.1.0/listApp.container.js.bundle`,
     });
-    expect((globalThis.fetch as jest.Mock).mock.calls.map(([url]) => url)).not.toContain(
-      cdnManifest('listApp', '1.2.0'),
-    );
+    const fetchMock = globalThis.fetch as jest.Mock;
+    fetchMock.mockClear();
+    await theFetchHook(runtime)(cdnManifest('listApp', '1.2.0'));
+    const fetched = fetchMock.mock.calls.map(([url]) => url);
+    expect(fetched).toContain(embeddedManifest('listApp', '1.1.0'));
+    expect(fetched).not.toContain(cdnManifest('listApp', '1.2.0'));
     // It is already on its copy, so there is nowhere further to drop.
     expect(canFallBack('listApp')).toBe(false);
     expect(canFallBack('partyApp')).toBe(true);

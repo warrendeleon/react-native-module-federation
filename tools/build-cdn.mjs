@@ -12,7 +12,8 @@
 // Two lists in this file, and the difference between them is the whole idea. REMOTE_VERSIONS is
 // what the CDN holds: every version ever published, kept until nobody is running it.
 // APP_VERSION_MAPS is what each released binary is allowed to load out of that. On a live CDN,
-// shipping a remote to installed apps is one new version directory and one edited line in a map.
+// shipping a remote to installed apps is one new version directory, one edited line in a map,
+// and the map signed again with a higher counter (tools/sign-version-map.mjs).
 //
 // It also prepares the copy a release build carries, so the app can start with the CDN out of
 // reach: embed-root/ and apps/host/src/shell/embedded-versions.ts, both described where the script
@@ -78,11 +79,12 @@ const REMOTE_VERSIONS = {
 // cdn-root, because that file is what a running app reads. This is the seeding of a CDN, not an
 // operation against one.
 //
-// The map is no longer only these two lines. Written to the CDN it is `{ seq, versions, sig }`:
-// the versions below, the release counter, and a signature over both, so an installed app can tell
-// a map written by the holder of the signing key from one written by anybody else who can reach
-// the bucket, and a map published today from one published last month. The signing is in
-// tools/version-map-signing.mjs; the checks are in the host's versionMapVerify.ts. ---
+// A map on the CDN is no longer only the remote-to-version pairs listed here. Written to the CDN
+// it is `{ seq, versions, sig }`: the versions listed here, the release counter, and a signature
+// over both, so an installed app can tell a map written by the holder of the signing key from one
+// written by anybody else who can reach the bucket, and a map published today from one published
+// last month. The signing is in tools/version-map-signing.mjs; the checks are in the host's
+// versionMapVerify.ts. ---
 const APP_VERSION_MAPS = {
   '1.0.0': { listApp: '1.0.0', partyApp: '1.0.0' },
   '2.0.0': { listApp: '1.2.0', partyApp: '1.0.0' },
@@ -103,8 +105,8 @@ if (platformArg && !ALL_PLATFORMS.includes(platformArg)) {
 const platforms = platformArg ? [platformArg] : ALL_PLATFORMS;
 
 // --- The counter and the key, both checked before anything is built, for the same reason the
-// map is checked below: a publish that cannot be signed should cost a second, not two bundle
-// runs. ---
+// map is checked below: a publish that cannot be signed should cost a second, not a bundle run
+// for every version of every remote. ---
 const { seq: RELEASE_SEQ, error: seqError } = releaseSeqFromEnv();
 if (seqError) {
   console.error(`\n${seqError}\n`);
@@ -118,7 +120,7 @@ if (keyError) {
 
 // --- A map naming a version the CDN does not hold is the failure post 15 demonstrates by hand,
 // and it is worth catching here rather than at a user's launch. Checked before anything is built,
-// so a typo costs a second instead of two bundle runs. ---
+// so a typo costs a second instead of a bundle run for every version of every remote. ---
 const unknownRemotes = Object.keys(REMOTE_VERSIONS).filter(remote => !REMOTE_APPS[remote]);
 if (unknownRemotes.length > 0) {
   console.error(
@@ -180,7 +182,7 @@ for (const platform of platforms) {
   for (const [appVersion, versions] of Object.entries(APP_VERSION_MAPS)) {
     const dir = join(repoRoot, 'cdn-root', platform, 'maps', appVersion);
     mkdirSync(dir, { recursive: true });
-    const signed = signVersionMap(RELEASE_SEQ, versions, mapSigningKey);
+    const signed = signVersionMap(platform, appVersion, RELEASE_SEQ, versions, mapSigningKey);
     writeFileSync(join(dir, 'version-map.json'), `${JSON.stringify(signed, null, 2)}\n`);
     console.log(`signed    -> cdn-root/${platform}/maps/${appVersion}/version-map.json (seq ${RELEASE_SEQ})`);
   }

@@ -231,11 +231,15 @@ test('the boundary reports a rendered remote once, and never a failed one', asyn
     threw.unmount();
   });
 
-  const rendered = await mount(
-    <RemoteBoundary remote="partyApp" load={() => Promise.resolve({ default: () => <></> })} />,
-  );
+  const load = () => Promise.resolve({ default: () => <></> });
+  const rendered = await mount(<RemoteBoundary remote="partyApp" load={load} />);
   expect(success).toHaveBeenCalledTimes(1);
   expect(success).toHaveBeenCalledWith('partyApp');
+  // Once per mount, not once per render: the shell re-rendering the tab reports nothing new.
+  await act(async () => {
+    rendered.update(<RemoteBoundary remote="partyApp" load={load} />);
+  });
+  expect(success).toHaveBeenCalledTimes(1);
   await act(async () => {
     rendered.unmount();
   });

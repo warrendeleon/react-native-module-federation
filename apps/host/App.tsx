@@ -78,8 +78,9 @@ registerShellNavigateHandler(shellNavigateHandler);
 // needs a new one, remounted under a new key. And after a failed load the federation runtime keeps
 // its own record of the remote, which forceReloadRemote clears first.
 //
-// The boundary also reports the one event that clears a remote's record of failed launches: its
-// component rendered. The beacon that reports it is a sibling of the remote inside the Suspense,
+// The boundary also reports the event that can clear a remote's record of failed launches: its
+// component rendered. scriptManager.ts clears the record only when what rendered was the CDN
+// version. The beacon that reports it is a sibling of the remote inside the Suspense,
 // so it mounts in the same commit as the remote's first render and never before: a load that
 // fails throws to the boundary and nothing in the Suspense commits, and so does a component that
 // throws as it first renders. What it reports is that the remote painted, not that it is correct;

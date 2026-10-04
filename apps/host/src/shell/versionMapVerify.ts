@@ -1,6 +1,8 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
 
+import { SAFE_VERSION } from './remoteLocator';
+
 // --- Whether a version map can be believed, decided as plain functions so it can be tested with
 // a key made for the test and no device in sight.
 //
@@ -21,19 +23,36 @@ import { sha512 } from '@noble/hashes/sha2.js';
 //
 // The signature is not over the JSON. Two tools can write the same map with different key orders
 // or whitespace, and a signature over one of them would fail against the other. It is over a
-// string rebuilt from the values, the same way on both sides: the seq, then every name@version pair
-// sorted by name, joined with commas. tools/version-map-signing.mjs builds the identical string.
+// string rebuilt from the values, the same way on both sides: the platform, the app version, the
+// seq, then every name@version pair sorted by name, joined with commas. The platform and the app
+// version are in it because the CDN holds one map per app version per platform, all signed with the
+// same key: without them the map written for app 1.0.0, served at app 2.0.0's URL, would verify on a
+// 2.0.0 binary. tools/version-map-signing.mjs builds the identical string.
+//
+// The string has separators, so what goes between them is restricted to the same two shapes the
+// tools accept: a remote name of letters, digits and underscores starting with a letter, and the
+// version shape the URL builder already requires. A name holding "@" or "," could otherwise make two
+// different maps produce the same string, and an edit that moved a boundary would keep the
+// signature valid. Such a map is refused before the verifier sees it.
 //
 // Ed25519 is verified in JavaScript, with @noble/ed25519, because Hermes has no WebCrypto. The
 // library ships without a hash of its own and its synchronous path needs one, so @noble/hashes'
 // SHA-512 is wired in once, here, when the module loads. ---
 ed.hashes.sha512 = sha512 as typeof ed.hashes.sha512;
 
+const SAFE_NAME = /^[A-Za-z][A-Za-z0-9_]*$/;
+
 export interface SignedVersionMap {
   seq: number;
   versions: Record<string, string>;
-  /** Standard base64 of the Ed25519 signature over versionMapSigningInput(seq, versions). */
+  /** Standard base64 of the Ed25519 signature over versionMapSigningInput(...). */
   sig: string;
+}
+
+/** What the map is for: the string is bound to the binary that fetches it. */
+export interface MapIdentity {
+  platform: string;
+  appVersion: string;
 }
 
 /** Why a map was refused, in the words the launch logs. */
@@ -41,6 +60,7 @@ export type VersionMapRejection =
   | 'not an object'
   | 'no release counter'
   | 'no versions'
+  | 'a remote name or version is not allowed'
   | 'no signature'
   | 'signature does not verify'
   | 'release counter is older than the last one accepted';
@@ -50,12 +70,16 @@ export type VerifyResult =
   | { ok: false; reason: VersionMapRejection };
 
 /** The bytes a signature covers, rebuilt from the values rather than read from the file. */
-export function versionMapSigningInput(seq: number, versions: Record<string, string>): Uint8Array {
+export function versionMapSigningInput(
+  identity: MapIdentity,
+  seq: number,
+  versions: Record<string, string>,
+): Uint8Array {
   const pairs = Object.keys(versions)
     .sort()
     .map(name => `${name}@${versions[name]}`)
     .join(',');
-  return new TextEncoder().encode(`${seq}|${pairs}`);
+  return new TextEncoder().encode(`${identity.platform}|${identity.appVersion}|${seq}|${pairs}`);
 }
 
 // atob exists in Hermes and in Node, and takes standard base64. The public key arrives in base64url,
@@ -75,9 +99,10 @@ function base64UrlToBytes(base64url: string): Uint8Array {
 }
 
 // --- The decision for one fetched map. publicKey is the embedded verifying key in base64url,
-// passed in rather than imported so a test can hand in a key it made. highestAcceptedSeq is what
-// the device remembers, zero on a fresh install, which accepts any signed map: first-contact trust
-// is the embedded key's job, and the counter protects a device that has already seen a newer map.
+// passed in rather than imported so a test can hand in a key it made. identity is the platform and
+// app version the host fetched the map for. highestAcceptedSeq is what the device remembers, zero
+// on a fresh install, which accepts any signed map: first-contact trust is the embedded key's job,
+// and the counter protects a device that has already seen a newer map.
 //
 // The shape is checked first, in the order the fields are needed, and every refusal names its
 // reason: a launch that lands in bundled mode because of a map it could not believe should say so,
@@ -85,6 +110,7 @@ function base64UrlToBytes(base64url: string): Uint8Array {
 export function verifyVersionMap(
   raw: unknown,
   publicKey: string,
+  identity: MapIdentity,
   highestAcceptedSeq: number,
 ): VerifyResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -100,12 +126,17 @@ export function verifyVersionMap(
   if (typeof sig !== 'string' || sig.length === 0) {
     return { ok: false, reason: 'no signature' };
   }
-  // Every value the signature covers has to be a string, or the string it covers is not the one
-  // the publisher signed; a map that fails this is refused as unsigned rather than passed to the
-  // verifier to fail less clearly.
+  // Every name and version has to be of the shape the signing string can carry unambiguously, and
+  // every version a string: a map that fails this cannot be the one the publisher signed, and it
+  // is refused before the verifier sees it rather than passed on to fail less clearly.
   const entries = Object.entries(versions as Record<string, unknown>);
-  if (entries.some(([, version]) => typeof version !== 'string')) {
-    return { ok: false, reason: 'no versions' };
+  if (
+    entries.some(
+      ([name, version]) =>
+        !SAFE_NAME.test(name) || typeof version !== 'string' || !SAFE_VERSION.test(version),
+    )
+  ) {
+    return { ok: false, reason: 'a remote name or version is not allowed' };
   }
   const signedVersions = Object.fromEntries(entries) as Record<string, string>;
 
@@ -113,7 +144,7 @@ export function verifyVersionMap(
   try {
     valid = ed.verify(
       base64ToBytes(sig),
-      versionMapSigningInput(seq, signedVersions),
+      versionMapSigningInput(identity, seq, signedVersions),
       base64UrlToBytes(publicKey),
     );
   } catch {

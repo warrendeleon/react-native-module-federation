@@ -1,23 +1,30 @@
 // --- Whether a version of a remote has failed often enough to stop trying it, decided as plain
 // functions over a record the host keeps between launches. scriptManager.ts stores the record and
-// asks these questions at boot and at every failure; the boundary in App.tsx reports the one event
-// that clears it.
+// asks these questions at boot and at every failure; the boundary in App.tsx reports a render, and
+// only a render of the CDN version clears it.
 //
 // A signed map protects the map's history, not the behaviour of what it names: a map can be
-// signed, current and wrong, pointing at a version that fails on every launch. Post 16's net
-// catches that failure once per session and runs the copy, then the next launch asks the CDN
-// again and fails the same way. The record below is what turns that into a decision. ---
+// signed, current and wrong, pointing at a version that fails to load on every launch, because its
+// manifest, container or chunks do not arrive or verify, or because it throws as it is evaluated.
+// Post 16's nets catch that failure once per session and run the copy, then the next launch asks
+// the CDN again and fails the same way. The record below is what turns that into a decision. It
+// counts only failures the nets catch: a version that loads and then throws as it renders keeps
+// its tab's error state, as post 16 decided, and is never counted. ---
 
 export interface RemoteHealth {
   /** The CDN version the failures were counted against. */
   version: string;
-  /** How many launches in a row that version has failed to load. */
+  /**
+   * How many launches have failed to load that version since it last rendered from the CDN. Only
+   * a render of the CDN version in its tab clears the count. partyApp's boot loads in App.tsx can
+   * add to it with no tab open.
+   */
   fails: number;
 }
 
-// --- How many consecutive failed launches it takes. One failure is weather: a dropped connection,
-// a CDN edge that was slow once. Two in a row is a pattern. Three would strand users on a broken
-// version for one more launch to gain little confidence. ---
+// --- How many failed launches it takes, counted since the version last rendered from the CDN.
+// One failure is weather: a dropped connection, a CDN edge that was slow once. Two is a pattern.
+// Three would strand users on a broken version for one more launch to gain little confidence. ---
 export const FAILURE_THRESHOLD = 2;
 
 /** The record after a failed load. The same version counts up; a different one starts at one. */
@@ -32,7 +39,8 @@ export function nextHealthOnFailure(previous: RemoteHealth | null, version: stri
 // what rendered is not the version the count is about, and clearing it would reset a consistently
 // broken version every launch and let it never reach the threshold. Surviving on the copy is not
 // the same as the version being healthy. Null also when there is no version, as in bundled and dev
-// mode, and when the count is already zero, so the caller can skip a write that changes nothing. ---
+// mode, and when the record already names this version with a zero count, so the caller can skip
+// a write that changes nothing. ---
 export function nextHealthOnSuccess(
   previous: RemoteHealth | null,
   version: string | undefined,

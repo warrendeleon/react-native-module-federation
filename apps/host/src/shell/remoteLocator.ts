@@ -208,7 +208,7 @@ export function manifestRemote(
 // publishes, and a version must start with a letter or a digit, which is what rules out "..". The
 // length is bounded for the same reason the characters are: it ends up in a URL, and nothing
 // anyone publishes needs sixty-four characters to name a release. ---
-const SAFE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+export const SAFE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 // --- The version map arrives over the network, so it is treated as a stranger's JSON rather than
 // as a typed object. Names this binary does not know are skipped. Anything else that is not a plain

@@ -2,13 +2,15 @@ import { createMMKV } from 'react-native-mmkv';
 
 // --- What the host remembers between launches. Two things, both from the federation layer and
 // both small: the highest release counter it has accepted, and a per-remote record of how many
-// launches in a row the version the map names has failed. Both are read during the boot gate,
-// before anything federated loads, so the store has to answer synchronously: a promise-based
-// store would add an await to a path the splash screen is already waiting on.
+// launches the version the map names has failed since it last rendered from the CDN. Both are
+// read during the boot gate, before anything federated loads, so the store has to answer
+// synchronously: a promise-based store would add an await to a path the splash screen is
+// already waiting on.
 //
 // MMKV is that store: a key-value file read and written synchronously through JSI, with one
 // instance for the whole host and each consumer under its own key prefix. A test process has no
-// native side; the library notices Jest and keeps the values in memory instead, so the launch
+// native side; the library notices Jest and keeps the values in memory instead, once jest.config.js
+// has replaced Nitro, whose native lookup would otherwise throw as MMKV is imported, so the launch
 // code runs unchanged under test. ---
 
 export const storage = createMMKV({ id: 'federation' });

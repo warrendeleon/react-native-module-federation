@@ -23,13 +23,13 @@ Most posts have a matching git tag holding that post's finished state, so you ca
 | `post-14-production-build` | [The production build and the three modes](https://warrendeleon.com/blog/production-build-three-modes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-production-build) | Both remotes built for production and signed chunk by chunk, laid out as the directory a content delivery network serves; one environment variable moves the host between the dev servers and that CDN, and the release build of each platform runs with no dev server at all |
 | `post-15-cdn-flip` | [CDN delivery: the version map, the resolver, and the live flip](https://warrendeleon.com/blog/cdn-version-resolution-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-cdn-flip) | The CDN holds every published version of each remote; each released app version gets a map saying which of them it may load; the host fetches its own map at launch and resolves every chunk to a versioned, signature-verified URL. Then a new remote version reaches an installed app through one uploaded directory and one edited line, and is rolled back the same way |
 | `post-16-fallbacks` | [Fallback for federated remotes: the copy in the binary and the net in the session](https://warrendeleon.com/blog/offline-fallback-federated-remotes-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-fallbacks) | Every release build carries a signed copy of both remotes. With the CDN out of reach at launch the app runs from those copies; in a CDN launch, a remote that fails to load drops to its own copy while the other stays on the CDN. A tab that still fails shows its error state, and Try again loads the remote again rather than replaying the failure |
-| `post-17-signing-rollback` | [The signed map and the app that rolls itself back](https://warrendeleon.com/blog/version-map-signing-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-signing-rollback) | The version map is signed and carries a release counter: a map the app cannot verify, or one older than the last it accepted, is refused and the launch runs from the copies. And a version that keeps failing stops being tried: after two failed launches in a row the third sends that remote to its copy without asking the CDN, until a different version is published |
+| `post-17-signing-rollback` | [The signed map and the app that rolls itself back](https://warrendeleon.com/blog/version-map-signing-react-native/?utm_source=github&utm_medium=readme&utm_campaign=module-federation-signing-rollback) | The version map is signed and carries a release counter: a map the app cannot verify, or one older than the last it accepted, is refused and the launch runs from the copies. And a version that keeps failing to load stops being tried: after two failed launches with no render from the CDN between them, the next sends that remote to its copy without asking the CDN, until a different version is published |
 
 `main` tracks the latest post. This is the last one: the series is complete at `post-17-signing-rollback`.
 
 ## Dependency advisories
 
-`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites. What remains is a single upstream advisory pair on `image-size`, and every finding at every tag traces to it. It is reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins. That leaves five high findings per app up to `post-05`, two from `post-06`, and four at `post-11` and `post-12`, where Re.Pack's NativeWind and Reanimated plugins each add a path to the same advisory. None of the four `packages/` workspaces reports any. npm still reports the Metro entries as fixable; `npm audit fix`, an explicit `npm update`, and `npm audit fix --force` all decline to move them. All of it is build-time tooling that runs on the developer's machine and ships nothing into the app bundle. The advisories cover every `image-size` 1.x release and Re.Pack pins `^1`, so the fix arrives with an upstream Re.Pack release rather than an override handing it an API it was not built against.
+`npm audit fix` and the in-range bumps are applied at every tag: `@module-federation/enhanced` 2.9.0 and the `@react-native-community/cli` trio (core and both platform packages) at 20.2.0, validated by `scripts/federation-smoke.sh` and the full test suites. What remained up to `post-16-fallbacks` was a single upstream advisory pair on `image-size`, reached through Re.Pack throughout, through `@callstack/repack-plugin-nativewind` and `@callstack/repack-plugin-reanimated` from `post-11`, and at `post-02` to `post-05` through React Native's own Metro as well: those trees resolve Metro 0.84.4, and 0.84.5 is not reachable in them without moving off React Native 0.85.3, which the series pins. At `post-17-signing-rollback` npm reports more, all in the same position: `adm-zip`, `brace-expansion`, `braces`, `decode-uri-component`, `fast-uri`, `fastify`, `joi`, `js-yaml`, `qs` and `undici` beside `image-size`, every one reached through the React Native CLI, ESLint's configuration packages or Re.Pack, and identical in the apps this post did not touch. `npm audit fix` declines to move them: the in-range bumps it proposes pull `react-native-reanimated` 4.7, which wants React Native 0.86. None of the four `packages/` workspaces reports any. All of it is build-time tooling that runs on the developer's machine and ships nothing into the app bundle; the fixes arrive with upstream releases of those tools rather than overrides handing them an API they were not built against.
 
 ## Layout
 
@@ -42,9 +42,10 @@ tools/
 ├── gen-signing-keys.mjs  generates the RSA keypair that signs production chunks and the Ed25519 keypair that signs the version map, and writes the public halves where the host reads them (keys stay out of git)
 ├── gen-signing-keys.test.mjs  the generator's regression tests: node --test tools/gen-signing-keys.test.mjs
 ├── build-cdn.mjs         builds every published version of both remotes into cdn-root/, writes one signed version map per released app version, and stages the copy each release build carries in embed-root/
-├── sign-version-map.mjs  signs one map already in cdn-root/ after it was edited by hand, with the next release counter
-├── version-map-signing.mjs  the signing shared by the two tools above: the canonical string, the counter, the key
-└── version-map-signing.test.mjs  their regression tests: node --test tools/version-map-signing.test.mjs
+├── build-cdn.test.mjs    its regression tests, against stand-in remotes that write a bundle instead of compiling one: node --test tools/build-cdn.test.mjs
+├── sign-version-map.mjs  signs one map already in cdn-root/ after it was edited by hand, with the release counter MF_RELEASE_SEQ gives it, which must be higher than every map's under cdn-root/
+├── version-map-signing.mjs  the signing shared by build-cdn.mjs and sign-version-map.mjs: the canonical string, the counter, the key
+└── version-map-signing.test.mjs  regression tests for version-map-signing.mjs and sign-version-map.mjs: node --test tools/version-map-signing.test.mjs
 packages/
 ├── a11y-testing/ the shared accessibility bar: Jest preset, WCAG helpers, report (devDependency only, never bundled)
 ├── contracts/  @pokedex/contracts — the route params and module types, published to a registry
@@ -104,16 +105,16 @@ Then, in four terminals:
 
 ```sh
 # 1. the list remote's dev server
-cd apps/list && npm run start:remote      # :8082
+( cd apps/list && npm run start:remote )  # :8082
 
 # 2. the party remote's dev server
-cd apps/party && npm run start:remote     # :8083
+( cd apps/party && npm run start:remote )  # :8083
 
 # 3. the host's dev server
-cd apps/host && npm start                 # :8081
+( cd apps/host && npm start )  # :8081
 
 # 4. build and launch the host on a simulator
-cd apps/host && npm run ios
+( cd apps/host && npm run ios )
 ```
 
 The host boots on the Pokédex tab and fetches the `list` remote from `:8082`, which fills the shared store with the first 151 Pokémon from PokéAPI. Tap a row and the list's container fetches that Pokémon through the same store and feeds it to the view installed from `@pokedex/detail`, pushed inside the Pokédex tab so the tab bar stays on screen. Tap **Add to party** on a detail and the dispatch crosses the seam: the party app's slice — injected into the shared store at boot — catches it, the Pokédex header counter ticks, and the Party tab shows the member. With two or more members, **Quick Battle** on the Party tab hands the party to a fully native screen the host presents, and the winner's uid comes back through one promise into the party's own state.
@@ -130,10 +131,10 @@ npx http-server@14.1.1 cdn-root -p 8000 -c-1 --cors       # leave it running
 ```
 
 The first command writes two keypairs: the one that signs every production chunk, whose public
-half goes into `ios/Host/Info.plist` and `android/app/src/main/res/values/strings.xml`, where the
-host's native verifier reads it from, and the one that signs the version map, whose public half
-goes into `apps/host/src/shell/version-map-public-key.ts`, where the host's own verifier imports
-it. The second builds every published version of both remotes and writes one signed version map
+half goes into `apps/host/ios/Host/Info.plist` and
+`apps/host/android/app/src/main/res/values/strings.xml`, where the host's native verifier reads it
+from, and the one that signs the version map, whose public half goes into
+`apps/host/src/shell/version-map-public-key.ts`, where the host's own verifier imports it. The second builds every published version of both remotes and writes one signed version map
 per released app version, each carrying the release counter `MF_RELEASE_SEQ` names:
 
 ```
@@ -147,10 +148,10 @@ Then, in two terminals:
 
 ```sh
 # 1. the host's dev server, told where the remotes live and which binary this is
-cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm start
+( cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm start )
 
 # 2. build and launch the host
-cd apps/host && npm run ios
+( cd apps/host && npm run ios )
 ```
 
 At launch the app fetches `maps/2.0.0/version-map.json`, and loads exactly the versions that file
@@ -165,8 +166,8 @@ A release build works the same way, with everything baked in at build time rathe
 running dev server:
 
 ```sh
-cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release
-cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 MF_APP_VERSION=2.0.0 npm run android -- --mode release
+( cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release )
+( cd apps/host && MF_CDN_BASE=http://10.0.2.2:8000 MF_APP_VERSION=2.0.0 npm run android -- --mode release )
 ```
 
 An Android emulator reaches the machine at `10.0.2.2` rather than `localhost`, and a release
@@ -184,12 +185,16 @@ rsync -a --exclude '*.map' --exclude mf-stats.json apps/list/cdn/ios/listApp/1.3
 ```
 
 Nothing has changed for anybody yet: the directory is there and no map points at it. Then edit one
-line of `cdn-root/ios/maps/2.0.0/version-map.json`:
+line of `cdn-root/ios/maps/2.0.0/version-map.json`, the listApp entry under `versions`:
 
 ```json
 {
-  "listApp": "1.3.0",
-  "partyApp": "1.0.0"
+  "seq": 1,
+  "versions": {
+    "listApp": "1.3.0",
+    "partyApp": "1.0.0"
+  },
+  "sig": "..."
 }
 ```
 
@@ -223,11 +228,12 @@ that its app version's map names, its signed bundles and its manifest, staged in
 with the versions recorded in `apps/host/src/shell/embedded-versions.ts`. The last build phase of
 the iOS target and a Gradle task on Android copy `embed-root/` into the binary byte for byte, so
 every bundle keeps the signature it is verified against. Run it before the release build; without
-`embed-root/` both builds warn, succeed, and carry nothing.
+`embed-root/` both builds warn, succeed, and carry nothing. It re-signs every map as it goes, so
+it takes a new counter like any publish.
 
 ```sh
-node tools/build-cdn.mjs ios
-cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release
+MF_RELEASE_SEQ=<one higher than the last counter you published> node tools/build-cdn.mjs ios
+( cd apps/host && MF_CDN_BASE=http://localhost:8000 MF_APP_VERSION=2.0.0 npm run ios -- --mode Release )
 ```
 
 Stop the server, check that `curl http://localhost:8000/ios/maps/2.0.0/version-map.json` now
@@ -245,10 +251,15 @@ on the dev servers on both platforms.
 
 Chunk signing protects the content of every chunk; nothing in post 15 protected the choice of
 version. A map is `{ seq, versions, sig }`: the versions, a release counter, and an Ed25519
-signature over the two of them, made with the key `tools/gen-signing-keys.mjs` keeps in
-`code-signing/` and checked at launch against the public half compiled into the host. The bytes
-that are signed are not the JSON but a string rebuilt from the values on both sides, `<seq>|` then
-every `name@version` sorted by name, so key order and whitespace cannot break a signature.
+signature over the two of them and over what the map is for, made with the key
+`tools/gen-signing-keys.mjs` keeps in `code-signing/` and checked at launch against the public half
+compiled into the host. The bytes that are signed are not the JSON but a string rebuilt from the
+values on both sides, `<platform>|<appVersion>|<seq>|` then every `name@version` sorted by name, so
+key order and whitespace cannot break a signature, and so the map written for app 1.0.0 does not
+verify when it is served at app 2.0.0's URL. Remote names are letters, digits and underscores, and
+versions letters, digits, dots, dashes and underscores: a name holding `@` or `,` could make two
+different maps sign to the same string, so both tools refuse one before signing and the host
+refuses one before verifying.
 
 The device remembers the highest counter it has accepted. A map it cannot verify is refused, and so
 is a map whose counter is lower than that: an old map served again, however good its signature.
@@ -261,33 +272,42 @@ one, with the server running:
 #   [federation] version map refused: signature does not verify
 # publish with a higher counter, launch, then put the previous map file back and launch again:
 #   [federation] version map refused: release counter is older than the last one accepted
-# sign the map at MF_RELEASE_SEQ=3 naming listApp 1.1.0: accepted, and the app loads 1.1.0
+# sign that map with the next counter, naming listApp 1.1.0: accepted, and the app loads 1.1.0
 ```
 
-Three rules bite. The counter always goes up, rollbacks included. Never regenerate the map-signing
-key for an app that is installed: those installs trust the key they were built with and refuse every
-map signed by another. And neither private key enters the repository: `code-signing/` is ignored
-before the generator is ever run.
+Three rules are easy to miss. The counter always goes up, rollbacks included, and it is one counter
+for the whole CDN: a device keeps the highest it accepted on any app version, and keeps it across a
+binary update, so `sign-version-map` refuses a counter that does not move past every map under
+`cdn-root/`. Never regenerate the map-signing key for an app that is installed: those installs trust
+the key they were built with and refuse every map signed by another. And neither private key enters
+the repository: `code-signing/` is ignored before the generator is ever run.
 
 ### When a version keeps failing
 
-A signed map can be current, valid and wrong: it can name a version that fails on every launch.
-The nets catch that once per session and run the copy, and the next launch asks the CDN again and
-fails the same way. So the host keeps one small record per remote between launches, in MMKV: which
-CDN version last failed and how many launches in a row. A remote that drops to its copy counts one
-failed launch against the version the map named. At two in a row the next launch sends that remote
-to its copy before trying the CDN, and the banner marks it:
+A signed map can be current, valid and wrong: it can name a version that fails to load on every
+launch, because its manifest, container or chunks do not arrive or verify, or because it throws as
+it is evaluated. The nets catch that once per session and run the copy, and the next launch asks
+the CDN again and fails the same way. So the host keeps one small record per remote between
+launches, in MMKV: which CDN version last failed and how many launches it has failed since it last
+rendered from the CDN. A remote that drops to its copy counts one failed launch against the version
+the map named. At two the next launch sends that remote to its copy before trying the CDN, and the
+banner marks it:
 
 ```
 cdn · listApp 1.2.0 rolled back · partyApp 1.0.0
 ```
 
-Only a render of the CDN version clears the count: a remote on its copy rendered the copy, which
-says nothing about the version the map names. A different version in the map starts the count
-over, so a fixed release is tried on its first launch. To see the cycle, point the map at a version
-the CDN does not hold, sign it, and launch five times: the first two drop the list to its copy
-mid-launch, the third runs it from the copy without asking, and once the map names a version that
-exists again the next launch tries it and clears the record.
+Only a render of the CDN version in its tab clears the count: a remote on its copy rendered the
+copy, which says nothing about the version the map names, and a launch that never opens the tab
+cannot clear it, though partyApp's boot loads can still add to it. A different version in the map
+starts the count over, so a fixed release is tried on its first launch. A version that loads and
+then throws as it renders is not counted: its code has run, the tab shows its error state and Try
+again renders it again, as post 16 decided.
+
+To see the cycle, point the map at a version the CDN does not hold, sign it, and launch three
+times: the first two drop the list to its copy mid-launch, and the third runs it from the copy
+without asking. Then point the map at a version that exists, sign it again, and the fourth launch
+tries it and clears the record.
 
 ## Architecture
 
@@ -320,6 +340,6 @@ flowchart TD
     registry -->|"contracts + ui + the detail view"| party
     party ==>|"shellNavigate('QuickBattle') · awaits the winner's uid"| native
     t1 & t2 -.->|"release build: the versions its map names,<br/>once the map's signature and counter pass"| cdn
-    t1 & t2 -.->|"release build, no usable or believable map: every remote runs from its copy<br/>one remote fails from the CDN: the manifest net or the tab's boundary drops it here<br/>a version that failed the last two launches: sent here at launch"| copies
-    host -.->|"reads the counter and the record at launch;<br/>writes them on a refused map, a drop to the copy, a CDN render"| memory
+    t1 & t2 -.->|"release build, no usable or believable map: every remote runs from its copy<br/>one remote fails from the CDN: the manifest net or the tab's boundary drops it here<br/>a version that failed two launches since it last rendered from the CDN: sent here at launch"| copies
+    host -.->|"reads the counter and the record at launch;<br/>writes the counter on an accepted map with a higher seq,<br/>the record on a drop to the copy and a CDN render"| memory
 ```

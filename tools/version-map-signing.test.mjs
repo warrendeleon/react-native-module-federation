@@ -10,22 +10,47 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { releaseSeqFromEnv, signVersionMap, versionMapSigningInput } from './version-map-signing.mjs';
+import {
+  highestPublishedSeq,
+  releaseSeqFromEnv,
+  signVersionMap,
+  versionMapSigningInput,
+  versionsProblem,
+} from './version-map-signing.mjs';
 
 const tools = dirname(fileURLToPath(import.meta.url));
 const VERSIONS = { listApp: '1.2.0', partyApp: '1.0.0' };
 
-test('the signing input is the counter, then the sorted name@version pairs', () => {
-  assert.equal(versionMapSigningInput(3, { partyApp: '1.0.0', listApp: '1.2.0' }), '3|listApp@1.2.0,partyApp@1.0.0');
+test('the signing input is the platform, the app version, the counter, then the sorted pairs', () => {
+  assert.equal(
+    versionMapSigningInput('ios', '2.0.0', 3, { partyApp: '1.0.0', listApp: '1.2.0' }),
+    'ios|2.0.0|3|listApp@1.2.0,partyApp@1.0.0',
+  );
 });
 
 test('a signed map carries the seq, the versions as given, and a signature over the input', () => {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
-  const signed = signVersionMap(4, VERSIONS, privateKey);
+  const signed = signVersionMap('ios', '2.0.0', 4, VERSIONS, privateKey);
   assert.deepEqual(Object.keys(signed), ['seq', 'versions', 'sig']);
   assert.equal(signed.seq, 4);
   assert.deepEqual(signed.versions, VERSIONS);
-  assert.ok(verify(null, Buffer.from(versionMapSigningInput(4, VERSIONS)), publicKey, Buffer.from(signed.sig, 'base64')));
+  const input = Buffer.from(versionMapSigningInput('ios', '2.0.0', 4, VERSIONS));
+  assert.ok(verify(null, input, publicKey, Buffer.from(signed.sig, 'base64')));
+  // The same map signed for another binary is a different signature.
+  const other = Buffer.from(versionMapSigningInput('ios', '1.0.0', 4, VERSIONS));
+  assert.equal(verify(null, other, publicKey, Buffer.from(signed.sig, 'base64')), false);
+});
+
+test('a name or version the signing string cannot carry is refused before signing', () => {
+  assert.equal(versionsProblem(VERSIONS), null);
+  assert.match(versionsProblem({ 'listApp@1.2.0,otherApp': '3.0.0' }), /remote name .* is not allowed/);
+  assert.match(versionsProblem({ '1listApp': '1.0.0' }), /remote name/);
+  assert.match(versionsProblem({ listApp: '1.0.0|x' }), /version of listApp/);
+  assert.match(versionsProblem({ listApp: 1 }), /version of listApp/);
+  assert.match(versionsProblem({}), /name no remote/);
+  assert.match(versionsProblem([]), /not an object/);
+  const { privateKey } = generateKeyPairSync('ed25519');
+  assert.throws(() => signVersionMap('ios', '2.0.0', 1, { 'a,b': '1.0.0' }, privateKey), /cannot sign/);
 });
 
 test('the release counter is required and must be a positive whole number', () => {
@@ -52,14 +77,19 @@ function sandbox(map) {
   mkdirSync(mapDir, { recursive: true });
   const mapPath = join(mapDir, 'version-map.json');
   writeFileSync(mapPath, `${JSON.stringify(map, null, 2)}\n`);
+  const verifies = (signed, platform = 'ios', appVersion = '2.0.0') =>
+    verify(
+      null,
+      Buffer.from(versionMapSigningInput(platform, appVersion, signed.seq, signed.versions)),
+      publicKey,
+      Buffer.from(signed.sig, 'base64'),
+    );
   const run = (seq, args = ['ios', '2.0.0']) =>
     spawnSync(process.execPath, [join(root, 'tools', 'sign-version-map.mjs'), ...args], {
       encoding: 'utf8',
       env: { ...process.env, MF_RELEASE_SEQ: seq },
     });
   const readMap = () => JSON.parse(readFileSync(mapPath, 'utf8'));
-  const verifies = signed =>
-    verify(null, Buffer.from(versionMapSigningInput(signed.seq, signed.versions)), publicKey, Buffer.from(signed.sig, 'base64'));
   return { root, run, readMap, verifies, publicKey, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
@@ -72,6 +102,9 @@ test('signs a plain map, the shape post 15 wrote, in place', () => {
     assert.deepEqual(signed.versions, VERSIONS);
     assert.equal(signed.seq, 2);
     assert.ok(s.verifies(signed));
+    // Bound to the platform and app version in the path, so it does not verify elsewhere.
+    assert.equal(s.verifies(signed, 'android', '2.0.0'), false);
+    assert.equal(s.verifies(signed, 'ios', '1.0.0'), false);
   } finally {
     s.cleanup();
   }
@@ -95,7 +128,7 @@ test('re-signs an edited signed map with a higher counter, dropping the old sign
   }
 });
 
-test('refuses a counter that does not move past the one already in the map', () => {
+test('refuses a counter that does not move past the highest in any map under cdn-root', () => {
   const s = sandbox(VERSIONS);
   try {
     s.run('5');
@@ -103,9 +136,18 @@ test('refuses a counter that does not move past the one already in the map', () 
     for (const seq of ['5', '4']) {
       const r = s.run(seq);
       assert.equal(r.status, 1, seq);
-      assert.match(r.stderr, /already at seq 5/);
+      assert.match(r.stderr, /highest counter already published under cdn-root is 5/);
     }
     assert.deepEqual(s.readMap(), before);
+    // Another app version's map on the other platform at seq 9: a device keeps one counter for
+    // every map, so this one must move past that too.
+    const otherDir = join(s.root, 'cdn-root', 'android', 'maps', '1.0.0');
+    mkdirSync(otherDir, { recursive: true });
+    writeFileSync(join(otherDir, 'version-map.json'), JSON.stringify({ seq: 9, versions: VERSIONS, sig: 'x' }));
+    assert.equal(highestPublishedSeq(s.root), 9);
+    assert.match(s.run('6').stderr, /highest counter already published under cdn-root is 9/);
+    assert.equal(s.run('10').status, 0);
+    assert.equal(s.readMap().seq, 10);
   } finally {
     s.cleanup();
   }
@@ -127,7 +169,7 @@ test('refuses to run without a counter, and leaves the map alone', () => {
 });
 
 test('refuses a file that is not a map of remotes to versions', () => {
-  for (const bad of [[], {}, { listApp: 1 }, { seq: 1, versions: [], sig: 'x' }]) {
+  for (const bad of [[], {}, { listApp: 1 }, { seq: 1, versions: [], sig: 'x' }, { 'listApp@1.2.0,x': '1.0.0' }]) {
     const s = sandbox(bad);
     try {
       const r = s.run('1');

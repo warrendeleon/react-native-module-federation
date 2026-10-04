@@ -168,8 +168,7 @@ for (const target of embedTargets) {
 console.log(`\nchunk-signing private key: ${chunkKey.privatePath}  (signs the chunks; never commit it, never ship it)`);
 console.log(`chunk-signing public key:  ${chunkKey.publicPath}  (what a host checks a chunk's signature against)`);
 console.log(`map-signing private key:   ${mapKey.privatePath}  (signs the version map; never commit it, never ship it)`);
-console.log(`map-signing public key:    ${mapKey.publicPath}  (what a host checks the map against)\n`);
-console.log(publicPem);
+console.log(`map-signing public key:    ${mapKey.publicPath}  (what a host checks the map against)`);
 
 if (embedFailed) {
   process.exit(1);
