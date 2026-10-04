@@ -23,10 +23,10 @@ export interface RemoteHealth {
 }
 
 // --- How many failed launches it takes, counted since the version last rendered from the CDN.
-// One failure is weather: a dropped connection, a CDN edge that was slow once. Two is a pattern.
-// Three would make users wait through one more failed attempt to gain little confidence: up to
-// the probe timeout for a manifest, and up to Re.Pack's own script timeout for a container or
-// chunk that stalls. ---
+// One failure can be a passing network problem: a dropped connection, a CDN edge that was slow
+// once. Two is a pattern. Three would make users wait through one more failed attempt to gain
+// little confidence: up to the probe timeout for a manifest, and up to Re.Pack's own script
+// timeout for a container or chunk that stalls. ---
 export const FAILURE_THRESHOLD = 2;
 
 /** The record after a failed load. The same version counts up; a different one starts at one. */

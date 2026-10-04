@@ -76,7 +76,7 @@ describe('deciding to roll back', () => {
     expect(shouldRollBack({ version: '1.2.0', fails: 9 }, '1.3.0')).toBe(false);
   });
 
-  test('the threshold is two: one failure is weather, two is a pattern', () => {
+  test('the threshold is two: one failure can be a passing network problem, two is a pattern', () => {
     expect(FAILURE_THRESHOLD).toBe(2);
   });
 });
